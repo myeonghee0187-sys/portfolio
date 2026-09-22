@@ -1,24 +1,240 @@
+/*
+ * Figma 98:19 — hero 1920 x 1000, hero_inner 1680 (좌우 120px 거터).
+ * 모든 수치는 "Figma 1920 기준값 x --site-u"라서 1920px 뷰포트에서 1:1이 된다.
+ */
 .hero {
+  /* Magic Rings 레이어의 기준면이자, 링이 Hero 밖으로 새지 않게 하는 경계. */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  /*
+   * Header를 뺀 나머지를 전부 차지한다 -> Header + Hero = 화면 정확히 한 장.
+   * 고정 1000px이 아니라 뷰포트 기준이라 첫 화면에 스크롤이 생기지 않는다.
+   */
+  height: calc(100vh - var(--site-header-h));
+  height: calc(100dvh - var(--site-header-h));
+  /*
+   * Anton은 ascent+descent가 line-height 1.4보다 커서 마지막 줄의 인라인 박스가
+   * 텍스트 프레임(672px) 아래로 8px 새어 나간다. Figma는 프레임을 정확히 672px로
+   * 쓰므로 여기서 잘라낸다. 대문자뿐이라 디센더가 없어서 잘리는 획은 없다.
+   */
+  overflow: hidden;
+  background: #08090a;
+}
+
+/* Magic Rings — 가장 뒤쪽 장식 레이어. */
+.hero__rings {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  /* Header/CONTACT/Watch 등의 클릭을 가로채지 않는다. */
+  pointer-events: none;
+  /*
+   * Hero 하단 18% 구간에서 링만 서서히 사라진다.
+   * 마스크가 이 레이어에만 걸려 있어 Watch/타이포/Crown/Header에는 영향이 없다.
+   */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 72%,
+    rgba(0, 0, 0, 0.72) 83%,
+    rgba(0, 0, 0, 0.3) 92%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 72%,
+    rgba(0, 0, 0, 0.72) 83%,
+    rgba(0, 0, 0, 0.3) 92%,
+    transparent 100%
+  );
+}
+
+.hero__inner {
+  position: relative;
+  /* 링(0)보다 확실히 위. Watch/타이포/Crown은 모두 이 안에 있다. */
+  z-index: 2;
+  display: flex;
+  /* hero_inner는 items-end라 대형 타이포가 1000px 바닥에 붙는다. */
+  align-items: flex-end;
+  width: min(100%, calc(1680 * var(--site-u)));
+  /* Figma 1000px 높이를 유지한 채, 남는 세로 공간에 가운데 정렬된다. */
+  height: calc(1000 * var(--site-u));
+}
+
+/* ---------------- A. 좌측 대형 타이포 (125:979) ---------------- */
+
+.hero__headline {
+  flex: none;
+  width: calc(723 * var(--site-u));
+  margin: 0;
+  font-family: 'Anton', sans-serif;
+  font-weight: 400;
+  font-size: calc(160 * var(--site-u));
+  line-height: 1.4;
+  color: #f3f4f4;
+  /* Figma 텍스트 실폭(742)이 프레임(723)보다 넓다. 줄바꿈 없이 넘치는 것이 원본. */
+  white-space: nowrap;
+}
+
+.hero__headline span {
+  display: block;
+}
+
+/* ---------------- B. 중앙 Apple Watch (125:1056) ---------------- */
+
+.hero__watch {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(600 * var(--site-u));
+  height: calc(760 * var(--site-u));
+}
+
+.hero__watch-image {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Figma asset의 실제 crop 위치·배율 그대로. object-fit으로 대체하지 않는다. */
+.hero__watch-image img {
+  position: absolute;
+  top: -13.59%;
+  left: -31.39%;
+  width: 162.65%;
+  height: 127.18%;
+  max-width: none;
+}
+
+.hero__watch-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  height: calc(560 * var(--site-u));
+}
+
+.hero__watch-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  width: calc(485 * var(--site-u));
+  height: calc(290 * var(--site-u));
+  line-height: 1;
+  color: #f3f4f4;
+}
+
+.hero__watch-time {
+  margin: 0;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-weight: 500;
+  font-size: calc(96 * var(--site-u));
+  line-height: 1;
+  text-align: center;
+}
+
+.hero__watch-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(12 * var(--site-u));
+  width: 100%;
+}
+
+.hero__watch-name {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: calc(48 * var(--site-u));
+  line-height: 1;
+}
+
+.hero__watch-role {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: calc(36 * var(--site-u));
+  line-height: 1;
+  text-align: center;
+}
+
+.hero__watch-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 calc(8 * var(--site-u));
+}
+
+.hero__watch-works,
+.hero__watch-status {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: calc(20 * var(--site-u));
+  line-height: 1;
+  color: #f3f4f4;
+  white-space: nowrap;
+}
+
+.hero__watch-status {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(4 * var(--site-u));
+}
+
+/* ---------------- C. Digital Crown (125:1078) ---------------- */
+
+/* 54 x 80 래퍼 안에서 80 x 54 크라운이 -90도 회전 + 상하 반전된다. */
+.hero__crown {
+  position: absolute;
+  top: calc(50% - 140 * var(--site-u));
+  right: calc(504 * var(--site-u));
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(54 * var(--site-u));
+  height: calc(80 * var(--site-u));
+}
+
+.hero__crown-rotor {
+  flex: none;
+  transform: rotate(-90deg) scaleY(-1);
+}
+
+.hero__crown-box {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  min-height: 100vh;
-  min-height: 100dvh;
-  text-align: center;
+  width: calc(80 * var(--site-u));
+  height: calc(54 * var(--site-u));
 }
 
-.hero__title {
-  margin: 0;
-  font-size: clamp(40px, 9vw, 112px);
-  font-weight: 600;
-  letter-spacing: 0.08em;
+.hero__crown-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 527 / 359;
+  overflow: hidden;
 }
 
-.hero__note {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 13px;
-  letter-spacing: 0.14em;
+.hero__crown-frame img {
+  position: absolute;
+  top: -89.14%;
+  left: -46.87%;
+  width: 194.31%;
+  height: 285.24%;
+  max-width: none;
 }

@@ -35,6 +35,43 @@
   border: 0;
 }
 
+/*
+ * 좌측 상단 문구.
+ * 두 문구를 같은 grid 칸(1 / 1)에 겹쳐 두어 위치·typography가 완전히 동일하고,
+ * opacity만 교차하므로 텍스트가 움직이지 않는다.
+ */
+.intro__caption {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 32px);
+  left: calc(env(safe-area-inset-left, 0px) + 28px);
+  display: grid;
+  pointer-events: none;
+}
+
+.intro__caption-line {
+  grid-area: 1 / 1;
+  margin: 0;
+  color: #fff;
+  font-family: inherit;
+  font-size: clamp(12px, 1.1vw, 17px);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1.35;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  /* --intro-text-fade는 IntroVideo.tsx가 인라인으로 넣는다. */
+  transition: opacity var(--intro-text-fade, 500ms) ease;
+}
+
+.intro__caption-line.is-visible {
+  opacity: 1;
+}
+
+.intro__caption-line span {
+  display: block;
+}
+
 .intro__skip {
   position: absolute;
   /* iPhone 홈 인디케이터를 피한다. */
@@ -69,6 +106,17 @@
 }
 
 @media (max-width: 640px) {
+  .intro__caption {
+    top: calc(env(safe-area-inset-top, 0px) + 20px);
+    left: calc(env(safe-area-inset-left, 0px) + 18px);
+  }
+
+  .intro__caption-line {
+    /* 좁은 화면에서 두 줄이 밖으로 밀리지 않도록 폭에 맞춰 축소한다. */
+    font-size: clamp(10px, 3.2vw, 14px);
+    letter-spacing: 0.1em;
+  }
+
   .intro__skip {
     right: calc(env(safe-area-inset-right, 0px) + 16px);
     bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);

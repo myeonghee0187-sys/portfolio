@@ -1,0 +1,38 @@
+/* Figma 111:439 — header 1920 x 104 (상하 40px + 텍스트 24px) */
+.site-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: var(--site-header-h);
+  /* 좁은 화면에서 텍스트가 가장자리에 붙지 않도록 하는 최소 여백. */
+  padding: 0 20px;
+  background: #08090a;
+}
+
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /*
+   * Hero의 inner와 폭·중앙정렬이 같다.
+   * 1920에서는 좌우 120px로 떨어지고, 스크롤바가 있거나 더 넓은 화면에서도
+   * Hero의 좌우 끝과 정확히 맞는다.
+   */
+  width: min(100%, calc(1680 * var(--site-u)));
+  margin: 0 auto;
+}
+
+.site-header__brand,
+.site-header__link {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: max(13px, calc(24 * var(--site-u)));
+  line-height: 1;
+  color: #f3f4f4;
+  white-space: nowrap;
+}
+
+.site-header__link {
+  text-decoration: none;
+}
