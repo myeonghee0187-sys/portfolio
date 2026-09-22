@@ -1,0 +1,39 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  /* 로드 중 흰 화면 flash 방지 */
+  background: #000;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  color: #fff;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    'Pretendard',
+    'Apple SD Gothic Neo',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Intro 재생 중 body scroll lock (IntroVideo가 <html>에 붙였다 뗀다) */
+html.intro-scroll-lock,
+html.intro-scroll-lock body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* 스크롤 잠금 확인용 임시 여백. 실제 섹션 작업 시 삭제하세요. */
+.scroll-probe {
+  height: 120vh;
+}
