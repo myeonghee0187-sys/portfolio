@@ -1,0 +1,19 @@
+/*
+ * Watch 전용 fixed 오버레이.
+ *
+ * z-index 계층:
+ *     0  Hero Magic Rings (.hero__rings)
+ *     1  About 카드        (.about__card)
+ *     2  Hero 콘텐츠       (.hero__inner - 대형 타이포)
+ *     3  Watch            <- 카드가 절대 Watch를 덮지 않는다
+ *    10  Splash Cursor
+ *   100  Intro 오버레이
+ *
+ * pointer-events: none이라 Header/CONTACT/링크 클릭을 가로채지 않는다.
+ */
+.watch-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}

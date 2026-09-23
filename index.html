@@ -6,11 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#000000" />
     <title>Song Myeoghee</title>
-    <!-- Figma 지정 서체: Anton(대형 타이포) / Inter(본문) / IBM Plex Sans(시간) -->
+    <!--
+      Figma 지정 서체.
+        Anton         - Hero 대형 타이포 / About 카드 heading
+        Inter         - 본문 (About Watch 타이틀이 ExtraBold 800을 쓴다)
+        IBM Plex Sans - Watch 시간 (Hero 500 / About 400)
+    -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Sans:wght@500&family=Inter:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Sans:wght@400;500&family=Inter:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <!-- SUIT - About 카드 본문(국문). Google Fonts에 없어 제작사 배포 CDN을 쓴다. -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link
+      href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/static/woff2/SUIT.css"
       rel="stylesheet"
     />
     <style>

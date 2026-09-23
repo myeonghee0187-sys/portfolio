@@ -1,0 +1,183 @@
+/*
+ * Figma 157:146 — about 1920 x 1180 (상단 여백 100 + about_inner 1920 x 1080).
+ *
+ * Hero가 --site-u를 쓰듯 About은 --about-u를 쓴다.
+ * "Figma 1920 x 1080 디자인 1px당 실제 px"이고, 뷰포트가 좁아지면 함께 줄어든다.
+ * 1920 x 1080에서 정확히 1px(= Figma 1:1)이 된다.
+ */
+.about {
+  /* Figma about frame의 상단 여백 100px. 화면이 좁아지면 함께 줄어든다. */
+  padding-top: calc(100 * min(1px, 100vw / 1920, 100dvh / 1080));
+  background: #08090a;
+}
+
+/*
+ * ScrollTrigger가 pin하는 단위. 정확히 한 화면이어야 pin 계산이 단순해진다.
+ * pin-spacer는 ScrollTrigger가 만들고 높이만 담당한다 — 따로 스타일링하지 않는다.
+ */
+.about__stage {
+  /*
+   * 안쪽 치수의 기준면. cqw/cqh는 이 요소의 실제 콘텐츠 크기라
+   * 세로 스크롤바 폭이 이미 빠져 있다.
+   */
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/*
+ * Figma about_inner. 카드 좌표는 전부 이 박스 기준이다.
+ *
+ * --about-u = "Figma 1920 x 1080 디자인 1px당 실제 px".
+ * 100vw로 재면 세로 스크롤바(15px)까지 포함해서 가로로 넘치고
+ * horizontal scrollbar가 생기므로, stage의 실제 크기인 cq 단위로 잰다.
+ * 1920 x 1080 뷰포트에서는 사실상 1px(= Figma 1:1)이 된다.
+ */
+.about__inner {
+  --about-u: min(100cqw / 1920, 100cqh / 1080);
+  position: relative;
+  width: calc(1920 * var(--about-u));
+  height: calc(1080 * var(--about-u));
+}
+
+/* ---------------- 카드 (157:148 / 152 / 156 / 160) ---------------- */
+
+.about__card {
+  position: absolute;
+  /* Watch(z-index 3)보다 아래. 카드가 Watch를 덮는 일이 없다. */
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: calc(544 * var(--about-u));
+  height: calc(312 * var(--about-u));
+  padding: calc(40 * var(--about-u));
+  overflow: hidden;
+  border-radius: calc(12 * var(--about-u));
+  background: #d4e5ef;
+  /* Figma의 카드 투명도. 정착 상태의 값이며 scroll 중 이 값을 넘지 않는다. */
+  opacity: 0.6;
+  color: #08090a;
+  /* 이동은 transform으로만 일어난다. 레이아웃을 매 프레임 건드리지 않는다. */
+  will-change: transform;
+}
+
+/* Figma 최종 배치. scroll timeline의 settled composition이기도 하다. */
+.about__card--am {
+  top: calc(128 * var(--about-u));
+  left: calc(120 * var(--about-u));
+}
+
+.about__card--make {
+  top: 0;
+  right: 0;
+}
+
+.about__card--see {
+  top: calc(640 * var(--about-u));
+  right: calc(120 * var(--about-u));
+}
+
+.about__card--refine {
+  top: calc(768 * var(--about-u));
+  left: 0;
+}
+
+.about__card-title {
+  margin: 0;
+  font-family: 'Anton', sans-serif;
+  font-weight: 400;
+  font-size: calc(40 * var(--about-u));
+  line-height: 1;
+  letter-spacing: calc(1 * var(--about-u));
+}
+
+.about__card-body {
+  margin: 0;
+  font-family: 'SUIT', sans-serif;
+  font-weight: 500;
+  font-size: calc(24 * var(--about-u));
+  line-height: 1.4;
+  word-break: keep-all;
+}
+
+.about__card-body span {
+  display: block;
+}
+
+/* ---------------- Watch 자리 ---------------- */
+
+.about__watch-anchor {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(480 * var(--about-u));
+  height: calc(608 * var(--about-u));
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* ---------------- 모바일 / 좁은 화면 fallback ---------------- */
+
+/*
+ * Mobile About 디자인은 아직 없다. pinned interaction을 억지로 적용하는 대신
+ * Watch와 카드 4장이 문서 흐름 안에서 그대로 읽히게만 한다.
+ * (scroll scene도 이 폭에서는 아예 마운트되지 않는다.)
+ */
+@media (max-width: 900px) {
+  .about {
+    padding: 64px 20px 80px;
+  }
+
+  .about__stage {
+    /* 높이가 auto가 되므로 size containment를 풀어야 한다(안 그러면 높이가 0이 된다). */
+    container-type: normal;
+    height: auto;
+    overflow: visible;
+  }
+
+  .about__inner {
+    --about-u: min(1px, (100vw - 40px) / 544);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    width: 100%;
+    height: auto;
+  }
+
+  .about__card {
+    position: static;
+    width: 100%;
+    max-width: calc(544 * var(--about-u));
+    height: auto;
+    min-height: calc(312 * var(--about-u));
+    gap: 24px;
+  }
+
+  .about__watch-anchor {
+    display: none;
+  }
+
+  /*
+   * Watch도 흐름 안에 놓인다.
+   * 단 position: static으로 두면 안 된다 — case 이미지 / 타이틀 / Crown이
+   * 전부 absolute라서, Watch가 기준면을 잃으면 About 칼럼 전체로 퍼져 버린다.
+   * relative를 유지한 채 중앙 정렬만 푼다.
+   */
+  .about__inner .watch--about {
+    position: relative;
+    top: auto;
+    left: auto;
+    flex: none;
+    order: -1;
+    margin-bottom: 8px;
+    transform: none;
+  }
+}

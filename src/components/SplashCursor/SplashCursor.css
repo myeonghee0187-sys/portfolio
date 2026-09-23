@@ -1,0 +1,32 @@
+/*
+ * Splash Cursor 오버레이.
+ * viewport 전체를 덮지만, 커서를 대체하지는 않는다. 기본 마우스 포인터는 그대로이고
+ * (cursor: none을 쓰지 않는다) 이 레이어는 포인터 뒤에 남는 fluid trail만 담당한다.
+ */
+.splash-cursor {
+  position: fixed;
+  inset: 0;
+  /*
+   * 이 프로젝트의 레이어 순서:
+   *     0  Hero Magic Rings (.hero__rings)
+   *     2  Hero 콘텐츠      (.hero__inner — 타이포 / Watch / Digital Crown)
+   *    10  Splash Cursor    <- 콘텐츠 위를 지나가되
+   *   100  Intro 오버레이   (.intro) <- 이보다는 아래.
+   * 11~99은 앞으로 생길 modal/overlay 몫으로 비워 둔다.
+   */
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  /* 링크 / 버튼 / CONTACT / Watch / Digital Crown / 향후 Project Card의 클릭을 막지 않는다. */
+  pointer-events: none;
+}
+
+.splash-cursor__canvas {
+  display: block;
+  /*
+   * 원본은 100vw / 100vh를 쓴다. 100vw는 스크롤바 폭까지 포함해 가로 overflow를 만들 수 있어
+   * fixed + inset: 0인 부모 크기에 그대로 맞춘다.
+   */
+  width: 100%;
+  height: 100%;
+}

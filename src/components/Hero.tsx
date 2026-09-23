@@ -1,22 +1,25 @@
-import useCurrentTime from '../hooks/useCurrentTime'
 import useMediaQuery from '../hooks/useMediaQuery'
 import MagicRings from './MagicRings/MagicRings'
-import watchFaceSrc from '../../assets/img/watch_face.png'
-import digitalCrownSrc from '../../assets/img/digital_crown.png'
+import WatchAssembly from './Watch/WatchAssembly'
 import './Hero.css'
 
-/** 프로젝트가 늘어나면 이 값만 수정한다. 화면에는 항상 두 자리로 표시된다. */
-const WORKS_COUNT = 4
+type HeroProps = {
+  /**
+   * scroll scene이 꺼진 환경(터치 / reduced motion / 좁은 화면)에서만 true.
+   * 그 경우 Hero가 Watch를 직접 들고 있고, 켜져 있을 때는 WatchStage가 맡는다.
+   * 어느 쪽이든 화면에 있는 Watch는 항상 하나다.
+   */
+  inlineWatch: boolean
+}
 
 /** Figma 98:19 — hero 1920 x 1000, inner 1680. */
-export default function Hero() {
-  const currentTime = useCurrentTime()
+export default function Hero({ inlineWatch }: HeroProps) {
   const isFinePointer = useMediaQuery('(hover: hover) and (pointer: fine)')
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
   return (
     <section className="hero" id="hero">
-      {/* 배경 장식. Hero 안에만 존재하며 Intro나 다른 섹션에는 나타나지 않는다. */}
+      {/* 배경 장식. Hero 안에만 존재하며 Intro나 About에는 나타나지 않는다. */}
       <div className="hero__rings" aria-hidden="true">
         <MagicRings
           color="#186DE5"
@@ -51,38 +54,14 @@ export default function Hero() {
           <span>MANY FACES</span>
         </h1>
 
-        <div className="hero__watch">
-          <div className="hero__watch-image">
-            <img src={watchFaceSrc} alt="워치 페이스 형태로 표현한 포트폴리오 소개 화면" />
-          </div>
+        {/*
+          Watch가 있던 자리. 크기와 위치가 예전 .hero__watch와 완전히 같고
+          눈에만 보이지 않는다. WatchStage가 Hero 쪽 좌표를 여기서 측정하므로,
+          Hero 레이아웃이 바뀌어도 Watch가 따라온다.
+        */}
+        <div className="hero__watch-anchor" aria-hidden="true" />
 
-          <div className="hero__watch-content">
-            <div className="hero__watch-top">
-              <p className="hero__watch-time">{currentTime}</p>
-              <div className="hero__watch-info">
-                <p className="hero__watch-name">SONG MYEONG HEE</p>
-                <p className="hero__watch-role">WEB DESIGNER</p>
-              </div>
-            </div>
-
-            <div className="hero__watch-meta">
-              <p className="hero__watch-works">PROJECTS {String(WORKS_COUNT).padStart(2, '0')}</p>
-              <p className="hero__watch-status">
-                <span>OPEN TO WORK</span>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="hero__crown">
-          <div className="hero__crown-rotor">
-            <div className="hero__crown-box">
-              <div className="hero__crown-frame">
-                <img src={digitalCrownSrc} alt="" />
-              </div>
-            </div>
-          </div>
-        </div>
+        {inlineWatch && <WatchAssembly variant="hero" />}
       </div>
     </section>
   )

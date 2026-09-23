@@ -1,0 +1,273 @@
+/*
+ * Hero(Figma 125:1056)와 About(Figma 157:164)이 공유하는 Apple Watch.
+ *
+ * 내부 좌표계는 Hero 기준 600 x 760이고, --wu가 "디자인 1px당 실제 px"이다.
+ * About은 같은 좌표계에 --wu만 0.8배로 줄여 480 x 608이 된다.
+ * 덕분에 Hero용 수치 하나로 두 상태를 모두 그릴 수 있고,
+ * 그 사이를 GSAP이 transform으로 이어준다.
+ */
+.watch {
+  --wu: var(--site-u);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(600 * var(--wu));
+  height: calc(760 * var(--wu));
+}
+
+/* ---------------- 배치 variant ---------------- */
+
+/* Hero 안 정적 배치 (scroll scene이 꺼졌을 때). 원래 .hero__watch와 같은 좌표. */
+.watch--hero {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* About 안 정적 배치 (scroll scene이 꺼졌을 때). */
+.watch--about {
+  --wu: calc(var(--about-u) * 0.8);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/*
+ * WatchStage(fixed 레이어) 배치.
+ * 기본값이 Hero 정지 상태와 픽셀 단위로 같아야 JS가 뜨기 전에도 어긋나지 않는다.
+ * Hero는 Header 바로 아래에서 남은 높이를 전부 차지하므로,
+ * 그 중앙 = Header 높이 + (남은 높이 / 2) 이다.
+ */
+.watch--stage {
+  position: absolute;
+  top: calc(var(--site-header-h) + (100dvh - var(--site-header-h)) / 2);
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* ---------------- Watch case ---------------- */
+
+.watch__case {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Figma asset의 실제 crop 위치·배율 그대로. object-fit으로 대체하지 않는다. */
+.watch__case img {
+  position: absolute;
+  top: -13.59%;
+  left: -31.39%;
+  width: 162.65%;
+  height: 127.18%;
+  max-width: none;
+}
+
+/* ---------------- Hero watch face ---------------- */
+
+.watch__content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  height: calc(560 * var(--wu));
+}
+
+.watch__top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  width: calc(485 * var(--wu));
+  height: calc(290 * var(--wu));
+  line-height: 1;
+  color: #f3f4f4;
+}
+
+.watch__time {
+  margin: 0;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-weight: 500;
+  font-size: calc(96 * var(--wu));
+  line-height: 1;
+  text-align: center;
+}
+
+.watch__info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(12 * var(--wu));
+  width: 100%;
+}
+
+.watch__name {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: calc(48 * var(--wu));
+  line-height: 1;
+}
+
+.watch__role {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: calc(36 * var(--wu));
+  line-height: 1;
+  text-align: center;
+}
+
+.watch__meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 calc(8 * var(--wu));
+}
+
+.watch__works,
+.watch__status {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: calc(20 * var(--wu));
+  line-height: 1;
+  color: #f3f4f4;
+  white-space: nowrap;
+}
+
+.watch__status {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(4 * var(--wu));
+}
+
+/* ---------------- About watch face ---------------- */
+
+/*
+ * Figma 157:170 — Inter ExtraBold 36px + Metal Grey gradient.
+ * About Watch(480 x 608) 기준 36px이므로 이 좌표계에서는 45다.
+ * Figma watch_tit(254~354 / 608)의 중앙이 Watch 정중앙과 일치한다.
+ */
+.watch__title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: calc(45 * var(--wu));
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+  /* Figma Gradient/Metal Grey. 각 stop은 Dev Mode 값 그대로다. */
+  background-image: linear-gradient(
+    180deg,
+    #55595d 0%,
+    #f5f6f6 17%,
+    #a4a9ad 31%,
+    #ffffff 43%,
+    #8d9093 57%,
+    #dde0e2 75%,
+    #7b8085 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  /* Hero 상태에서는 숨어 있고, About으로 가면서 나타난다. */
+  opacity: 0;
+}
+
+.watch__title span {
+  display: block;
+}
+
+/*
+ * About 정적 배치의 watch face.
+ * GSAP이 transition 끝에서 만드는 값과 정확히 같은 수치를 쓴다.
+ * (time: 148 -> 100, name: 318 -> 142.5, 좌표계는 600 x 760 기준)
+ */
+.watch--about .watch__time {
+  font-weight: 400;
+  color: #777d82;
+  transform: translateY(calc(-48 * var(--wu))) scale(0.3125);
+}
+
+.watch--about .watch__name {
+  font-weight: 500;
+  color: #777d82;
+  transform: translateY(calc(-175.5 * var(--wu))) scale(0.5208333);
+}
+
+.watch--about .watch__role,
+.watch--about .watch__meta {
+  opacity: 0;
+}
+
+.watch--about .watch__title {
+  opacity: 1;
+}
+
+/* ---------------- Digital Crown ---------------- */
+
+/*
+ * Watch에 붙은 부품이므로 위치는 Watch 좌표계에 고정된다.
+ * Hero에서 재던 값 그대로: Watch 중심에서 (+309, -140).
+ */
+.watch__crown {
+  position: absolute;
+  top: calc(200 * var(--wu));
+  left: calc(582 * var(--wu));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(54 * var(--wu));
+  height: calc(80 * var(--wu));
+}
+
+/*
+ * scroll rotation 전용 레이어. GSAP이 여기에만 rotate를 쓴다.
+ * 섹션 전환 transform(.watch--stage)과 절대 같은 element를 공유하지 않는다.
+ */
+.watch__crown-spin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 54 x 80 래퍼 안에서 80 x 54 크라운이 -90도 회전 + 상하 반전된다. */
+.watch__crown-rotor {
+  flex: none;
+  transform: rotate(-90deg) scaleY(-1);
+}
+
+.watch__crown-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: calc(80 * var(--wu));
+  height: calc(54 * var(--wu));
+}
+
+.watch__crown-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 527 / 359;
+  overflow: hidden;
+}
+
+.watch__crown-frame img {
+  position: absolute;
+  top: -89.14%;
+  left: -46.87%;
+  width: 194.31%;
+  height: 285.24%;
+  max-width: none;
+}

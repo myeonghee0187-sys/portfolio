@@ -86,155 +86,22 @@
 
 /* ---------------- B. 중앙 Apple Watch (125:1056) ---------------- */
 
-.hero__watch {
+/*
+ * Watch와 Digital Crown 자체는 src/components/Watch/WatchAssembly.css로 옮겼다.
+ * Hero와 About이 같은 Watch 하나를 공유해야 해서(= 전환 중 사라졌다 생기지 않게)
+ * 어느 한 섹션의 CSS가 아니라 Watch 자신의 CSS가 되어야 했다.
+ *
+ * 여기 남은 것은 "Hero에서 Watch가 있던 자리"를 나타내는 빈 앵커뿐이다.
+ * 크기와 위치는 예전 .hero__watch와 완전히 같고, 화면에만 보이지 않는다.
+ * WatchStage가 Hero 쪽 목표 좌표를 이 요소에서 읽는다.
+ */
+.hero__watch-anchor {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: calc(600 * var(--site-u));
   height: calc(760 * var(--site-u));
-}
-
-.hero__watch-image {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
+  visibility: hidden;
   pointer-events: none;
-}
-
-/* Figma asset의 실제 crop 위치·배율 그대로. object-fit으로 대체하지 않는다. */
-.hero__watch-image img {
-  position: absolute;
-  top: -13.59%;
-  left: -31.39%;
-  width: 162.65%;
-  height: 127.18%;
-  max-width: none;
-}
-
-.hero__watch-content {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  height: calc(560 * var(--site-u));
-}
-
-.hero__watch-top {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  width: calc(485 * var(--site-u));
-  height: calc(290 * var(--site-u));
-  line-height: 1;
-  color: #f3f4f4;
-}
-
-.hero__watch-time {
-  margin: 0;
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-weight: 500;
-  font-size: calc(96 * var(--site-u));
-  line-height: 1;
-  text-align: center;
-}
-
-.hero__watch-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: calc(12 * var(--site-u));
-  width: 100%;
-}
-
-.hero__watch-name {
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: calc(48 * var(--site-u));
-  line-height: 1;
-}
-
-.hero__watch-role {
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  font-size: calc(36 * var(--site-u));
-  line-height: 1;
-  text-align: center;
-}
-
-.hero__watch-meta {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  width: 100%;
-  padding: 0 calc(8 * var(--site-u));
-}
-
-.hero__watch-works,
-.hero__watch-status {
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  font-size: calc(20 * var(--site-u));
-  line-height: 1;
-  color: #f3f4f4;
-  white-space: nowrap;
-}
-
-.hero__watch-status {
-  display: flex;
-  align-items: flex-start;
-  gap: calc(4 * var(--site-u));
-}
-
-/* ---------------- C. Digital Crown (125:1078) ---------------- */
-
-/* 54 x 80 래퍼 안에서 80 x 54 크라운이 -90도 회전 + 상하 반전된다. */
-.hero__crown {
-  position: absolute;
-  top: calc(50% - 140 * var(--site-u));
-  right: calc(504 * var(--site-u));
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: calc(54 * var(--site-u));
-  height: calc(80 * var(--site-u));
-}
-
-.hero__crown-rotor {
-  flex: none;
-  transform: rotate(-90deg) scaleY(-1);
-}
-
-.hero__crown-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: calc(80 * var(--site-u));
-  height: calc(54 * var(--site-u));
-}
-
-.hero__crown-frame {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 527 / 359;
-  overflow: hidden;
-}
-
-.hero__crown-frame img {
-  position: absolute;
-  top: -89.14%;
-  left: -46.87%;
-  width: 194.31%;
-  height: 285.24%;
-  max-width: none;
 }
