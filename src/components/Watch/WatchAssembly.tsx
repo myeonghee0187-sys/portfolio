@@ -1,6 +1,6 @@
 import useCurrentTime from '../../hooks/useCurrentTime'
 import watchFaceSrc from '../../../assets/img/watch_face.png'
-import digitalCrownSrc from '../../../assets/img/digital_crown.png'
+import DigitalCrown from './DigitalCrown'
 import './WatchAssembly.css'
 
 /** 프로젝트가 늘어나면 이 값만 수정한다. 화면에는 항상 두 자리로 표시된다. */
@@ -69,22 +69,11 @@ export default function WatchAssembly({ variant }: WatchAssemblyProps) {
       </p>
 
       {/*
-        Digital Crown. transform이 세 겹으로 분리되어 있다.
-          watch__crown       - Watch에 대한 고정 위치. Watch assembly와 함께 움직이는 부품.
-          watch__crown-spin  - scroll rotation (GSAP). 다른 transform과 절대 섞지 않는다.
-          watch__crown-rotor - asset을 세우는 고정 회전. 건드리지 않는다.
+        Digital Crown. Watch assembly와 함께 옮겨지고 커질 뿐, Crown 자체는 움직이지 않는다.
+        page scroll에는 측면 knurl 홈만 굴러가며 반응한다(DigitalCrown).
+        Watch 전환 transform(.watch--stage)과 wheel 움직임은 서로 다른 element에서 일어난다.
       */}
-      <div className="watch__crown">
-        <div className="watch__crown-spin">
-          <div className="watch__crown-rotor">
-            <div className="watch__crown-box">
-              <div className="watch__crown-frame">
-                <img src={digitalCrownSrc} alt="" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <DigitalCrown />
     </div>
   )
 }

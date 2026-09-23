@@ -1,0 +1,93 @@
+/*
+ * Digital Crown 내부. 위치(.watch__crown)는 WatchAssembly.css가 정한다.
+ *
+ * scroll에 따라 바뀌는 값은 --crown-wheel-phase(0~1, 홈 하나 안에서의 위치) 하나뿐이고,
+ * 그 값은 wheel slice의 background-position에만 쓰인다.
+ * Crown의 위치·크기·방향·외곽은 어떤 transform으로도 움직이지 않는다.
+ */
+
+/*
+ * 54 x 80 래퍼 안에서 80 x 54 크라운이 -90도 회전 + 상하 반전된다.
+ * asset을 Watch 옆에 세우기 위한 고정 방향 보정이다. scroll과 무관하다.
+ */
+.watch__crown-orientation {
+  flex: none;
+  transform: rotate(-90deg) scaleY(-1);
+}
+
+.watch__crown-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: calc(80 * var(--wu));
+  height: calc(54 * var(--wu));
+}
+
+.watch__crown-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 527 / 359;
+  overflow: hidden;
+}
+
+/*
+ * 정지해 있는 몸체와, wheel slice 안의 같은 asset.
+ * Figma asset의 실제 crop 위치·배율 그대로. object-fit으로 대체하지 않는다.
+ */
+.watch__crown-shell,
+.watch__crown-wheel-surface {
+  position: absolute;
+  top: -89.14%;
+  left: -46.87%;
+  width: 194.31%;
+  height: 285.24%;
+  max-width: none;
+}
+
+.watch__crown-wheel-mask,
+.watch__crown-wheel-track {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.watch__crown-wheel-track {
+  /*
+   * 기본값. useCrownWheel이 각 표면(<img data-crown-wheel>)에 직접 덮어쓴다.
+   * reduced motion이면 쓰지 않아 처음 표면 그대로 멈춰 있다.
+   */
+  --crown-wheel-phase: 0;
+}
+
+/* 원통의 한 각도 구간만 보이는 창. 창은 움직이지 않는다. */
+.watch__crown-wheel-slice {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 var(--slice-right) 0 var(--slice-left));
+}
+
+/*
+ * 창 안의 표면. shell과 같은 asset·같은 crop이라 위상 0에서는 shell과 같은 그림이고,
+ * 위상만큼 그 각도에서 보이는 거리(--slice-dx / --slice-dy, wu)를 옮긴다.
+ *
+ * background-position이 아니라 <img> + translate인 이유: Chrome은 background image를
+ * mipmap 없이 줄여서, 이 배율(3~13배 축소)에서는 shell <img>보다 거칠고 움직일 때 반짝인다.
+ * 같은 <img> 경로로 그려야 정지 상태에서 shell과 이어지고 움직여도 매끄럽다.
+ */
+.watch__crown-wheel-surface {
+  translate:
+    calc(var(--crown-wheel-phase) * var(--slice-dx) * var(--wu))
+    calc(var(--crown-wheel-phase) * var(--slice-dy) * var(--wu));
+}
+
+/*
+ * 한 칸 뒤의 표면. 위상 0에서는 투명하고, 위상 1이 되면 원래 자리(= 위상 0의 그림)에 완전히 겹친다.
+ * 위상이 1에서 0으로 돌아가는 순간 보이는 그림이 같아서 홈마다 튀지 않는다.
+ */
+.watch__crown-wheel-surface--next {
+  translate:
+    calc((var(--crown-wheel-phase) - 1) * var(--slice-dx) * var(--wu))
+    calc((var(--crown-wheel-phase) - 1) * var(--slice-dy) * var(--wu));
+  opacity: var(--crown-wheel-phase);
+}

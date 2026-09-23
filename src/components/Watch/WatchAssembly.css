@@ -219,6 +219,7 @@
 /*
  * Watch에 붙은 부품이므로 위치는 Watch 좌표계에 고정된다.
  * Hero에서 재던 값 그대로: Watch 중심에서 (+309, -140).
+ * 내부 구조와 wheel 움직임은 DigitalCrown.css가 맡는다. 이 박스는 scroll로 움직이지 않는다.
  */
 .watch__crown {
   position: absolute;
@@ -229,45 +230,4 @@
   justify-content: center;
   width: calc(54 * var(--wu));
   height: calc(80 * var(--wu));
-}
-
-/*
- * scroll rotation 전용 레이어. GSAP이 여기에만 rotate를 쓴다.
- * 섹션 전환 transform(.watch--stage)과 절대 같은 element를 공유하지 않는다.
- */
-.watch__crown-spin {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 54 x 80 래퍼 안에서 80 x 54 크라운이 -90도 회전 + 상하 반전된다. */
-.watch__crown-rotor {
-  flex: none;
-  transform: rotate(-90deg) scaleY(-1);
-}
-
-.watch__crown-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: calc(80 * var(--wu));
-  height: calc(54 * var(--wu));
-}
-
-.watch__crown-frame {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 527 / 359;
-  overflow: hidden;
-}
-
-.watch__crown-frame img {
-  position: absolute;
-  top: -89.14%;
-  left: -46.87%;
-  width: 194.31%;
-  height: 285.24%;
-  max-width: none;
 }

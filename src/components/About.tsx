@@ -14,7 +14,8 @@ import './About.css'
  * 이고, 각 장면에서 두 카드의 세로 중심이 Watch의 세로 중심과 같은 선에 놓인다.
  *
  *   pair - 어느 짝인지(0: 먼저, 1: 나중).
- *   side - Watch의 어느 쪽에 서는지. 들어오는 방향이자 빠져나가는 방향이기도 하다.
+ *   side - Watch의 어느 쪽에 서는지. 세로로 흐르는 방향도 이것으로 정해진다.
+ *          left는 아래 -> 위, right는 위 -> 아래로 흘러 Watch 양옆에서 서로 교차한다.
  *
  * 실제 정지 좌표는 Figma의 top-left 값이 아니라 Watch의 실제 박스에서 계산한다
  * (useScrollScene). 아래 CSS 좌표는 scroll 연출이 꺼진 환경의 정적 배치용이다.
@@ -78,6 +79,9 @@ export default function About({ inlineWatch }: AboutProps) {
       {/* pinned 되는 단위. 이 안의 카드만 움직이고 Watch는 중앙에 머문다. */}
       <div className="about__stage">
         <div className="about__inner">
+          {/* Watch 주변의 차가운 반사. 카드 유리가 흐릴 빛 정보이기도 하다. */}
+          <div className="about__ambient" aria-hidden="true" />
+
           {ABOUT_CARDS.map((card) => (
             <article key={card.id} className={`about__card about__card--${card.id}`}>
               <h2 className="about__card-title">{card.title}</h2>
