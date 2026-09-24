@@ -70,44 +70,40 @@
 
 /*
  * watch_face.png 안의 실제 display(검은 영역)는 Watch 좌표계로 x 52 ~ 547, y 58 ~ 716이다.
- * 그 안쪽으로 6씩 들어와(가로 중심 300) 화면 가장자리가 glass 테두리가 아니라
- * 항상 검은 display 위에 떨어지게 한다. 모서리는 Apple Watch 화면처럼 연속 곡률(squircle)이다.
+ * stage Watch의 case에는 그 안쪽 (58, 64) ~ (542, 710), 모서리 96의 구멍이 뚫려 있다.
+ * 이 구멍은 모서리까지 전부 검은 display 위에 있다(asset에서 잰 값, 2단위 여유).
+ *
+ * Hero / About에서는 아래 .watch__screen(검은 화면)이 구멍을 덮어 이전과 똑같이 보이고,
+ * FACES로 넘어가면서 그 화면이 빠지면 뒤에 있는 FACES WebGL canvas가 display 자리에 그대로 보인다.
+ * display 안과 밖이 같은 canvas의 같은 픽셀이라 두 그림이 어긋날 수 없다.
  */
+.watch--stage .watch__case {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 760' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M0 0H600V760H0ZM154 64H446A96 96 0 0 1 542 160V614A96 96 0 0 1 446 710H154A96 96 0 0 1 58 614V160A96 96 0 0 1 154 64Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 760' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M0 0H600V760H0ZM154 64H446A96 96 0 0 1 542 160V614A96 96 0 0 1 446 710H154A96 96 0 0 1 58 614V160A96 96 0 0 1 154 64Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+}
+
+/* 구멍을 덮는 검은 화면. 구멍보다 2씩 크고, 그만큼도 여전히 검은 display 위다. */
 .watch__screen {
+  position: absolute;
+  top: calc(62 * var(--wu));
+  left: calc(56 * var(--wu));
+  width: calc(488 * var(--wu));
+  height: calc(650 * var(--wu));
+  border-radius: calc(98 * var(--wu));
+  background: #000;
+  pointer-events: none;
+}
+
+/* display 가장자리가 검은 테두리 쪽으로 아주 조금 가라앉는 유리. 구멍과 같은 모양이다. */
+.watch__glass {
   position: absolute;
   top: calc(64 * var(--wu));
   left: calc(58 * var(--wu));
   width: calc(484 * var(--wu));
   height: calc(646 * var(--wu));
-  overflow: hidden;
-  border-radius: calc(110 * var(--wu));
-  corner-shape: squircle;
+  border-radius: calc(96 * var(--wu));
+  box-shadow: inset 0 0 calc(18 * var(--wu)) rgb(0 0 0 / 0.6);
   pointer-events: none;
-}
-
-/* 실제 display처럼 화면 가장자리가 검은 테두리 쪽으로 아주 조금 가라앉는다. */
-.watch__screen::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  corner-shape: squircle;
-  box-shadow: inset 0 0 calc(16 * var(--wu)) rgb(0 0 0 / 0.55);
-  pointer-events: none;
-}
-
-/*
- * 화면 안의 좌표계. 크기는 FACES stage와 같고(JS), Watch scale을 되돌려
- * stage 원점에 겹치도록 JS가 transform을 쓴다. 맞추기 전에는 보이지 않는다.
- */
-.watch__stream {
-  container-type: size;
-  position: absolute;
-  top: 0;
-  left: 0;
-  transform-origin: 0 0;
-  visibility: hidden;
-  will-change: transform;
 }
 
 /* ---------------- Hero / About watch face ---------------- */
@@ -272,7 +268,8 @@
 /*
  * Watch에 붙은 부품이므로 위치는 Watch 좌표계에 고정된다.
  * Hero에서 재던 값 그대로: Watch 중심에서 (+309, -140).
- * 내부 구조와 wheel 움직임은 DigitalCrown.css가 맡는다. 이 박스는 scroll로 움직이지 않는다.
+ * FACES로 넘어가면서만 이 박스에 transform이 걸려 화면 오른쪽 끝 controller 자리로 옮겨간다(useScrollScene).
+ * 내부 구조와 wheel 움직임은 DigitalCrown.css가 맡는다.
  */
 .watch__crown {
   position: absolute;

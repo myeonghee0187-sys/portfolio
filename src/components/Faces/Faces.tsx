@@ -6,7 +6,7 @@ import useFacesInteraction from './useFacesInteraction'
 import './Faces.css'
 
 type FacesProps = {
-  /** 가로 rail pin / drag 연출을 켤지. 터치 기기, reduced motion, 좁은 화면에서는 끈다. */
+  /** WebGL slider / pin / drag를 켤지. 터치 기기, reduced motion, 좁은 화면에서는 끈다. */
   interactive: boolean
   /** Intro가 끝났는지. About과 같은 이유로 측정은 스크롤바가 생긴 뒤에 한다. */
   ready: boolean
@@ -61,7 +61,7 @@ function FacesMeta({ active }: { active: number }) {
   const project = FACE_PROJECTS[shown]
 
   return (
-    // 스크린리더는 rail의 segment마다 붙은 이름을 읽는다. 이 block은 시각용이다.
+    // 스크린리더는 아래 목록을 읽는다. 이 block은 시각용이다.
     <div className="faces__meta" aria-hidden="true">
       <div ref={ref} className="faces__meta-block">
         <p className="faces__meta-index">{project.index}</p>
@@ -73,53 +73,63 @@ function FacesMeta({ active }: { active: number }) {
 }
 
 /**
- * FACES — 하나로 이어진 project rail과, 그것을 잘라 보여주는 Watch.
+ * FACES — 끝이 없는 project slider와, 그것을 선명하게 잘라 보여주는 Watch.
  *
- * Watch는 이 섹션이 따로 만들지 않는다. Hero / About에서 오던 WatchStage의 Watch가 그대로 남아 있고,
- * 그 display 안에 같은 rail의 복제(FacesRail inner)가 들어 있다.
+ * Watch는 이 섹션이 만들지 않는다. Hero / About에서 오던 WatchStage의 Watch가 그대로 남아 있고,
+ * Watch case의 display 자리에 구멍이 있어서 이 섹션의 WebGL canvas를 그대로 들여다본다.
  *
- *   faces__stage       pin 되는 한 화면
- *     faces__rail--outer   이 섹션의 rail. Watch 뒤를 지나가며 조금 muted하게 보인다.
- *   (WatchStage) watch__screen > watch__stream > faces__rail--inner
- *                        Watch display 안에서만 보이는 같은 rail. 같은 --track-x를 쓰고 선명하다.
+ *   세로 scroll = page 진행. pin 동안 project 4개를 한 바퀴 돌고 다음으로 넘어간다.
+ *   drag        = 자유 탐색. 몇 바퀴든 돈다.
  */
 export default function Faces({ interactive, ready }: FacesProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
-  const railRef = useRef<HTMLOListElement & HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   const [active, setActive] = useState(0)
 
   useFacesInteraction({
     enabled: interactive && ready,
     sectionRef,
     stageRef,
-    railRef,
+    canvasRef,
     onActiveChange: setActive,
   })
 
+  /*
+   * section / stage는 두 모드에서 같은 element로 남긴다.
+   * stage는 pin 중에 ScrollTrigger의 pin-spacer 안으로 옮겨져 있어서, React가 이것을 지우려 하면
+   * (pin이 풀리기 전이라) removeChild가 실패한다. 모드가 바뀔 때는 stage 안쪽만 바뀐다.
+   */
   return (
     <section
       ref={sectionRef}
-      className={`faces faces-metrics ${interactive ? 'faces--interactive' : 'faces--static'}`}
+      className={`faces ${interactive ? 'faces--interactive' : 'faces--static'}`}
       id="faces"
-      aria-labelledby="faces-title"
+      aria-label="Projects"
     >
       <div ref={stageRef} className="faces__stage">
-        <header className="faces__label">
-          <h2 id="faces-title" className="faces__label-title">
-            FACES
-          </h2>
-          <p className="faces__label-count">
-            {String(FACE_PROJECTS.length).padStart(2, '0')} PROJECTS
-          </p>
-        </header>
+        {interactive ? (
+          <>
+            <canvas ref={canvasRef} className="faces__canvas" aria-hidden="true" />
 
-        <div className="faces__outer-layer">
-          <FacesRail variant="outer" railRef={railRef} />
-        </div>
+            {/* 화면에는 WebGL plane만 보인다. 프로젝트 목록 자체는 DOM에 그대로 있다. */}
+            <ol className="faces__sr">
+              {FACE_PROJECTS.map((project) => (
+                <li key={project.id}>
+                  <h3>
+                    {project.index} {project.title}
+                  </h3>
+                  <p>{project.category}</p>
+                </li>
+              ))}
+            </ol>
 
-        {/* 위치·모양은 임시다(Figma 전). Watch 바로 아래 한 곳에만 있다. */}
-        {interactive && <FacesMeta active={active} />}
+            {/* 위치·모양은 임시다(Figma 전). 화면 한 곳에만 있다. */}
+            <FacesMeta active={active} />
+          </>
+        ) : (
+          <FacesRail />
+        )}
       </div>
     </section>
   )

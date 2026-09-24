@@ -1,44 +1,9 @@
 /*
- * FACES — 하나로 이어진 project rail과, 그것을 잘라 보여주는 Watch display.
+ * FACES — 끝이 없는 project slider(WebGL)와, 그것을 선명하게 잘라 보여주는 Watch.
  *
- * rail은 두 곳에 같은 모양으로 그려진다.
- *   .faces 안          바깥 rail. Watch 뒤를 지나가며 조금 muted하게 보인다.
- *   .watch__stream 안  Watch display 안의 같은 rail. 선명하게 보인다.
- * 두 곳이 같은 크기를 쓰도록 크기 변수는 .faces-metrics 하나에 모은다.
+ * 화면의 project는 전부 .faces__canvas 한 장에 그려진다.
+ * Watch display는 이 canvas를 들여다보는 창이라 display 안과 밖이 같은 픽셀이다(facesScene.ts).
  */
-
-/*
- * JS가 매 프레임 쓰는 값. 상속하지 않도록 등록해 두면 값이 바뀌어도
- * 그 element만 다시 계산되고, rail 안의 자식 전체가 매 프레임 다시 계산되지 않는다.
- */
-@property --track-x {
-  syntax: '<length>';
-  inherits: false;
-  initial-value: 0px;
-}
-
-.faces-metrics {
-  /*
-   * About / FACES Watch의 --wu와 같은 단위(About 좌표계 x 0.8). Watch 좌표계(600 x 760) 1단위의 px이다.
-   * segment와 metadata 위치를 Watch 크기에 맞춰 함께 줄인다.
-   */
-  --faces-u: calc(min(100vw / 1920, 100dvh / 1080) * 0.8);
-
-  /*
-   * segment 하나 = project 화면 하나. Watch display(484 x 646)보다 넓고 높아서
-   * 가운데 왔을 때 display가 한 project로 꽉 차고, 양옆으로 조금씩 넘친다.
-   */
-  --segment-width: calc(760 * var(--faces-u));
-  --rail-height: calc(740 * var(--faces-u));
-
-  /* Watch 밖 rail. 조금 어둡고 muted. blur는 쓰지 않는다. */
-  --outer-opacity: 0.62;
-  --outer-brightness: 0.7;
-  --outer-saturate: 0.72;
-
-  /* Watch 높이(Watch 좌표계 760)의 절반. metadata를 Watch 바로 아래에 둔다. */
-  --watch-half-height: calc(380 * var(--faces-u));
-}
 
 .faces {
   position: relative;
@@ -49,299 +14,80 @@
 /* ---------------- Stage (pin 되는 단위) ---------------- */
 
 .faces__stage {
-  /* rail이 cqh로 세로 중앙을 잡는다. Watch 안 stream도 같은 크기의 container다. */
+  /* metadata가 cqw·cqh로 slide 크기(JS와 같은 식)를 다시 계산한다. */
   container-type: size;
   position: relative;
   width: 100%;
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-}
-
-.faces--interactive .faces__stage {
   cursor: grab;
   /* 세로 scroll은 브라우저가 그대로 처리하고, 가로 drag만 가져온다. */
   touch-action: pan-y;
+  user-select: none;
+
+  /* useFacesInteraction의 slide 폭과 같은 식: stage 폭의 55%, 620 ~ 1060px, 비율 1.6. */
+  --slide-width: clamp(620px, 55cqw, 1060px);
+  --slide-height: calc(var(--slide-width) / 1.6);
 }
 
 .faces__stage.is-dragging {
   cursor: grabbing;
-  user-select: none;
-}
-
-/* ---------------- Section label (임시) ---------------- */
-
-.faces__label {
-  position: absolute;
-  top: clamp(32px, 7vh, 80px);
-  left: clamp(24px, 6.25vw, 120px);
-  z-index: 4;
-  display: flex;
-  align-items: baseline;
-  gap: 16px;
-  pointer-events: none;
-}
-
-.faces__label-title {
-  margin: 0;
-  font-family: 'Anton', sans-serif;
-  font-weight: 400;
-  font-size: clamp(28px, 2.5vw, 48px);
-  line-height: 1;
-  letter-spacing: 0.02em;
-}
-
-.faces__label-count {
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: 12px;
-  letter-spacing: 0.18em;
-  color: #a4a9ad;
-}
-
-/* ---------------- Rail ---------------- */
-
-.faces__outer-layer {
-  position: absolute;
-  inset: 0;
 }
 
 /*
- * 하나의 긴 film strip. segment 사이에 gap / 테두리 / 모서리가 없다.
- * 바깥과 Watch 안이 같은 규칙을 쓰고, JS가 두 rail에 같은 --track-x만 쓴다.
+ * WebGL slider. 오른쪽 끝은 Crown controller 자리(약 100px)라 project가 Carbon Black으로 녹아든다.
+ * 검은 패널이 아니라 가장자리가 어두워지는 정도로만 둔다.
  */
-.faces__rail {
+.faces__canvas {
   position: absolute;
-  top: calc(50cqh - var(--rail-height) / 2);
-  left: 0;
-  display: flex;
-  gap: 0;
-  height: var(--rail-height);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  transform: translate3d(var(--track-x), 0, 0);
-  will-change: transform;
-}
-
-.faces--interactive .faces__rail--outer {
-  opacity: var(--outer-opacity);
-  filter: brightness(var(--outer-brightness)) saturate(var(--outer-saturate));
-}
-
-.faces__segment {
-  container-type: size;
-  position: relative;
-  flex: none;
-  width: var(--segment-width);
+  inset: 0;
+  display: block;
+  width: 100%;
   height: 100%;
-  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 0,
+    #000 calc(100% - 200px),
+    rgb(0 0 0 / 0.55) calc(100% - 110px),
+    transparent calc(100% - 36px)
+  );
+  mask-image: linear-gradient(
+    90deg,
+    #000 0,
+    #000 calc(100% - 200px),
+    rgb(0 0 0 / 0.55) calc(100% - 110px),
+    transparent calc(100% - 36px)
+  );
 }
 
-/* 스크린리더용 segment 이름. 화면에는 Watch 아래 metadata 한 곳에만 보인다. */
+/* 스크린리더용 프로젝트 목록. 화면에는 plane과 아래 metadata로만 보인다. */
 .faces__sr {
   position: absolute;
   width: 1px;
   height: 1px;
+  margin: 0;
+  padding: 0;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
 }
 
-/* ---------------- Project screen placeholder (임시) ---------------- */
-
-/*
- * 실제 이미지가 오기 전까지의 "화면". 카드가 아니라 segment를 꽉 채운다.
- * 모든 치수는 segment 기준(cqw / cqh)이라 바깥과 Watch 안에서 똑같이 그려진다.
- */
-.faces__screen {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  font-family: 'Inter', sans-serif;
-}
-
-.faces__screen-bar {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: space-between;
-  height: 10cqh;
-  padding: 0 6cqw;
-}
-
-.faces__screen-logo {
-  font-family: 'Anton', sans-serif;
-  font-size: 3.6cqh;
-  line-height: 1;
-  letter-spacing: 0.04em;
-}
-
-.faces__screen-nav {
-  width: 20cqw;
-  height: 1.2cqh;
-  background: repeating-linear-gradient(90deg, currentColor 0 24%, transparent 24% 38%);
-  opacity: 0.45;
-}
-
-.faces__screen-art {
-  position: relative;
-  flex: 1;
-}
-
-.faces__screen-art span {
-  position: absolute;
-  display: block;
-}
-
-/* 01 F45 — 어두운 fitness 화면 + red. */
-.faces__screen--f45 {
-  background: #0b0c0e;
-  color: #f3f4f4;
-}
-
-.faces__screen--f45 .faces__screen-art span:nth-child(1) {
-  inset: 0 0 34cqh;
-  background:
-    radial-gradient(70% 90% at 72% 40%, rgb(255 255 255 / 0.12), transparent 60%),
-    linear-gradient(180deg, #25282d 0%, #111316 100%);
-}
-
-.faces__screen--f45 .faces__screen-art span:nth-child(2) {
-  top: 16cqh;
-  left: -10cqw;
-  width: 74cqw;
-  height: 22cqh;
-  background: #c8102e;
-  transform: skewY(-8deg);
-}
-
-.faces__screen--f45 .faces__screen-art span:nth-child(3) {
-  right: 6cqw;
-  bottom: 8cqh;
-  left: 6cqw;
-  height: 16cqh;
-  background:
-    linear-gradient(90deg, #c8102e 0 30%, transparent 30%),
-    repeating-linear-gradient(90deg, rgb(243 244 244 / 0.12) 0 31%, transparent 31% 34.5%);
-}
-
-/* 02 TCHAIKIM — 밝은 fashion editorial 화면. */
-.faces__screen--tchaikim {
-  background: #e7e3dc;
-  color: #1b1a19;
-}
-
-.faces__screen--tchaikim .faces__screen-art span:nth-child(1) {
-  top: 2cqh;
-  bottom: 8cqh;
-  left: 6cqw;
-  width: 46cqw;
-  background: linear-gradient(170deg, #b8b1a7 0%, #8a837a 60%, #6d675f 100%);
-}
-
-.faces__screen--tchaikim .faces__screen-art span:nth-child(2) {
-  top: 2cqh;
-  right: 6cqw;
-  width: 36cqw;
-  height: 40cqh;
-  background: linear-gradient(200deg, #cfc9c0 0%, #a39c92 100%);
-}
-
-.faces__screen--tchaikim .faces__screen-art span:nth-child(3) {
-  right: 6cqw;
-  bottom: 8cqh;
-  width: 36cqw;
-  height: 26cqh;
-  background: repeating-linear-gradient(180deg, rgb(27 26 25 / 0.55) 0 1.2cqh, transparent 1.2cqh 4cqh);
-}
-
-/* 03 JADUYA — mobile UI 화면. 폰 화면 세 개. */
-.faces__screen--jaduya {
-  background: #121a24;
-  color: #e6edf5;
-}
-
-.faces__screen--jaduya .faces__screen-art span {
-  top: 6cqh;
-  width: 26cqw;
-  height: 66cqh;
-  border: 0.5cqw solid rgb(230 237 245 / 0.3);
-  border-radius: 4cqw;
-  background:
-    linear-gradient(180deg, #5fbf9a 0 14%, transparent 14%),
-    repeating-linear-gradient(180deg, rgb(230 237 245 / 0.14) 0 5cqh, transparent 5cqh 8cqh) 0 12cqh / 100% 100% no-repeat,
-    #1a2432;
-}
-
-.faces__screen--jaduya .faces__screen-art span:nth-child(1) {
-  left: 6cqw;
-  top: 12cqh;
-}
-
-.faces__screen--jaduya .faces__screen-art span:nth-child(2) {
-  left: 37cqw;
-}
-
-.faces__screen--jaduya .faces__screen-art span:nth-child(3) {
-  left: 68cqw;
-  top: 12cqh;
-}
-
-/* 04 T100 — mobile web app 화면. 가운데 앱 한 장. */
-.faces__screen--t100 {
-  background: #0f1411;
-  color: #eef2ec;
-}
-
-.faces__screen--t100 .faces__screen-art span:nth-child(1) {
-  top: 2cqh;
-  left: 28cqw;
-  width: 44cqw;
-  height: 76cqh;
-  border: 0.5cqw solid rgb(238 242 236 / 0.28);
-  border-radius: 5cqw;
-  background:
-    radial-gradient(circle at 50% 22%, #b9c8a4 0 7cqw, transparent 7.2cqw),
-    repeating-linear-gradient(180deg, rgb(238 242 236 / 0.13) 0 8cqh, transparent 8cqh 10.5cqh) 0 40cqh / 100% 100% no-repeat,
-    #18201b;
-}
-
-.faces__screen--t100 .faces__screen-art span:nth-child(2) {
-  top: 18cqh;
-  left: 6cqw;
-  width: 16cqw;
-  height: 38cqh;
-  background: repeating-linear-gradient(180deg, rgb(238 242 236 / 0.18) 0 1.4cqh, transparent 1.4cqh 4.6cqh);
-}
-
-.faces__screen--t100 .faces__screen-art span:nth-child(3) {
-  top: 18cqh;
-  right: 6cqw;
-  width: 16cqw;
-  height: 16cqw;
-  border-radius: 50%;
-  background: #b9c8a4;
-  opacity: 0.8;
-}
-
 /* ---------------- Active project info (임시 위치) ---------------- */
 
-/* Watch 바로 아래 한 곳. text block도 하나뿐이다(Faces.tsx의 FacesMeta). */
+/* 가운데 plane 바로 아래 한 곳. text block도 하나뿐이다(Faces.tsx의 FacesMeta). */
 .faces__meta {
   position: absolute;
-  top: calc(50cqh + var(--watch-half-height) + clamp(18px, 3.2vh, 40px));
+  top: calc(50cqh + var(--slide-height) / 2 + clamp(20px, 3.2vh, 40px));
   left: 50%;
-  z-index: 4;
+  z-index: 1;
   transform: translateX(-50%);
   text-align: center;
   pointer-events: none;
 }
 
-.faces__meta-block p {
+.faces__meta-block p,
+.faces__slide-meta > * {
   margin: 0;
   white-space: nowrap;
 }
@@ -357,6 +103,7 @@
 .faces__meta-title {
   margin-top: 8px !important;
   font-family: 'Anton', sans-serif;
+  font-weight: 400;
   font-size: clamp(24px, 2vw, 36px);
   line-height: 1.1;
 }
@@ -373,44 +120,50 @@
 /* ---------------- Fallback: native 가로 scroll ---------------- */
 
 /*
- * 모바일 / 터치 / reduced motion. pin·drag를 재현하지 않고,
- * 같은 rail을 손가락으로 넘겨 보는 가로 strip으로만 둔다(최종 모바일 디자인은 추후).
+ * 모바일 / 터치 / reduced motion. pin·WebGL을 재현하지 않고,
+ * 같은 프로젝트 화면을 손가락으로 넘겨 보는 가로 strip으로만 둔다(최종 모바일 디자인은 추후).
  */
 .faces--static {
-  --segment-width: min(86vw, 520px);
-  --rail-height: calc(var(--segment-width) * 0.97);
   padding: clamp(64px, 10vh, 120px) 0;
 }
 
 .faces--static .faces__stage {
+  /* stage에 걸린 slider용 slide 크기를 fallback 크기로 덮는다. */
+  --slide-width: min(84vw, 560px);
   container-type: normal;
   height: auto;
   overflow: visible;
+  cursor: auto;
+  touch-action: auto;
+  user-select: auto;
 }
 
-.faces--static .faces__label {
-  position: static;
-  margin-bottom: 32px;
-  padding-inline: 20px;
-}
-
-.faces--static .faces__outer-layer {
-  position: static;
+.faces__rail {
+  display: flex;
+  gap: calc(var(--slide-width) * 0.08);
+  width: 100%;
+  margin: 0;
+  padding: 0 calc(50% - var(--slide-width) / 2) 16px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
+  list-style: none;
   scroll-snap-type: x mandatory;
   scrollbar-color: #3a3e42 transparent;
   scrollbar-width: thin;
 }
 
-.faces--static .faces__rail {
-  position: static;
-  width: max-content;
-  padding: 0 calc(50vw - var(--segment-width) / 2);
-  transform: none;
-  will-change: auto;
+.faces__slide {
+  flex: none;
+  width: var(--slide-width);
+  scroll-snap-align: center;
 }
 
-.faces--static .faces__segment {
-  scroll-snap-align: center;
+.faces__visual {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.6;
+}
+
+.faces__slide-meta {
+  margin-top: 16px;
 }

@@ -1,6 +1,5 @@
 import useCurrentTime from '../../hooks/useCurrentTime'
 import watchFaceSrc from '../../../assets/img/watch_face.png'
-import FacesRail from '../Faces/FacesRail'
 import DigitalCrown from './DigitalCrown'
 import './WatchAssembly.css'
 
@@ -42,15 +41,16 @@ export default function WatchAssembly({ variant }: WatchAssemblyProps) {
       </div>
 
       {/*
-        FACES mode의 display. Watch 화면 모양으로 잘린 창이고, 그 안에 FACES rail의 복제가 있다.
-        좌표계는 useFacesInteraction이 FACES stage에 맞춘다. 그 전까지는 보이지 않는다.
+        FACES mode의 display.
+        stage Watch의 case에는 display 모양의 구멍이 있어서, 뒤에 있는 FACES WebGL canvas가 그대로 보인다.
+          watch__screen  Hero / About에서 그 구멍을 덮는 검은 화면. FACES로 넘어가면서 사라진다.
+          watch__glass   display 가장자리가 검은 테두리 쪽으로 가라앉는 유리 느낌. 항상 있다.
       */}
       {variant === 'stage' && (
-        <div className="watch__screen">
-          <div className="watch__stream faces-metrics">
-            <FacesRail variant="inner" />
-          </div>
-        </div>
+        <>
+          <div className="watch__screen" />
+          <div className="watch__glass" />
+        </>
       )}
 
       {/*

@@ -21,10 +21,13 @@ const NAME_MORPH = { y: -175.5, scale: 0.5208333 }
 const PIN_VIEWPORTS = 3
 
 /**
- * FACES에서 떨어져 나온 Crown이 화면 오른쪽 끝에서 들어와 있는 거리(px).
- * 음수면 Crown 일부가 화면 밖으로 걸친다.
+ * FACES에서 떨어져 나온 Crown의 중심이 화면 오른쪽 끝에서 들어와 있는 거리(px).
+ * Crown 폭의 절반보다 작아서 오른쪽 일부가 화면 밖으로 살짝 걸친다 — 화면 옆면에 달린 hardware controller.
  */
-const CROWN_EDGE_INSET = 28
+const CROWN_EDGE_CENTER = 14
+
+/** FACES에서 Watch가 About 크기에서 줄어드는 비율. project visual이 Watch보다 먼저 보이게 한다. */
+const FACES_WATCH_SCALE = 0.88
 
 /** 카드가 화면 밖에서 출발/퇴장할 때 확보하는 여유 px. */
 const OFFSCREEN_GAP = 40
@@ -103,8 +106,8 @@ const easeInSine = (t: number) => 1 - Math.cos((t * Math.PI) / 2)
  *   B. Cards pin         stage가 화면에 붙어 있는 300vh 동안 카드 4장만 lane을 따라 지나간다.
  *                        Watch는 A가 끝낸 자리에 그대로 있고 아무도 건드리지 않는다.
  *   C. FACES mode        pin이 끝나도 Watch는 그 자리에 남는다. FACES가 올라오는 한 화면 동안
- *                        watch face가 빠지고 Crown이 화면 오른쪽 끝 controller 자리로 옮겨간다.
- *                        Watch display 안으로는 FACES rail이 들어온다(useFacesInteraction).
+ *                        watch face와 display 덮개가 빠지고(= FACES slider가 display로 보인다),
+ *                        Watch가 조금 작아지고, Crown이 화면 오른쪽 끝 controller 자리로 옮겨간다.
  *
  * Digital Crown의 wheel은 여기서 다루지 않는다. DigitalCrown이 page scroll을 직접 따라간다.
  */
@@ -419,21 +422,25 @@ export default function useScrollScene(enabled: boolean) {
       /* ---------- C. About -> FACES : 같은 Watch가 FACES mode가 된다 ---------- */
 
       /*
-       * About pin이 끝난 뒤에도 Watch는 그 자리(화면 정중앙, About 크기)에 그대로 남는다.
+       * About pin이 끝난 뒤에도 Watch는 그 자리(화면 정중앙)에 그대로 남는다.
        * FACES가 화면 아래에서 올라오는 한 화면 동안(About pin 끝 -> FACES pin 시작)
        *   - watch face(시계·이름·THE ONE BEHIND THE FACES)가 빠지고
+       *   - display를 덮던 검은 화면이 빠져, Watch case의 구멍으로 FACES slider(WebGL)가 보이기 시작하고
+       *   - Watch가 아주 조금 작아져(FACES_WATCH_SCALE) project가 먼저 보이고
        *   - Crown이 Watch에서 떨어져 화면 오른쪽 끝의 controller 자리로 옮겨간다.
-       * 그 사이 FACES rail이 Watch display 안으로 올라온다(좌표계는 useFacesInteraction).
-       * Watch 몸체는 이 구간에서 움직이지도, 크기가 바뀌지도 않는다.
+       * Watch 위치는 그대로다. FACES pin 동안에는 크기도 위치도 고정이다.
        */
       const faces = document.querySelector<HTMLElement>('.faces')
       const face = watch.querySelector<HTMLElement>('.watch__face')
+      const screen = watch.querySelector<HTMLElement>('.watch__screen')
       const crown = watch.querySelector<HTMLElement>('.watch__crown')
+      const watchLayer = watch.closest<HTMLElement>('.watch-stage')
 
-      if (faces && face && crown) {
+      if (faces && face && screen && crown && watchLayer) {
         /*
          * Crown이 옮겨갈 거리. Watch 안의 좌표(scale 전)로 돌려준다.
-         * FACES에서 Watch는 화면 정중앙에 About 크기(sA)로 고정되어 있으므로 그 상태를 기준으로 잰다.
+         * FACES에서 Watch는 화면 정중앙에 About 크기(sA)로 있고, 그 레이어 전체가 화면 중심 기준으로
+         * FACES_WATCH_SCALE만큼 줄어든다. 그 두 scale을 되돌려 Crown 중심이 화면 오른쪽 끝에 오게 한다.
          * Crown 박스는 Watch 좌표계 (582, 200)에 54 x 80이고 Watch 중심은 (300, 380)이다.
          */
         const crownDetach = () => {
@@ -445,9 +452,10 @@ export default function useScrollScene(enabled: boolean) {
           const h = 80 * u * sA
           const attachedLeft = viewportW / 2 + (582 - 300) * u * sA
           const attachedTop = viewportH / 2 + (200 - 380) * u * sA
-          const detachedLeft = viewportW - CROWN_EDGE_INSET - w
-          const detachedTop = viewportH / 2 - h / 2
-          return { x: (detachedLeft - attachedLeft) / sA, y: (detachedTop - attachedTop) / sA }
+          // 화면에서 Crown 중심이 올 자리 -> 레이어 scale 전 좌표.
+          const centerX = viewportW / 2 + (viewportW - CROWN_EDGE_CENTER - viewportW / 2) / FACES_WATCH_SCALE
+          const centerY = viewportH / 2
+          return { x: (centerX - w / 2 - attachedLeft) / sA, y: (centerY - h / 2 - attachedTop) / sA }
         }
 
         const facesTl = gsap.timeline({
@@ -463,7 +471,13 @@ export default function useScrollScene(enabled: boolean) {
         // 30~55%: watch face가 한 번에 빠진다. Hero -> About morph가 쓰는 안쪽 요소들과는 다른 element다.
         facesTl.to(face, { opacity: 0, ease: 'none', duration: 0.25 }, 0.3)
 
-        // 20~85%: Crown이 오른쪽 끝으로 옮겨간다. 순간이동 없이 가속 -> 감속.
+        // 45~70%: display를 덮던 검은 화면이 빠진다. 그 사이 FACES slider가 아래에서 display 안으로 올라온다.
+        facesTl.to(screen, { opacity: 0, ease: 'none', duration: 0.25 }, 0.45)
+
+        // 25~80%: Watch 레이어가 화면 중심(= Watch 중심) 기준으로 조금 작아진다. 위치는 그대로다.
+        facesTl.to(watchLayer, { scale: FACES_WATCH_SCALE, ease: 'power1.inOut', duration: 0.55 }, 0.25)
+
+        // 20~85%: Crown이 오른쪽 끝 controller 자리로 옮겨간다. 순간이동 없이 가속 -> 감속.
         facesTl.to(
           crown,
           {
