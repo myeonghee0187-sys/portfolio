@@ -1,5 +1,6 @@
 import useCurrentTime from '../../hooks/useCurrentTime'
 import watchFaceSrc from '../../../assets/img/watch_face.png'
+import FacesRail from '../Faces/FacesRail'
 import DigitalCrown from './DigitalCrown'
 import './WatchAssembly.css'
 
@@ -9,7 +10,7 @@ const WORKS_COUNT = 4
 /**
  * hero  - Hero 안에 정적으로 놓이는 상태 (scroll scene이 꺼졌을 때)
  * about - About 안에 정적으로 놓이는 상태 (scroll scene이 꺼졌을 때)
- * stage - WatchStage(fixed 레이어)에 놓여 Hero <-> About을 오가는 상태.
+ * stage - WatchStage(fixed 레이어)에 놓여 Hero -> About -> FACES를 이어가는 상태.
  *         기본 좌표는 hero와 같고, 나머지는 전부 GSAP이 transform으로 얹는다.
  */
 export type WatchVariant = 'hero' | 'about' | 'stage'
@@ -40,38 +41,57 @@ export default function WatchAssembly({ variant }: WatchAssemblyProps) {
         <img src={watchFaceSrc} alt="워치 페이스 형태로 표현한 포트폴리오 소개 화면" />
       </div>
 
-      <div className="watch__content">
-        <div className="watch__top">
-          {/*
-            time / name은 Hero <-> About에서 살아남는 두 요소다.
-            지우고 다시 만드는 대신 transform(위치·크기)과 color만 바뀐다.
-          */}
-          <p className="watch__time">{currentTime}</p>
-          <div className="watch__info">
-            <p className="watch__name">SONG MYEONG HEE</p>
-            {/* 아래 셋은 Hero 전용. About으로 가면서 사라진다. */}
-            <p className="watch__role">WEB DESIGNER</p>
+      {/*
+        FACES mode의 display. Watch 화면 모양으로 잘린 창이고, 그 안에 FACES rail의 복제가 있다.
+        좌표계는 useFacesInteraction이 FACES stage에 맞춘다. 그 전까지는 보이지 않는다.
+      */}
+      {variant === 'stage' && (
+        <div className="watch__screen">
+          <div className="watch__stream faces-metrics">
+            <FacesRail variant="inner" />
+          </div>
+        </div>
+      )}
+
+      {/*
+        시계 / 이름 / THE ONE BEHIND THE FACES. Hero·About의 watch face다.
+        FACES로 넘어가면서 이 묶음 전체가 한 번에 빠진다(안쪽 요소들의 Hero -> About morph와 분리).
+      */}
+      <div className="watch__face">
+        <div className="watch__content">
+          <div className="watch__top">
+            {/*
+              time / name은 Hero <-> About에서 살아남는 두 요소다.
+              지우고 다시 만드는 대신 transform(위치·크기)과 color만 바뀐다.
+            */}
+            <p className="watch__time">{currentTime}</p>
+            <div className="watch__info">
+              <p className="watch__name">SONG MYEONG HEE</p>
+              {/* 아래 셋은 Hero 전용. About으로 가면서 사라진다. */}
+              <p className="watch__role">WEB DESIGNER</p>
+            </div>
+          </div>
+
+          <div className="watch__meta">
+            <p className="watch__works">PROJECTS {String(WORKS_COUNT).padStart(2, '0')}</p>
+            <p className="watch__status">
+              <span>OPEN TO WORK</span>
+            </p>
           </div>
         </div>
 
-        <div className="watch__meta">
-          <p className="watch__works">PROJECTS {String(WORKS_COUNT).padStart(2, '0')}</p>
-          <p className="watch__status">
-            <span>OPEN TO WORK</span>
-          </p>
-        </div>
+        {/* About 전용. Watch 정중앙에 놓이고 About에 진입하면서 나타난다. */}
+        <p className="watch__title">
+          <span>THE ONE</span>
+          <span>BEHIND THE FACES</span>
+        </p>
       </div>
 
-      {/* About 전용. Watch 정중앙에 놓이고 About에 진입하면서 나타난다. */}
-      <p className="watch__title">
-        <span>THE ONE</span>
-        <span>BEHIND THE FACES</span>
-      </p>
-
       {/*
-        Digital Crown. Watch assembly와 함께 옮겨지고 커질 뿐, Crown 자체는 움직이지 않는다.
+        Digital Crown. Hero / About에서는 Watch에 붙어 함께 옮겨지고 커진다.
+        FACES로 넘어가면서 .watch__crown 자체가 화면 오른쪽 끝 controller 자리로 옮겨간다(useScrollScene).
         page scroll에는 측면 knurl 홈만 굴러가며 반응한다(DigitalCrown).
-        Watch 전환 transform(.watch--stage)과 wheel 움직임은 서로 다른 element에서 일어난다.
+        Watch 전환 / Crown 위치 / wheel 움직임은 전부 서로 다른 element에서 일어난다.
       */}
       <DigitalCrown />
     </div>

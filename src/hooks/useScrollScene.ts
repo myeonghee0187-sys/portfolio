@@ -20,6 +20,12 @@ const NAME_MORPH = { y: -175.5, scale: 0.5208333 }
 /** About pinned 구간의 길이. 뷰포트 높이의 3배(= 300vh). */
 const PIN_VIEWPORTS = 3
 
+/**
+ * FACES에서 떨어져 나온 Crown이 화면 오른쪽 끝에서 들어와 있는 거리(px).
+ * 음수면 Crown 일부가 화면 밖으로 걸친다.
+ */
+const CROWN_EDGE_INSET = 28
+
 /** 카드가 화면 밖에서 출발/퇴장할 때 확보하는 여유 px. */
 const OFFSCREEN_GAP = 40
 
@@ -96,8 +102,9 @@ const easeInSine = (t: number) => 1 - Math.cos((t * Math.PI) / 2)
  *                        Watch 하나가 Hero 위치/크기에서 About 위치/크기로 이동한다.
  *   B. Cards pin         stage가 화면에 붙어 있는 300vh 동안 카드 4장만 lane을 따라 지나간다.
  *                        Watch는 A가 끝낸 자리에 그대로 있고 아무도 건드리지 않는다.
- *   C. Watch release     pin이 끝나면 Watch 레이어를 문서 좌표에 내려놓아 About stage와 함께 올라가게 한다.
- *                        그래서 다음 섹션(FACES) 위에 Watch가 남지 않는다.
+ *   C. FACES mode        pin이 끝나도 Watch는 그 자리에 남는다. FACES가 올라오는 한 화면 동안
+ *                        watch face가 빠지고 Crown이 화면 오른쪽 끝 controller 자리로 옮겨간다.
+ *                        Watch display 안으로는 FACES rail이 들어온다(useFacesInteraction).
  *
  * Digital Crown의 wheel은 여기서 다루지 않는다. DigitalCrown이 page scroll을 직접 따라간다.
  */
@@ -409,42 +416,71 @@ export default function useScrollScene(enabled: boolean) {
       measureCards()
       renderCards(0)
 
-      /* ---------- C. About 이후 : Watch를 About stage와 함께 흘려보낸다 ---------- */
+      /* ---------- C. About -> FACES : 같은 Watch가 FACES mode가 된다 ---------- */
 
       /*
-       * WatchStage는 fixed 레이어라, About pin이 끝난 뒤에도 그대로 두면 다음 섹션(FACES) 위에 Watch가 남는다.
-       * pin이 끝나는 순간 레이어를 그 scroll 위치의 문서 좌표(absolute)로 바꾼다. 그 자리는 pin에서 풀린
-       * About stage의 자리와 같아서, 이후에는 Watch가 About stage와 함께 native scroll로 올라간다(지연 없음).
-       * 되감아 pin 구간으로 돌아오면 다시 fixed가 된다.
-       *
-       * 레이어의 position만 바꾸고 Watch 자신의 transform(A의 Hero -> About 이동)은 건드리지 않는다.
+       * About pin이 끝난 뒤에도 Watch는 그 자리(화면 정중앙, About 크기)에 그대로 남는다.
+       * FACES가 화면 아래에서 올라오는 한 화면 동안(About pin 끝 -> FACES pin 시작)
+       *   - watch face(시계·이름·THE ONE BEHIND THE FACES)가 빠지고
+       *   - Crown이 Watch에서 떨어져 화면 오른쪽 끝의 controller 자리로 옮겨간다.
+       * 그 사이 FACES rail이 Watch display 안으로 올라온다(좌표계는 useFacesInteraction).
+       * Watch 몸체는 이 구간에서 움직이지도, 크기가 바뀌지도 않는다.
        */
-      const watchLayer = watch.closest<HTMLElement>('.watch-stage')
+      const faces = document.querySelector<HTMLElement>('.faces')
+      const face = watch.querySelector<HTMLElement>('.watch__face')
+      const crown = watch.querySelector<HTMLElement>('.watch__crown')
 
-      const holdWatch = () => {
-        for (const prop of ['position', 'top', 'bottom', 'height']) watchLayer?.style.removeProperty(prop)
+      if (faces && face && crown) {
+        /*
+         * Crown이 옮겨갈 거리. Watch 안의 좌표(scale 전)로 돌려준다.
+         * FACES에서 Watch는 화면 정중앙에 About 크기(sA)로 고정되어 있으므로 그 상태를 기준으로 잰다.
+         * Crown 박스는 Watch 좌표계 (582, 200)에 54 x 80이고 Watch 중심은 (300, 380)이다.
+         */
+        const crownDetach = () => {
+          const u = watchUnit()
+          const sA = aboutAnchor.offsetWidth / heroAnchor.offsetWidth
+          const viewportW = document.documentElement.clientWidth
+          const viewportH = window.innerHeight
+          const w = 54 * u * sA
+          const h = 80 * u * sA
+          const attachedLeft = viewportW / 2 + (582 - 300) * u * sA
+          const attachedTop = viewportH / 2 + (200 - 380) * u * sA
+          const detachedLeft = viewportW - CROWN_EDGE_INSET - w
+          const detachedTop = viewportH / 2 - h / 2
+          return { x: (detachedLeft - attachedLeft) / sA, y: (detachedTop - attachedTop) / sA }
+        }
+
+        const facesTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: faces,
+            start: 'top bottom', // About pin이 끝나는 순간 = FACES 윗변이 화면 아래 끝
+            end: 'top top', // FACES pin 시작
+            scrub: true, // scroll과 1:1. 되감으면 About 상태로 정확히 돌아간다.
+            invalidateOnRefresh: true,
+          },
+        })
+
+        // 30~55%: watch face가 한 번에 빠진다. Hero -> About morph가 쓰는 안쪽 요소들과는 다른 element다.
+        facesTl.to(face, { opacity: 0, ease: 'none', duration: 0.25 }, 0.3)
+
+        // 20~85%: Crown이 오른쪽 끝으로 옮겨간다. 순간이동 없이 가속 -> 감속.
+        facesTl.to(
+          crown,
+          {
+            x: () => crownDetach().x,
+            y: () => crownDetach().y,
+            ease: 'power2.inOut',
+            duration: 0.65,
+          },
+          0.2,
+        )
+
+        // timeline 길이를 scroll 구간 전체(1)에 맞춘다. 위 시간이 곧 구간 안의 비율이 된다.
+        facesTl.set({}, {}, 1)
       }
-
-      const releaseWatch = (scrollEnd: number) => {
-        if (!watchLayer) return
-        watchLayer.style.position = 'absolute'
-        watchLayer.style.top = `${scrollEnd}px`
-        watchLayer.style.bottom = 'auto'
-        watchLayer.style.height = `${window.innerHeight}px`
-      }
-
-      ScrollTrigger.create({
-        trigger: stage,
-        start: 'top top',
-        end: () => `+=${window.innerHeight * PIN_VIEWPORTS}`, // B의 pin과 같은 구간
-        invalidateOnRefresh: true,
-        onLeave: (self) => releaseWatch(self.end),
-        onEnterBack: holdWatch,
-        onRefresh: (self) => (self.scroll() > self.end ? releaseWatch(self.end) : holdWatch()),
-      })
 
       /*
-       * quickSetter로 쓴 좌표와 재질 변수, ambient opacity, Watch 레이어의 위치는 tween이 아니라서
+       * quickSetter로 쓴 좌표와 재질 변수, ambient opacity는 tween이 아니라서
        * ctx.revert()가 되돌리지 않는다. 연출이 꺼지면(좁은 화면으로 resize, reduced motion)
        * 전부 CSS의 정적 상태로 돌아가도록 직접 지운다.
        */
@@ -455,7 +491,6 @@ export default function useScrollScene(enabled: boolean) {
           }
         }
         ambient?.style.removeProperty('opacity')
-        holdWatch()
       }
 
       // context가 revert될 때 GSAP이 함께 불러준다.

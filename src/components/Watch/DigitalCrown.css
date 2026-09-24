@@ -2,8 +2,9 @@
  * Digital Crown 내부. 위치(.watch__crown)는 WatchAssembly.css가 정한다.
  *
  * scroll에 따라 바뀌는 값은 --crown-wheel-phase(0~1, 홈 하나 안에서의 위치) 하나뿐이고,
- * 그 값은 wheel slice의 background-position에만 쓰인다.
- * Crown의 위치·크기·방향·외곽은 어떤 transform으로도 움직이지 않는다.
+ * 그 값은 wheel surface <img>의 translate에만 쓰인다.
+ * 이 안의 어떤 layer도 Crown의 위치·크기·방향·외곽을 움직이지 않는다.
+ * (FACES에서 Crown이 화면 오른쪽 끝으로 옮겨가는 것은 바깥 .watch__crown의 transform이다.)
  */
 
 /*

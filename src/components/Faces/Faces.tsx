@@ -1,66 +1,106 @@
-import { useRef, useState } from 'react'
-import { FACE_PROJECTS, type FaceProject } from './facesData'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import gsap from 'gsap'
+import { FACE_PROJECTS } from './facesData'
+import FacesRail from './FacesRail'
 import useFacesInteraction from './useFacesInteraction'
 import './Faces.css'
 
 type FacesProps = {
-  /** 가로 트랙 pin / drag 연출을 켤지. 터치 기기, reduced motion, 좁은 화면에서는 끈다. */
+  /** 가로 rail pin / drag 연출을 켤지. 터치 기기, reduced motion, 좁은 화면에서는 끈다. */
   interactive: boolean
   /** Intro가 끝났는지. About과 같은 이유로 측정은 스크롤바가 생긴 뒤에 한다. */
   ready: boolean
 }
 
 /**
- * 프로젝트 이미지 자리의 임시 placeholder. mechanic(간격·mask·active·drag) 검수용이다.
- * 실제 이미지가 들어오면 이 안만 바뀌고 트랙 구조는 그대로다.
+ * active project 정보. text block은 하나뿐이다.
+ * 바뀔 때는 이전 글자가 먼저 빠지고(opacity 0, -8px) 그 다음에 새 글자가 들어온다(+8px -> 0).
+ * 두 제목이 한 자리에서 겹쳐 읽히는 순간이 없다.
  */
-function FaceVisual({ project }: { project: FaceProject }) {
+function FacesMeta({ active }: { active: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [shown, setShown] = useState(active)
+
+  // 새 글자가 자리에 들어온다. 첫 렌더에서는 그냥 보인다.
+  const isFirst = useRef(true)
+  useLayoutEffect(() => {
+    if (isFirst.current) {
+      isFirst.current = false
+      return
+    }
+    const tween = gsap.fromTo(
+      ref.current,
+      { autoAlpha: 0, y: 8 },
+      { autoAlpha: 1, y: 0, duration: 0.24, ease: 'power2.out' },
+    )
+    return () => {
+      tween.kill()
+    }
+  }, [shown])
+
+  // active가 바뀌면 지금 글자를 먼저 빼고, 다 빠진 뒤에 가장 최근 active로 바꾼다.
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const tween =
+      active === shown
+        ? // 빠지는 도중에 원래 project로 돌아온 경우. 그대로 다시 보이게만 한다.
+          gsap.to(el, { autoAlpha: 1, y: 0, duration: 0.16, ease: 'power1.out' })
+        : gsap.to(el, {
+            autoAlpha: 0,
+            y: -8,
+            duration: 0.14,
+            ease: 'power1.in',
+            onComplete: () => setShown(active),
+          })
+    return () => {
+      tween.kill()
+    }
+  }, [active, shown])
+
+  const project = FACE_PROJECTS[shown]
+
   return (
-    <div className="faces__visual">
-      <span className="faces__visual-index">{project.index}</span>
-      <div className="faces__visual-text">
-        <h3 className="faces__visual-title">{project.title}</h3>
-        <p className="faces__visual-category">{project.category}</p>
+    // 스크린리더는 rail의 segment마다 붙은 이름을 읽는다. 이 block은 시각용이다.
+    <div className="faces__meta" aria-hidden="true">
+      <div ref={ref} className="faces__meta-block">
+        <p className="faces__meta-index">{project.index}</p>
+        <p className="faces__meta-title">{project.title}</p>
+        <p className="faces__meta-category">{project.category}</p>
       </div>
     </div>
   )
 }
 
 /**
- * FACES — PHASE 1 interaction prototype.
+ * FACES — 하나로 이어진 project rail과, 그것을 잘라 보여주는 Watch.
  *
- * 프로젝트 4개가 하나의 가로 트랙 위에 있고, 화면 중앙의 rounded-square(lens)는 움직이지 않는다.
- * 트랙이 lens 뒤로 지나가며, lens 안에서는 같은 트랙이 선명하게 보인다.
+ * Watch는 이 섹션이 따로 만들지 않는다. Hero / About에서 오던 WatchStage의 Watch가 그대로 남아 있고,
+ * 그 display 안에 같은 rail의 복제(FacesRail inner)가 들어 있다.
  *
- *   faces__outer-layer  트랙 전체. 조금 어둡고 muted.
- *   faces__lens         고정된 viewing window. 별도의 카드가 아니라 트랙을 잘라 보여주는 mask다.
- *     faces__inner-layer  lens 안에서 stage와 같은 좌표계를 다시 만든다.
- *       faces__track--inner 바깥 트랙과 같은 --track-x를 쓰는 복제. 선명하게 보인다.
- *
- * 바깥 트랙이 실제 목록(스크린리더가 읽는 쪽)이고, lens 안의 복제는 aria-hidden이다.
+ *   faces__stage       pin 되는 한 화면
+ *     faces__rail--outer   이 섹션의 rail. Watch 뒤를 지나가며 조금 muted하게 보인다.
+ *   (WatchStage) watch__screen > watch__stream > faces__rail--inner
+ *                        Watch display 안에서만 보이는 같은 rail. 같은 --track-x를 쓰고 선명하다.
  */
 export default function Faces({ interactive, ready }: FacesProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
-  const outerTrackRef = useRef<HTMLOListElement>(null)
-  const innerTrackRef = useRef<HTMLDivElement>(null)
-  const innerLayerRef = useRef<HTMLDivElement>(null)
+  const railRef = useRef<HTMLOListElement & HTMLDivElement>(null)
   const [active, setActive] = useState(0)
 
   useFacesInteraction({
     enabled: interactive && ready,
     sectionRef,
     stageRef,
-    outerTrackRef,
-    innerTrackRef,
-    innerLayerRef,
+    railRef,
     onActiveChange: setActive,
   })
 
   return (
     <section
       ref={sectionRef}
-      className={`faces ${interactive ? 'faces--interactive' : 'faces--static'}`}
+      className={`faces faces-metrics ${interactive ? 'faces--interactive' : 'faces--static'}`}
       id="faces"
       aria-labelledby="faces-title"
     >
@@ -75,47 +115,11 @@ export default function Faces({ interactive, ready }: FacesProps) {
         </header>
 
         <div className="faces__outer-layer">
-          <ol ref={outerTrackRef} className="faces__track">
-            {FACE_PROJECTS.map((project) => (
-              <li key={project.id} className="faces__project">
-                <FaceVisual project={project} />
-              </li>
-            ))}
-          </ol>
+          <FacesRail variant="outer" railRef={railRef} />
         </div>
 
-        {interactive && (
-          <div className="faces__lens" aria-hidden="true">
-            <div ref={innerLayerRef} className="faces__inner-layer">
-              <div ref={innerTrackRef} className="faces__track faces__track--inner">
-                {FACE_PROJECTS.map((project) => (
-                  <div key={project.id} className="faces__project">
-                    <FaceVisual project={project} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* active project 정보. 위치·모양은 임시다(Figma 전). */}
-        {interactive && (
-          <div className="faces__meta">
-            {FACE_PROJECTS.map((project, i) => (
-              <div
-                key={project.id}
-                className={`faces__meta-item ${
-                  i === active ? 'is-active' : i < active ? 'is-before' : 'is-after'
-                }`}
-                aria-hidden={i !== active}
-              >
-                <p className="faces__meta-index">{project.index}</p>
-                <p className="faces__meta-title">{project.title}</p>
-                <p className="faces__meta-category">{project.category}</p>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* 위치·모양은 임시다(Figma 전). Watch 바로 아래 한 곳에만 있다. */}
+        {interactive && <FacesMeta active={active} />}
       </div>
     </section>
   )

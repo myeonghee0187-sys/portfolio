@@ -1,8 +1,8 @@
 /**
- * FACES에 놓이는 프로젝트. 배열 순서가 곧 트랙 위의 순서다(왼쪽 -> 오른쪽).
+ * FACES에 놓이는 프로젝트. 배열 순서가 곧 rail 위의 순서다(왼쪽 -> 오른쪽).
  *
- * PHASE 1은 mechanic 검수용이라 실제 이미지를 연결하지 않는다.
- * 나중에 image / href 같은 필드를 여기에 더하면 트랙과 active 정보가 그대로 따라간다.
+ * 실제 이미지가 준비되면 image 같은 필드를 여기에 더한다.
+ * rail 두 벌(FACES 바깥 / Watch 화면 안)과 metadata가 전부 이 배열 하나를 읽는다.
  */
 export type FaceProject = {
   id: string
@@ -13,8 +13,8 @@ export type FaceProject = {
 }
 
 export const FACE_PROJECTS: FaceProject[] = [
-  { id: 'f45', index: '01', title: 'F45 KOREA', category: 'Responsive Web Redesign' },
-  { id: 'tchaikim', index: '02', title: 'TCHAIKIM', category: 'Fashion Brand Web Redesign' },
-  { id: 'jaduya', index: '03', title: 'JADUYA', category: 'Mobile UX/UI Platform' },
-  { id: 'foln', index: '04', title: 'FOLN', category: 'Original Beauty Brand' },
+  { id: 'f45', index: '01', title: 'F45 KOREA', category: 'RESPONSIVE WEB REDESIGN' },
+  { id: 'tchaikim', index: '02', title: 'TCHAIKIM', category: 'FASHION BRAND WEB REDESIGN' },
+  { id: 'jaduya', index: '03', title: 'JADUYA', category: 'MOBILE UX/UI PLATFORM' },
+  { id: 't100', index: '04', title: 'T100', category: 'MOBILE WEB APP' },
 ]
