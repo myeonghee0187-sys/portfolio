@@ -3,6 +3,7 @@ import IntroVideo from './components/IntroVideo'
 import Header from './components/Header'
 import Hero from './components/Hero'
 import About from './components/About'
+import Faces from './components/Faces/Faces'
 import WatchStage from './components/Watch/WatchStage'
 import SplashCursor from './components/SplashCursor/SplashCursor'
 import useMediaQuery from './hooks/useMediaQuery'
@@ -80,6 +81,8 @@ export default function App() {
         <main>
           <Hero inlineWatch={!scrollSceneEnabled} />
           <About inlineWatch={!scrollSceneEnabled} />
+          {/* 가로 트랙 연출도 About과 같은 조건에서만 켠다. 아니면 native 가로 scroll 목록이다. */}
+          <Faces interactive={scrollSceneEnabled} ready={isIntroDone} />
         </main>
 
         {/*

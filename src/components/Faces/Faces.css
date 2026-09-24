@@ -1,0 +1,360 @@
+/*
+ * FACES — PHASE 1 interaction prototype.
+ *
+ * 최종 그래픽이 아니라 mechanic(간격·mask·active·drag) 검수용 임시 styling이다.
+ * browser에서 바로 조정할 수 있도록 조정값은 전부 .faces의 변수로 모아 둔다.
+ */
+
+/*
+ * JS가 매 프레임 쓰는 두 값. 상속하지 않도록 등록해 두면 값이 바뀌어도
+ * 그 element만 다시 계산되고, 트랙 / 카드 안의 자식 전체가 매 프레임 다시 계산되지 않는다.
+ */
+@property --track-x {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --influence {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+.faces {
+  /* 중앙 Face(lens). 짧은 화면에서는 세로로도 넘치지 않게 58vh를 넘지 않는다. */
+  --face-size: min(clamp(320px, 30vw, 520px), 58vh);
+  /* Apple Watch display 느낌의 rounded-square. 원형이 되지 않게 30%를 넘기지 않는다. */
+  --face-radius: 28%;
+
+  /* 트랙 위 project. lens보다 조금 크게 두어 lens가 project를 잘라 보는 느낌이 나게 한다. */
+  --project-width: max(clamp(360px, 34vw, 600px), calc(var(--face-size) * 1.08));
+  --project-height: calc(var(--face-size) * 1.08);
+  --project-gap: clamp(80px, 9vw, 180px);
+  --project-radius: calc(var(--face-size) * 0.05);
+
+  /* lens 밖(outer). 조금 어둡고 muted. 가운데로 다가올수록 opacity만 조금 오른다. */
+  --outer-opacity: 0.42;
+  --outer-opacity-near: 0.14;
+  --outer-brightness: 0.62;
+  --outer-saturate: 0.62;
+  --outer-blur: 0.8px;
+
+  /* 가운데에서 멀어질수록 줄어드는 양. 0.05면 0.95 -> 1 -> 0.95. zoom처럼 보이지 않게 작게 둔다. */
+  --influence-shrink: 0.05;
+
+  position: relative;
+  background: #08090a;
+  color: #f3f4f4;
+}
+
+/* ---------------- Stage (pin 되는 단위) ---------------- */
+
+.faces__stage {
+  /* lens / inner layer가 cqw·cqh로 이 박스의 좌표계를 공유한다. */
+  container-type: size;
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.faces--interactive .faces__stage {
+  cursor: grab;
+  /* 세로 scroll은 브라우저가 그대로 처리하고, 가로 drag만 가져온다. */
+  touch-action: pan-y;
+}
+
+.faces__stage.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+/* ---------------- Section label (임시) ---------------- */
+
+.faces__label {
+  position: absolute;
+  top: clamp(32px, 7vh, 80px);
+  left: clamp(24px, 6.25vw, 120px);
+  z-index: 3;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.faces__label-title {
+  margin: 0;
+  font-family: 'Anton', sans-serif;
+  font-weight: 400;
+  font-size: clamp(28px, 2.5vw, 48px);
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.faces__label-count {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: #a4a9ad;
+}
+
+/* ---------------- Track ---------------- */
+
+.faces__outer-layer {
+  position: absolute;
+  inset: 0;
+}
+
+/*
+ * 바깥 / 안쪽이 같은 규칙을 쓴다. 위치는 stage 좌표계에서 정해지고,
+ * JS가 두 트랙에 같은 --track-x만 쓴다.
+ */
+.faces__track {
+  position: absolute;
+  top: calc(50cqh - var(--project-height) / 2);
+  left: 0;
+  display: flex;
+  gap: var(--project-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transform: translate3d(var(--track-x, 0px), 0, 0);
+  will-change: transform;
+}
+
+.faces__project {
+  position: relative;
+  flex: none;
+  width: var(--project-width);
+  height: var(--project-height);
+  /* 중심 기준 scale이라 바깥 / 안쪽 복제의 정렬이 깨지지 않는다. */
+  transform: scale(calc(1 - var(--influence-shrink) * (1 - var(--influence, 0))));
+  will-change: transform, opacity;
+}
+
+.faces--interactive .faces__outer-layer .faces__project {
+  opacity: calc(var(--outer-opacity) + var(--outer-opacity-near) * var(--influence, 0));
+  filter: brightness(var(--outer-brightness)) saturate(var(--outer-saturate))
+    blur(var(--outer-blur));
+}
+
+/* ---------------- Lens (고정된 viewing window) ---------------- */
+
+.faces__lens {
+  position: absolute;
+  top: calc(50cqh - var(--face-size) / 2);
+  left: calc(50cqw - var(--face-size) / 2);
+  z-index: 2;
+  width: var(--face-size);
+  height: var(--face-size);
+  overflow: hidden;
+  border-radius: var(--face-radius);
+  /* lens 안에서는 바깥 트랙의 muted 복제가 비치지 않고 안쪽 트랙만 보인다. */
+  background: #08090a;
+  /* 두꺼운 카드가 아니라 얇은 black-glass 테두리 정도. */
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.55),
+    0 24px 64px rgb(0 0 0 / 0.35);
+  pointer-events: none;
+}
+
+/*
+ * lens 안에서 stage와 똑같은 좌표계를 다시 만든다.
+ * lens가 stage의 (50cqw - F/2, 50cqh - F/2)에 있으므로 그만큼 되돌려 놓으면 원점이 stage 원점과 같다.
+ * 남는 반올림 차이는 JS가 boundingRect로 재서 translate로 지운다.
+ */
+.faces__inner-layer {
+  position: absolute;
+  top: calc(var(--face-size) / 2 - 50cqh);
+  left: calc(var(--face-size) / 2 - 50cqw);
+  width: 100cqw;
+  height: 100cqh;
+}
+
+/* viewing glass. 아주 얇은 Frost White edge + 위쪽에만 스치는 반사. */
+.faces__lens::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background:
+    linear-gradient(160deg, rgb(255 255 255 / 0.06) 0%, rgb(255 255 255 / 0) 34%),
+    radial-gradient(120% 60% at 50% 0%, rgb(212 229 239 / 0.05), transparent 60%);
+  box-shadow:
+    inset 0 0 0 1px rgb(243 244 244 / 0.14),
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    inset 0 0 24px rgb(0 0 0 / 0.35);
+  pointer-events: none;
+}
+
+/* ---------------- Project placeholder (임시) ---------------- */
+
+.faces__visual {
+  container-type: inline-size;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 7cqw;
+  overflow: hidden;
+  border-radius: var(--project-radius);
+  /*
+   * Carbon Black -> Titanium Grey 계열의 중립 gradient + 가는 격자.
+   * 격자는 lens 경계에서 바깥 / 안쪽 선이 이어지는지 확인하기 위한 것이다.
+   */
+  background:
+    repeating-linear-gradient(0deg, rgb(243 244 244 / 0.05) 0 1px, transparent 1px 8cqw),
+    repeating-linear-gradient(90deg, rgb(243 244 244 / 0.05) 0 1px, transparent 1px 8cqw),
+    radial-gradient(90% 70% at 18% 8%, rgb(212 229 239 / 0.16), transparent 60%),
+    linear-gradient(155deg, #2b2f33 0%, #16181b 55%, #0d0e10 100%);
+  box-shadow: inset 0 0 0 1px rgb(243 244 244 / 0.1);
+  color: #f3f4f4;
+}
+
+.faces__visual-index {
+  font-family: 'Anton', sans-serif;
+  font-size: 26cqw;
+  line-height: 0.9;
+  color: rgb(243 244 244 / 0.92);
+}
+
+.faces__visual-title {
+  margin: 0;
+  font-family: 'Anton', sans-serif;
+  font-weight: 400;
+  font-size: 9cqw;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.faces__visual-category {
+  margin: 1.6cqw 0 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 2.4cqw;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #a4a9ad;
+}
+
+/* ---------------- Active project info (임시 위치) ---------------- */
+
+.faces__meta {
+  position: absolute;
+  top: calc(50cqh + var(--face-size) / 2 + clamp(20px, 4vh, 44px));
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* 네 항목이 같은 칸에 겹쳐 있고 active만 보인다. 바뀔 때 opacity + 10px만 움직인다. */
+.faces__meta-item {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.36s ease,
+    transform 0.36s ease;
+}
+
+.faces__meta-item.is-before {
+  transform: translateY(-10px);
+}
+
+.faces__meta-item.is-active {
+  opacity: 1;
+  transform: none;
+}
+
+.faces__meta-item p {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.faces__meta-index {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: #a4a9ad;
+}
+
+.faces__meta-title {
+  margin-top: 8px !important;
+  font-family: 'Anton', sans-serif;
+  font-size: clamp(24px, 2vw, 36px);
+  line-height: 1.1;
+}
+
+.faces__meta-category {
+  margin-top: 6px !important;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #777d82;
+}
+
+/* ---------------- Fallback: native 가로 scroll ---------------- */
+
+/*
+ * 모바일 / 터치 / reduced motion. pin·drag를 억지로 재현하지 않고,
+ * 프로젝트 카드를 가로로 넘겨 보는 목록으로만 둔다(최종 모바일 디자인은 추후).
+ */
+.faces--static {
+  --static-card: min(78vw, 420px);
+  padding: clamp(64px, 10vh, 120px) 0;
+}
+
+.faces--static .faces__stage {
+  container-type: normal;
+  height: auto;
+  overflow: visible;
+}
+
+.faces--static .faces__label {
+  position: static;
+  margin-bottom: 32px;
+  padding-inline: 20px;
+}
+
+.faces--static .faces__outer-layer {
+  position: static;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-color: #3a3e42 transparent;
+  scrollbar-width: thin;
+}
+
+.faces--static .faces__track {
+  position: static;
+  width: max-content;
+  gap: 16px;
+  padding: 0 max(20px, calc(50vw - var(--static-card) / 2)) 16px;
+  transform: none;
+  will-change: auto;
+}
+
+.faces--static .faces__project {
+  width: var(--static-card);
+  height: auto;
+  aspect-ratio: 1 / 1.04;
+  transform: none;
+  will-change: auto;
+  scroll-snap-align: center;
+}
+
+.faces--static .faces__visual {
+  --project-radius: 20px;
+}

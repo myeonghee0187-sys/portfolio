@@ -96,6 +96,8 @@ const easeInSine = (t: number) => 1 - Math.cos((t * Math.PI) / 2)
  *                        Watch 하나가 Hero 위치/크기에서 About 위치/크기로 이동한다.
  *   B. Cards pin         stage가 화면에 붙어 있는 300vh 동안 카드 4장만 lane을 따라 지나간다.
  *                        Watch는 A가 끝낸 자리에 그대로 있고 아무도 건드리지 않는다.
+ *   C. Watch release     pin이 끝나면 Watch 레이어를 문서 좌표에 내려놓아 About stage와 함께 올라가게 한다.
+ *                        그래서 다음 섹션(FACES) 위에 Watch가 남지 않는다.
  *
  * Digital Crown의 wheel은 여기서 다루지 않는다. DigitalCrown이 page scroll을 직접 따라간다.
  */
@@ -407,9 +409,44 @@ export default function useScrollScene(enabled: boolean) {
       measureCards()
       renderCards(0)
 
+      /* ---------- C. About 이후 : Watch를 About stage와 함께 흘려보낸다 ---------- */
+
       /*
-       * quickSetter로 쓴 좌표와 재질 변수, ambient opacity는 tween이 아니라서 ctx.revert()가 되돌리지 않는다.
-       * 연출이 꺼지면(좁은 화면으로 resize, reduced motion) 카드가 CSS의 정적 배치·재질로 돌아가도록 직접 지운다.
+       * WatchStage는 fixed 레이어라, About pin이 끝난 뒤에도 그대로 두면 다음 섹션(FACES) 위에 Watch가 남는다.
+       * pin이 끝나는 순간 레이어를 그 scroll 위치의 문서 좌표(absolute)로 바꾼다. 그 자리는 pin에서 풀린
+       * About stage의 자리와 같아서, 이후에는 Watch가 About stage와 함께 native scroll로 올라간다(지연 없음).
+       * 되감아 pin 구간으로 돌아오면 다시 fixed가 된다.
+       *
+       * 레이어의 position만 바꾸고 Watch 자신의 transform(A의 Hero -> About 이동)은 건드리지 않는다.
+       */
+      const watchLayer = watch.closest<HTMLElement>('.watch-stage')
+
+      const holdWatch = () => {
+        for (const prop of ['position', 'top', 'bottom', 'height']) watchLayer?.style.removeProperty(prop)
+      }
+
+      const releaseWatch = (scrollEnd: number) => {
+        if (!watchLayer) return
+        watchLayer.style.position = 'absolute'
+        watchLayer.style.top = `${scrollEnd}px`
+        watchLayer.style.bottom = 'auto'
+        watchLayer.style.height = `${window.innerHeight}px`
+      }
+
+      ScrollTrigger.create({
+        trigger: stage,
+        start: 'top top',
+        end: () => `+=${window.innerHeight * PIN_VIEWPORTS}`, // B의 pin과 같은 구간
+        invalidateOnRefresh: true,
+        onLeave: (self) => releaseWatch(self.end),
+        onEnterBack: holdWatch,
+        onRefresh: (self) => (self.scroll() > self.end ? releaseWatch(self.end) : holdWatch()),
+      })
+
+      /*
+       * quickSetter로 쓴 좌표와 재질 변수, ambient opacity, Watch 레이어의 위치는 tween이 아니라서
+       * ctx.revert()가 되돌리지 않는다. 연출이 꺼지면(좁은 화면으로 resize, reduced motion)
+       * 전부 CSS의 정적 상태로 돌아가도록 직접 지운다.
        */
       const clearCards = () => {
         for (const c of cards) {
@@ -418,6 +455,7 @@ export default function useScrollScene(enabled: boolean) {
           }
         }
         ambient?.style.removeProperty('opacity')
+        holdWatch()
       }
 
       // context가 revert될 때 GSAP이 함께 불러준다.
