@@ -99,6 +99,14 @@ const KNURL_CLIP = (() => {
  *   watch__crown-wheel-track  같은 asset을 원통 각도별 띠(slice)로 나눠 --crown-wheel-phase만큼 옮긴다.
  *
  * 스스로 page scroll을 따라가므로 Watch에서 떼어 다른 곳에 두어도 그대로 동작한다.
+ *
+ * FACES에서는 같은 Crown이 화면 오른쪽 끝의 controller가 되면서 정면을 향한다(useScrollScene).
+ * 옆모습(asset)을 rotateY로 억지로 돌리지 않고, 옆모습이 빠지는 자리에 정면 Crown이 3/4 각도에서
+ * 펴지며 들어온다. 정면 Crown은 CSS로만 그린다.
+ *   watch__crown-front-mount      고정된 dark titanium 받침(housing). 움직이지 않는다.
+ *   watch__crown-front-wheel      knurl 톱니와 동심원 brushed cap. FACES slider 위치를 따라 rotateZ만 한다
+ *                                 (useFacesInteraction). 이 layer 하나만 돈다.
+ *   watch__crown-front-highlight  광원이 고정된 반사(frost specular, ice 반사, electric ice edge). 돌지 않는다.
  */
 export default function DigitalCrown() {
   const trackRef = useRef<HTMLDivElement>(null)
@@ -108,33 +116,41 @@ export default function DigitalCrown() {
 
   return (
     <div className="watch__crown" aria-hidden="true">
-      <div className="watch__crown-orientation">
-        <div className="watch__crown-box">
-          <div className="watch__crown-frame">
-            <img className="watch__crown-shell" src={digitalCrownSrc} alt="" />
+      <div className="watch__crown-side">
+        <div className="watch__crown-orientation">
+          <div className="watch__crown-box">
+            <div className="watch__crown-frame">
+              <img className="watch__crown-shell" src={digitalCrownSrc} alt="" />
 
-            <div className="watch__crown-wheel-mask" style={{ clipPath: KNURL_CLIP }}>
-              <div ref={trackRef} className="watch__crown-wheel-track">
-                {SLICES.map((style, i) => (
-                  <div key={i} className="watch__crown-wheel-slice" style={style}>
-                    <img
-                      className="watch__crown-wheel-surface"
-                      src={digitalCrownSrc}
-                      alt=""
-                      data-crown-wheel=""
-                    />
-                    <img
-                      className="watch__crown-wheel-surface watch__crown-wheel-surface--next"
-                      src={digitalCrownSrc}
-                      alt=""
-                      data-crown-wheel=""
-                    />
-                  </div>
-                ))}
+              <div className="watch__crown-wheel-mask" style={{ clipPath: KNURL_CLIP }}>
+                <div ref={trackRef} className="watch__crown-wheel-track">
+                  {SLICES.map((style, i) => (
+                    <div key={i} className="watch__crown-wheel-slice" style={style}>
+                      <img
+                        className="watch__crown-wheel-surface"
+                        src={digitalCrownSrc}
+                        alt=""
+                        data-crown-wheel=""
+                      />
+                      <img
+                        className="watch__crown-wheel-surface watch__crown-wheel-surface--next"
+                        src={digitalCrownSrc}
+                        alt=""
+                        data-crown-wheel=""
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="watch__crown-front">
+        <div className="watch__crown-front-mount" />
+        <div className="watch__crown-front-wheel" />
+        <div className="watch__crown-front-highlight" />
       </div>
     </div>
   )

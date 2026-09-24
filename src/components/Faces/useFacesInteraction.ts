@@ -2,18 +2,15 @@ import { useLayoutEffect, type RefObject } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { FACE_PROJECTS } from './facesData'
-import { FACE_ASPECT } from './facePainter'
 import FacesScene, { type FacesBox, type FacesWatchGeometry } from './facesScene'
 
 gsap.registerPlugin(ScrollTrigger)
 
-/** plane 폭 = stage 폭의 55%. 1920에서 약 1056px. */
-const SLIDE_WIDTH_RATIO = 0.55
-const SLIDE_MIN = 620
-const SLIDE_MAX = 1060
+/** project 영상의 공통 높이 = stage 높이의 62%. 폭은 영상마다 원본 비율로 정해진다. */
+const PLANE_HEIGHT_RATIO = 0.62
 
-/** plane 중심 간격 = plane 폭의 1.2배(plane 사이에 폭의 20%만큼 숨 쉴 공간). */
-const SLIDE_STEP_RATIO = 1.2
+/** project 사이 간격 = stage 폭의 8%. 한 장의 긴 웹페이지도, 떨어진 카드 갤러리도 아닌 정도. */
+const GAP_RATIO = 0.08
 
 /** 한 바퀴를 도는 세로 scroll 길이. 최소 2.8화면, 가로 한 바퀴 거리의 0.9배. */
 const MIN_PIN_VIEWPORTS = 2.8
@@ -41,6 +38,9 @@ const SPEED_GAIN = 4
 /** 성능을 위해 pixel ratio는 1.5를 넘기지 않는다(Retina 2~3배로 그리지 않는다). */
 const MAX_PIXEL_RATIO = 1.5
 
+/** 화면 밖으로 이만큼(px) 더 멀어진 영상은 재생을 멈춘다. */
+const PLAY_MARGIN = 240
+
 /*
  * WebGL로 그리는 Watch의 모양. Watch 좌표계(600 x 760), watch_face.png에서 잰 값이다.
  *   CASE     case 외곽 실루엣(투명하지 않은 영역). 모서리는 원으로 맞춘 근사.
@@ -57,6 +57,7 @@ const ACTIVE_HYSTERESIS = 0.04
 const DRAG_THRESHOLD = 4
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
+const smoothstep = (t: number) => t * t * (3 - 2 * t)
 
 type FacesInteractionOptions = {
   enabled: boolean
@@ -78,7 +79,7 @@ type FacesInteractionOptions = {
  *   dragOffset   = drag로 더한 거리                     (+/- 무한)
  *   target       = scrollOffset + dragOffset
  *   current     += (target - current) * EASE          (살짝 늦게 따라오는 물성)
- *   plane x      = wrap(i * step - current)             (rail은 항상 끝이 없다)
+ *   plane x      = wrap(center_i - current)            (rail은 항상 끝이 없다)
  *
  * dragOffset이 따로 남아 있으므로 drag 뒤에 scroll해도 rail이 원래 자리로 튀지 않고,
  * scroll 쪽의 변화량만 더해진다. drag는 ScrollTrigger의 start / end를 바꾸지 않는다.
@@ -96,8 +97,6 @@ export default function useFacesInteraction({
     const canvas = canvasRef.current
     if (!enabled || !section || !stage || !canvas) return
 
-    const scene = new FacesScene(canvas)
-
     /* ---------- 상태 ---------- */
 
     let scrollOffset = 0
@@ -105,21 +104,21 @@ export default function useFacesInteraction({
     let current = 0
     const target = () => scrollOffset + dragOffset
 
-    /* ---------- 측정 (refresh 때만) ---------- */
-
     let stageWidth = 1
     let loopWidth = 1
+    let trigger: ScrollTrigger | undefined
+
+    /* ---------- 측정 (refresh 때만) ---------- */
 
     const measure = () => {
       const rect = stage.getBoundingClientRect()
       const oldLoop = loopWidth
       stageWidth = rect.width
-      const slideWidth = clamp(rect.width * SLIDE_WIDTH_RATIO, SLIDE_MIN, SLIDE_MAX)
-      const step = slideWidth * SLIDE_STEP_RATIO
-      const pixelRatio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO)
-      scene.resize(rect.width, rect.height, pixelRatio, slideWidth, slideWidth / FACE_ASPECT, step)
+      scene.resize(rect.width, rect.height, Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO))
+      scene.layout(rect.height * PLANE_HEIGHT_RATIO, rect.width * GAP_RATIO)
       loopWidth = scene.loopWidth
-      // 화면 크기가 바뀌어도 drag로 옮겨 둔 위상은 그대로 둔다.
+      lastKey = ''
+      // 화면 크기(또는 영상 비율)가 바뀌어도 drag로 옮겨 둔 위상은 그대로 둔다.
       if (oldLoop > 1 && oldLoop !== loopWidth) {
         const ratio = loopWidth / oldLoop
         dragOffset *= ratio
@@ -127,11 +126,15 @@ export default function useFacesInteraction({
       }
     }
 
+    // 영상의 실제 비율이 미리 둔 값과 다르면 다시 재고, 한 바퀴 거리가 바뀌었으니 pin 길이도 다시 계산한다.
+    const scene = new FacesScene(canvas, () => ScrollTrigger.refresh())
+
     /*
      * WebGL Watch의 자리. DOM Watch(.watch--stage)의 실제 rect에서 매 프레임 잰다 —
      * FACES pin 중에는 고정이지만, 그 전에는 stage가 아래에서 올라오므로 canvas 기준 위치가 바뀐다.
      */
     const watchEl = document.querySelector<HTMLElement>('.watch--stage')
+    const frontWheel = watchEl?.querySelector<HTMLElement>('.watch__crown-front-wheel') ?? null
     const watchGeometry = (): FacesWatchGeometry | null => {
       if (!watchEl) return null
       const w = watchEl.getBoundingClientRect()
@@ -148,25 +151,89 @@ export default function useFacesInteraction({
       return { outer: box(CASE), display: box(DISPLAY), unit }
     }
 
+    /*
+     * display cover 배율. 가운데에 온 project가 display를 꽉 채우는 object-fit: cover 배율이고,
+     * 두 project 사이에서는 위치를 따라 부드럽게 이어진다.
+     *   가로 영상(F45, TCHAIKIM)  plane 높이(62vh)가 display 높이(약 59.5vh)보다 커서 1배 — 안과 밖이 같은 크기다.
+     *   세로 영상(JADUYA, T100)   폭이 display보다 좁아 약 1.58배로 채운다.
+     * 1보다 작게는 줄이지 않는다. About -> FACES 동안 Watch가 작을 때도 display 안이 밖보다 작아지지 않고,
+     * project가 display 안으로 그대로 올라온다.
+     */
+    const coverScale = (index: number, display: FacesBox) =>
+      Math.max(1, (display.hx * 2) / scene.widths[index], (display.hy * 2) / scene.planeHeight)
+
+    const magnification = (position: number, watch: FacesWatchGeometry | null) => {
+      if (!watch) return 1
+      let left = -1
+      let right = -1
+      FACE_PROJECTS.forEach((_, i) => {
+        const x = scene.planeX(i, position)
+        if (x <= 0 && (left < 0 || x > scene.planeX(left, position))) left = i
+        if (x > 0 && (right < 0 || x < scene.planeX(right, position))) right = i
+      })
+      if (left < 0 || right < 0) return coverScale(Math.max(left, right), watch.display)
+      const xl = scene.planeX(left, position)
+      const xr = scene.planeX(right, position)
+      const f = smoothstep(clamp(-xl / (xr - xl), 0, 1))
+      const sl = coverScale(left, watch.display)
+      const sr = coverScale(right, watch.display)
+      return sl + (sr - sl) * f
+    }
+
     let active = -1
     const detectActive = (position: number) => {
-      const step = scene.step
       const distances = FACE_PROJECTS.map((_, i) => Math.abs(scene.planeX(i, position)))
       let nearest = 0
       for (let i = 1; i < distances.length; i++) if (distances[i] < distances[nearest]) nearest = i
-      // 경계에서 깜빡이지 않도록, 새 후보가 확실히 더 가까워졌을 때만 바꾼다. clone이어도 project id는 같다.
-      if (active < 0 || (nearest !== active && distances[nearest] + step * ACTIVE_HYSTERESIS < distances[active])) {
+      // 경계에서 깜빡이지 않도록, 새 후보가 확실히 더 가까워졌을 때만 바꾼다. 두 번째 instance여도 project는 같다.
+      const margin = (scene.planeHeight + scene.gap) * ACTIVE_HYSTERESIS
+      if (active < 0 || (nearest !== active && distances[nearest] + margin < distances[active])) {
         if (nearest !== active) onActiveChange(nearest)
         active = nearest
       }
     }
 
+    /* ---------- 영상 재생: 화면 근처에 있는 것만 ---------- */
+
+    let running = false
+    const updatePlayback = () => {
+      scene.videos.forEach((video, i) => {
+        const shouldPlay = running && scene.isNearView(i, current, PLAY_MARGIN)
+        if (shouldPlay && video.paused) {
+          if (video.preload !== 'auto') video.preload = 'auto'
+          video.play().catch(() => {})
+        } else if (!shouldPlay && !video.paused) {
+          video.pause()
+        }
+      })
+    }
+
     /* ---------- 그리기 루프 ---------- */
 
-    // FACES가 화면 근처에 있을 때만 돈다. 값이 그대로면 GPU에 다시 그리지 않는다.
+    /*
+     * 다시 그릴 이유가 있을 때만 그린다: rail이 움직였거나, Watch 자리가 바뀌었거나,
+     * 재생 중인 영상에 새 프레임이 나왔을 때. 영상은 24~30fps라 60Hz 화면에서 그리는 횟수가 약 절반이 된다.
+     * requestVideoFrameCallback이 없는 브라우저에서는 매 프레임 그린다.
+     */
+    const canWatchFrames = 'requestVideoFrameCallback' in HTMLVideoElement.prototype
+    let videoDirty = true
+    const frameHandles: number[] = []
+    if (canWatchFrames) {
+      scene.videos.forEach((video, i) => {
+        const onFrame = () => {
+          videoDirty = true
+          frameHandles[i] = video.requestVideoFrameCallback(onFrame)
+        }
+        frameHandles[i] = video.requestVideoFrameCallback(onFrame)
+      })
+    }
+
+    // FACES가 화면 근처에 있을 때만 돈다.
     let rafId = 0
     let lastTime = 0
+    let lastWheel = ''
     let lastKey = ''
+    let frameCount = 0
 
     const frame = (now: number) => {
       rafId = requestAnimationFrame(frame)
@@ -183,27 +250,42 @@ export default function useFacesInteraction({
       const bend = clamp(velocity * BEND_STRENGTH, -BEND_MAX, BEND_MAX)
       const watch = watchGeometry()
 
-      const key = `${current.toFixed(2)}|${velocity.toFixed(4)}|${watch ? `${watch.outer.cx.toFixed(1)},${watch.outer.cy.toFixed(1)},${watch.unit.toFixed(4)}` : '-'}`
-      if (key === lastKey) return
-      lastKey = key
-      scene.render({ position: current, bend, velocity, speed, watch })
+      const key = watch
+        ? `${current.toFixed(2)} ${watch.outer.cx.toFixed(1)} ${watch.outer.cy.toFixed(1)} ${watch.unit.toFixed(4)}`
+        : `${current.toFixed(2)}`
+      if (key !== lastKey || videoDirty || !canWatchFrames) {
+        scene.render({ position: current, bend, velocity, speed, watch, magnification: magnification(current, watch) })
+        lastKey = key
+        videoDirty = false
+      }
       detectActive(current)
+
+      // FACES Crown(정면)의 wheel은 slider 위치를 따라 돈다. 한 바퀴(project 4개) = 360°.
+      const wheel = `${((current / loopWidth) * 360).toFixed(2)}deg`
+      if (frontWheel && wheel !== lastWheel) {
+        frontWheel.style.rotate = wheel
+        lastWheel = wheel
+      }
+
+      // 재생 대상은 몇 프레임마다 한 번만 다시 본다.
+      if (++frameCount % 10 === 0) updatePlayback()
     }
 
     const start = () => {
-      if (!rafId) {
-        lastTime = 0
-        rafId = requestAnimationFrame(frame)
-      }
+      if (running) return
+      running = true
+      lastTime = 0
+      rafId = requestAnimationFrame(frame)
+      updatePlayback()
     }
     const stop = () => {
+      running = false
       cancelAnimationFrame(rafId)
       rafId = 0
+      updatePlayback()
     }
 
     /* ---------- 세로 scroll = page 진행(정확히 한 바퀴) ---------- */
-
-    let trigger: ScrollTrigger | undefined
 
     const ctx = gsap.context(() => {
       trigger = ScrollTrigger.create({
@@ -226,11 +308,10 @@ export default function useFacesInteraction({
         onRefresh: (self) => {
           scrollOffset = self.progress * loopWidth
           current = target()
-          lastKey = ''
         },
       })
 
-      // FACES가 화면에 들어오기 직전부터 나갈 때까지만 그린다(About 이전에는 GPU를 쓰지 않는다).
+      // FACES가 화면에 들어오기 직전부터 나갈 때까지만 그리고, 영상도 그 동안만 재생한다.
       ScrollTrigger.create({
         trigger: section,
         start: 'top bottom',
@@ -243,12 +324,6 @@ export default function useFacesInteraction({
 
     measure()
     current = target()
-
-    // 웹폰트가 뜬 뒤 placeholder 글자를 다시 그린다.
-    document.fonts?.load('40px Anton').then(() => {
-      scene.repaint()
-      lastKey = ''
-    })
 
     /* ---------- drag = 자유 탐색(무한) ---------- */
 
@@ -287,7 +362,7 @@ export default function useFacesInteraction({
       if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId)
     }
 
-    // 이미지 / 텍스트의 기본 drag가 pointer drag를 가로채지 않게 한다.
+    // 영상 / 텍스트의 기본 drag가 pointer drag를 가로채지 않게 한다.
     const onDragStart = (event: DragEvent) => event.preventDefault()
 
     stage.addEventListener('pointerdown', onPointerDown)
@@ -302,22 +377,30 @@ export default function useFacesInteraction({
     const refreshId = requestAnimationFrame(() => ScrollTrigger.refresh())
 
     // 개발 중 QA용 읽기 전용 상태(배포 build에서는 빠진다).
-    const debug = window as unknown as { __faces?: () => Record<string, number> }
+    const debug = window as unknown as { __faces?: () => Record<string, unknown> }
     if (import.meta.env.DEV) {
-      debug.__faces = () => ({
-        scrollOffset,
-        dragOffset,
-        current,
-        target: target(),
-        loopWidth,
-        step: scene.step,
-        slideWidth: scene.slideWidth,
-        slideHeight: scene.slideHeight,
-        pinStart: trigger?.start ?? 0,
-        pinEnd: trigger?.end ?? 0,
-        progress: trigger?.progress ?? 0,
-        active,
-      })
+      debug.__faces = () => {
+        const watch = watchGeometry()
+        return {
+          scrollOffset,
+          dragOffset,
+          current,
+          target: target(),
+          loopWidth,
+          planeHeight: scene.planeHeight,
+          gap: scene.gap,
+          widths: scene.widths,
+          centers: scene.centers,
+          aspects: scene.aspects,
+          magnification: magnification(current, watch),
+          display: watch ? { w: watch.display.hx * 2, h: watch.display.hy * 2 } : null,
+          playing: scene.videos.map((v) => !v.paused),
+          pinStart: trigger?.start ?? 0,
+          pinEnd: trigger?.end ?? 0,
+          progress: trigger?.progress ?? 0,
+          active,
+        }
+      }
     }
 
     return () => {
@@ -331,6 +414,8 @@ export default function useFacesInteraction({
       stage.removeEventListener('dragstart', onDragStart)
       stage.classList.remove('is-dragging')
       ctx.revert()
+      frontWheel?.style.removeProperty('rotate')
+      if (canWatchFrames) scene.videos.forEach((video, i) => video.cancelVideoFrameCallback(frameHandles[i]))
       scene.dispose()
     }
   }, [enabled, sectionRef, stageRef, canvasRef, onActiveChange])

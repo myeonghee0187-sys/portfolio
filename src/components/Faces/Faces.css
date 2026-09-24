@@ -14,7 +14,7 @@
 /* ---------------- Stage (pin 되는 단위) ---------------- */
 
 .faces__stage {
-  /* metadata가 cqw·cqh로 slide 크기(JS와 같은 식)를 다시 계산한다. */
+  /* metadata가 cqh로 Watch 크기(JS와 같은 식)를 다시 계산한다. */
   container-type: size;
   position: relative;
   width: 100%;
@@ -25,10 +25,6 @@
   /* 세로 scroll은 브라우저가 그대로 처리하고, 가로 drag만 가져온다. */
   touch-action: pan-y;
   user-select: none;
-
-  /* useFacesInteraction의 slide 폭과 같은 식: stage 폭의 55%, 620 ~ 1060px, 비율 1.6. */
-  --slide-width: clamp(620px, 55cqw, 1060px);
-  --slide-height: calc(var(--slide-width) / 1.6);
 }
 
 .faces__stage.is-dragging {
@@ -36,8 +32,8 @@
 }
 
 /*
- * WebGL slider. 오른쪽 끝은 Crown controller 자리(약 100px)라 project가 Carbon Black으로 녹아든다.
- * 검은 패널이 아니라 가장자리가 어두워지는 정도로만 둔다.
+ * WebGL slider. 오른쪽 끝은 Crown controller 자리라 project가 폭의 약 7% 동안 Carbon Black 쪽으로 옅어진다.
+ * 끝까지 완전히 지우지 않아서 검은 패널처럼 끊겨 보이지 않는다.
  */
 .faces__canvas {
   position: absolute;
@@ -48,17 +44,11 @@
   -webkit-mask-image: linear-gradient(
     90deg,
     #000 0,
-    #000 calc(100% - 200px),
-    rgb(0 0 0 / 0.55) calc(100% - 110px),
-    transparent calc(100% - 36px)
+    #000 93%,
+    rgb(0 0 0 / 0.5) 97.5%,
+    rgb(0 0 0 / 0.22) 100%
   );
-  mask-image: linear-gradient(
-    90deg,
-    #000 0,
-    #000 calc(100% - 200px),
-    rgb(0 0 0 / 0.55) calc(100% - 110px),
-    transparent calc(100% - 36px)
-  );
+  mask-image: linear-gradient(90deg, #000 0, #000 93%, rgb(0 0 0 / 0.5) 97.5%, rgb(0 0 0 / 0.22) 100%);
 }
 
 /* 스크린리더용 프로젝트 목록. 화면에는 plane과 아래 metadata로만 보인다. */
@@ -75,10 +65,13 @@
 
 /* ---------------- Active project info (임시 위치) ---------------- */
 
-/* 가운데 plane 바로 아래 한 곳. text block도 하나뿐이다(Faces.tsx의 FacesMeta). */
+/*
+ * Watch 바로 아래 한 곳. text block도 하나뿐이다(Faces.tsx의 FacesMeta).
+ * Watch는 stage 가운데에 높이 70%(useScrollScene의 FACES_WATCH_HEIGHT)라 아래 끝이 85cqh이고, 그 28px 아래다.
+ */
 .faces__meta {
   position: absolute;
-  top: calc(50cqh + var(--slide-height) / 2 + clamp(20px, 3.2vh, 40px));
+  top: calc(85cqh + 28px);
   left: 50%;
   z-index: 1;
   transform: translateX(-50%);
@@ -128,8 +121,8 @@
 }
 
 .faces--static .faces__stage {
-  /* stage에 걸린 slider용 slide 크기를 fallback 크기로 덮는다. */
-  --slide-width: min(84vw, 560px);
+  /* 영상 공통 높이. 폭은 영상마다 원본 비율로 정해진다. */
+  --slide-height: min(56vh, 440px);
   container-type: normal;
   height: auto;
   overflow: visible;
@@ -140,10 +133,10 @@
 
 .faces__rail {
   display: flex;
-  gap: calc(var(--slide-width) * 0.08);
+  gap: 8vw;
   width: 100%;
   margin: 0;
-  padding: 0 calc(50% - var(--slide-width) / 2) 16px;
+  padding: 0 8vw 16px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   list-style: none;
@@ -154,14 +147,18 @@
 
 .faces__slide {
   flex: none;
-  width: var(--slide-width);
+  /* 좁은 화면에서 가로 영상이 화면보다 넓어지지 않게 한다. 그때는 높이가 대신 줄어든다. */
+  width: min(calc(var(--slide-height) * var(--aspect)), 84vw);
   scroll-snap-align: center;
 }
 
 .faces__visual {
   display: block;
   width: 100%;
-  aspect-ratio: 1.6;
+  height: auto;
+  aspect-ratio: var(--aspect);
+  object-fit: cover;
+  background: #111315;
 }
 
 .faces__slide-meta {

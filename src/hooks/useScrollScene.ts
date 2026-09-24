@@ -21,13 +21,20 @@ const NAME_MORPH = { y: -175.5, scale: 0.5208333 }
 const PIN_VIEWPORTS = 3
 
 /**
- * FACES에서 떨어져 나온 Crown의 중심이 화면 오른쪽 끝에서 들어와 있는 거리(px).
- * Crown 폭의 절반보다 작아서 오른쪽 일부가 화면 밖으로 살짝 걸친다 — 화면 옆면에 달린 hardware controller.
+ * FACES에서 Watch의 높이(뷰포트 높이 비율). About보다 커져서 project 영상과 비슷하거나 조금 큰 크기가 된다.
+ * project 영상의 높이는 62vh다(useFacesInteraction).
  */
-const CROWN_EDGE_CENTER = 14
+const FACES_WATCH_HEIGHT = 0.7
 
-/** FACES에서 Watch가 About 크기에서 줄어드는 비율. project visual이 Watch보다 먼저 보이게 한다. */
-const FACES_WATCH_SCALE = 0.88
+/**
+ * FACES Crown(정면)의 자리. 화면 오른쪽 끝, 가운데보다 조금 아래.
+ *   top 64%, right -10px, translateY(-50%)  — 오른쪽이 화면 밖으로 10px 걸친다(화면 옆면에 달린 controller).
+ */
+const CROWN_FRONT_TOP = 0.64
+const CROWN_FRONT_RIGHT = -10
+
+/** 정면 Crown의 지름(Watch 좌표계). DigitalCrown.css의 --crown-d와 같다. */
+const CROWN_FRONT_D = 90
 
 /** 카드가 화면 밖에서 출발/퇴장할 때 확보하는 여유 px. */
 const OFFSCREEN_GAP = 40
@@ -107,7 +114,8 @@ const easeInSine = (t: number) => 1 - Math.cos((t * Math.PI) / 2)
  *                        Watch는 A가 끝낸 자리에 그대로 있고 아무도 건드리지 않는다.
  *   C. FACES mode        pin이 끝나도 Watch는 그 자리에 남는다. FACES가 올라오는 한 화면 동안
  *                        watch face와 display 덮개가 빠지고(= FACES slider가 display로 보인다),
- *                        Watch가 조금 작아지고, Crown이 화면 오른쪽 끝 controller 자리로 옮겨가고,
+ *                        Watch가 FACES 크기로 커지고, Crown이 화면 오른쪽 끝 controller 자리로 옮겨가며
+ *                        정면으로 돌아서고,
  *                        마지막에 steel case가 같은 실루엣의 WebGL glass Watch로 이어진다.
  *
  * Digital Crown의 wheel은 여기서 다루지 않는다. DigitalCrown이 page scroll을 직접 따라간다.
@@ -427,8 +435,8 @@ export default function useScrollScene(enabled: boolean) {
        * FACES가 화면 아래에서 올라오는 한 화면 동안(About pin 끝 -> FACES pin 시작)
        *   - watch face(시계·이름·THE ONE BEHIND THE FACES)가 빠지고
        *   - display를 덮던 검은 화면이 빠져, Watch case의 구멍으로 FACES slider(WebGL)가 보이기 시작하고
-       *   - Watch가 아주 조금 작아져(FACES_WATCH_SCALE) project가 먼저 보이고
-       *   - Crown이 Watch에서 떨어져 화면 오른쪽 끝의 controller 자리로 옮겨간다.
+       *   - 같은 Watch가 FACES 크기(뷰포트 높이의 70%)까지 커지고
+       *   - Crown이 Watch에서 떨어져 화면 오른쪽 끝의 controller 자리로 옮겨가며 옆모습에서 정면으로 돌아선다.
        *   - 마지막에 steel case(PNG)가 녹아 없어지고, 같은 실루엣의 WebGL Watch(Blue / Ice glass rim +
        *     display)가 그 자리를 이어받는다. FACES canvas가 Watch 자리를 다 덮은 뒤라 빈틈이 없다.
        * Watch 위치는 그대로다. FACES pin 동안에는 크기도 위치도 고정이다.
@@ -440,26 +448,31 @@ export default function useScrollScene(enabled: boolean) {
       const crown = watch.querySelector<HTMLElement>('.watch__crown')
       const watchLayer = watch.closest<HTMLElement>('.watch-stage')
 
-      if (faces && face && screen && crown && watchLayer) {
+      const crownSide = crown?.querySelector<HTMLElement>('.watch__crown-side')
+      const crownFront = crown?.querySelector<HTMLElement>('.watch__crown-front')
+
+      if (faces && face && screen && crown && crownSide && crownFront && watchLayer) {
+        /** About 크기의 Watch를 FACES 크기(뷰포트 높이의 70%)로 키우는 레이어 배율. */
+        const facesScale = () => (window.innerHeight * FACES_WATCH_HEIGHT) / aboutAnchor.offsetHeight
+
         /*
          * Crown이 옮겨갈 거리. Watch 안의 좌표(scale 전)로 돌려준다.
          * FACES에서 Watch는 화면 정중앙에 About 크기(sA)로 있고, 그 레이어 전체가 화면 중심 기준으로
-         * FACES_WATCH_SCALE만큼 줄어든다. 그 두 scale을 되돌려 Crown 중심이 화면 오른쪽 끝에 오게 한다.
-         * Crown 박스는 Watch 좌표계 (582, 200)에 54 x 80이고 Watch 중심은 (300, 380)이다.
+         * facesScale만큼 커진다. 그 두 scale을 되돌려 정면 Crown이 top 64% / right -10px에 오게 한다.
+         * Crown 박스는 Watch 좌표계 (582, 200)에 54 x 80(중심 609, 240)이고 Watch 중심은 (300, 380)이다.
          */
         const crownDetach = () => {
           const u = watchUnit()
           const sA = aboutAnchor.offsetWidth / heroAnchor.offsetWidth
+          const s = sA * facesScale()
           const viewportW = document.documentElement.clientWidth
           const viewportH = window.innerHeight
-          const w = 54 * u * sA
-          const h = 80 * u * sA
-          const attachedLeft = viewportW / 2 + (582 - 300) * u * sA
-          const attachedTop = viewportH / 2 + (200 - 380) * u * sA
-          // 화면에서 Crown 중심이 올 자리 -> 레이어 scale 전 좌표.
-          const centerX = viewportW / 2 + (viewportW - CROWN_EDGE_CENTER - viewportW / 2) / FACES_WATCH_SCALE
-          const centerY = viewportH / 2
-          return { x: (centerX - w / 2 - attachedLeft) / sA, y: (centerY - h / 2 - attachedTop) / sA }
+          // FACES 크기에서 붙어 있을 때의 Crown 중심과, 옮겨갈 정면 Crown의 중심(화면 px).
+          const attachedX = viewportW / 2 + (609 - 300) * u * s
+          const attachedY = viewportH / 2 + (240 - 380) * u * s
+          const targetX = viewportW - CROWN_FRONT_RIGHT - (CROWN_FRONT_D * u * s) / 2
+          const targetY = viewportH * CROWN_FRONT_TOP
+          return { x: (targetX - attachedX) / s, y: (targetY - attachedY) / s }
         }
 
         const facesTl = gsap.timeline({
@@ -479,13 +492,13 @@ export default function useScrollScene(enabled: boolean) {
         facesTl.to(screen, { opacity: 0, ease: 'none', duration: 0.25 }, 0.45)
 
         /*
-         * 80~96%: steel case(PNG)와 display 유리 그림자가 녹아 없어지고, 그 아래 같은 실루엣으로 그려지던
-         * WebGL Watch가 드러난다. 80% 이후에는 FACES canvas가 Watch 자리를 전부 덮고 있다.
+         * 88~98%: steel case(PNG)와 display 유리 그림자가 녹아 없어지고, 그 아래 같은 실루엣으로 그려지던
+         * WebGL Watch가 드러난다. Watch가 커진 만큼 FACES canvas가 Watch 자리를 전부 덮는 것은 약 86%부터다.
          */
-        if (hardware.length) facesTl.to(hardware, { opacity: 0, ease: 'none', duration: 0.16 }, 0.8)
+        if (hardware.length) facesTl.to(hardware, { opacity: 0, ease: 'none', duration: 0.1 }, 0.88)
 
-        // 25~80%: Watch 레이어가 화면 중심(= Watch 중심) 기준으로 조금 작아진다. 위치는 그대로다.
-        facesTl.to(watchLayer, { scale: FACES_WATCH_SCALE, ease: 'power1.inOut', duration: 0.55 }, 0.25)
+        // 20~85%: 같은 Watch 레이어가 화면 중심(= Watch 중심) 기준으로 FACES 크기까지 커진다. 위치는 그대로다.
+        facesTl.to(watchLayer, { scale: facesScale, ease: 'power1.inOut', duration: 0.65 }, 0.2)
 
         // 20~85%: Crown이 오른쪽 끝 controller 자리로 옮겨간다. 순간이동 없이 가속 -> 감속.
         facesTl.to(
@@ -497,6 +510,30 @@ export default function useScrollScene(enabled: boolean) {
             duration: 0.65,
           },
           0.2,
+        )
+
+        /*
+         * 38~76%: 옆모습 -> 정면. 가는 도중에 Crown이 화면 쪽으로 돌아서는 것처럼 보이게 한다.
+         * 옆모습은 가로로 눌리고 살짝 기울며 빠지고, 정면은 가로로 눌린 타원(3/4 각도)에서 원으로 펴지며
+         * 기울기가 풀린다. 둘 다 2D transform + opacity라 asset을 rotateY로 비틀지 않는다.
+         */
+        facesTl.to(
+          crownSide,
+          { scaleX: 0.55, rotate: -10, ease: 'power1.in', duration: 0.3 },
+          0.38,
+        )
+        facesTl.to(crownSide, { autoAlpha: 0, ease: 'none', duration: 0.22 }, 0.44)
+        facesTl.fromTo(
+          crownFront,
+          { scaleX: 0.42, scaleY: 0.9, rotate: 14 },
+          { scaleX: 1, scaleY: 1, rotate: 0, ease: 'power2.out', duration: 0.36, immediateRender: false },
+          0.4,
+        )
+        facesTl.fromTo(
+          crownFront,
+          { autoAlpha: 0 },
+          { autoAlpha: 1, ease: 'none', duration: 0.22, immediateRender: false },
+          0.46,
         )
 
         // timeline 길이를 scroll 구간 전체(1)에 맞춘다. 위 시간이 곧 구간 안의 비율이 된다.

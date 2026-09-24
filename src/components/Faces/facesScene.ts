@@ -1,35 +1,53 @@
 import * as THREE from 'three'
 import gsap from 'gsap'
 import { FACE_PROJECTS } from './facesData'
-import { createFaceVisual, paintFaceVisual } from './facePainter'
 
 /**
  * FACES의 WebGL visual field.
  *
- *   1. project pass    project plane 4장을 offscreen render target에 그린다(slider 그대로, 보정 없음).
- *   2. composite pass  그 texture 한 장을 source로, 화면 전체를 다시 그린다.
+ *   1. project pass    project 영상 plane을 원본 비율 그대로 offscreen render target에 그린다.
+ *   2. composite pass  그 texture와 같은 VideoTexture를 source로 화면 전체를 다시 그린다.
  *                      Watch 모양(rounded rect SDF 두 개: case 외곽 / display)에 따라
  *                        OUTSIDE   muted project
  *                        APPROACH  Watch에 가까워질수록 project pixel이 휘기 시작
  *                        RIM       굴절된 project + Blue / Ice / Titanium glass material
- *                        DISPLAY   같은 project를 선명하게
- *                      가 하나의 연속된 displacement field로 이어진다.
+ *                        DISPLAY   같은 영상을 display 비율에 맞춰 cover로 꽉 채워서
+ *                      가 하나의 연속된 sampling field로 이어진다.
  *
- * Watch display와 rim이 보는 것도 전부 같은 project texture라서, project 경계가 실제로 Watch를 통과한다.
- * Rim의 색은 project luminance만 받아 Portfolio material 팔레트로 칠하므로, 어떤 project가 지나가도
- * Watch의 hue는 바뀌지 않는다(바뀌는 것은 움직임에 따른 intensity뿐).
+ * DISPLAY는 가운데로 오는 project를 object-fit: cover 배율로 확대해 보여준다(가로 영상 ≈ 1배, 세로 영상 ≈ 1.6배).
+ * 배율은 slider 위치를 따라 두 project 사이에서 부드럽게 바뀌고, RIM이 그 배율에서 바깥의 원래 배율로
+ * 이어 주므로 display 가장자리에 seam이 없다. project 경계는 그대로 display를 지나간다.
+ *
+ * RIM의 색은 project luminance만 받아 Portfolio material 팔레트로 칠한다 — 어떤 영상이 지나가도
+ * Watch의 hue는 바뀌지 않고, 움직임에 따라 intensity만 바뀐다.
  */
+
+/** 영상 plane의 instance 수. project마다 두 장(wrap된 자리와 한 바퀴 옆)이라 어떤 화면 폭에서도 끝이 비지 않는다. */
+const INSTANCES = FACE_PROJECTS.length * 2
 
 /* ---------------- project pass ---------------- */
 
 const PLANE_VERTEX = /* glsl */ `
 uniform float uBend;
+uniform float uHalfView;   // stage 반폭(px)
+uniform float uTilt;       // 옆 plane의 최대 기울기(rad)
+uniform float uFocal;      // 가짜 원근의 초점 거리(px)
 varying vec2 vUv;
 
 void main() {
   vUv = uv;
   vec4 world = modelMatrix * vec4(position, 1.0);
-  // 움직이는 속도만큼 plane의 세로 가운데가 뒤로 처진다. 위·아래 끝은 제자리라 아주 약하게 휜다.
+  vec2 center = vec2(modelMatrix[3][0], modelMatrix[3][1]);
+
+  // 옆으로 비켜난 plane은 가운데를 향해 아주 조금 돌아간다(왼쪽 +, 오른쪽 -, 가운데 0).
+  float theta = -clamp(center.x / uHalfView, -1.0, 1.0) * uTilt;
+  vec2 local = world.xy - center;
+  float z = -local.x * sin(theta);
+  float k = uFocal / (uFocal - z);
+  world.x = center.x + local.x * cos(theta) * k;
+  world.y = center.y + local.y * k;
+
+  // 움직이는 속도만큼 plane의 세로 가운데가 뒤로 처진다. 위·아래 끝은 제자리다.
   world.x += sin(uv.y * 3.141592653589793) * uBend;
   gl_Position = projectionMatrix * viewMatrix * world;
 }
@@ -57,15 +75,24 @@ const COMPOSITE_FRAGMENT = /* glsl */ `
 precision highp float;
 
 uniform sampler2D uScene;     // project pass 결과
+uniform sampler2D uVideo0;    // project 영상. project pass와 같은 VideoTexture다.
+uniform sampler2D uVideo1;
+uniform sampler2D uVideo2;
+uniform sampler2D uVideo3;
+uniform vec4 uPlanes[${INSTANCES}];      // 영상 plane: 중심 xy, 반폭·반높이 zw (canvas CSS px, 위가 0)
+uniform float uPlaneVideo[${INSTANCES}]; // 그 plane의 영상 번호
+
 uniform vec2 uSize;           // canvas CSS px
 uniform float uPixelRatio;
 
 uniform float uWatch;         // 1 = Watch 있음, 0 = 없음(전부 OUTSIDE)
-uniform vec4 uOuter;          // case 외곽: 중심 xy, 반폭·반높이 zw (CSS px, 위가 0)
+uniform vec4 uOuter;          // case 외곽: 중심 xy, 반폭·반높이 zw
 uniform float uOuterR;
 uniform vec4 uDisplay;        // display
 uniform float uDisplayR;
 uniform float uUnit;          // Watch 좌표계 1단위의 px
+uniform vec2 uMagCenter;      // display cover 배율의 중심
+uniform float uMag;           // display cover 배율
 
 uniform float uVelocity;      // 부호 있는 속도(stage 폭 기준)
 uniform float uSpeed;         // 0 ~ 1, 움직임의 세기
@@ -78,6 +105,7 @@ const vec3 ELECTRIC = vec3(0.094, 0.427, 0.898);   // #186DE5
 const vec3 ICE = vec3(0.831, 0.898, 0.937);        // #D4E5EF
 const vec3 TITANIUM = vec3(0.467, 0.490, 0.510);   // #777D82
 const vec3 FROST = vec3(0.953, 0.957, 0.957);      // #F3F4F4
+const float PI = 3.141592653589793;
 
 float sdRoundedBox(vec2 p, vec2 b, float r) {
   vec2 q = abs(p) - b + r;
@@ -107,31 +135,54 @@ vec3 outsideTreat(vec3 c) {
   return mix(CARBON, m, uOuterTreat.x);
 }
 
-const float PI = 3.141592653589793;
+/* display 안의 한 점이 보여줄 scene 좌표. cover 배율로 확대한다. */
+vec2 displayMap(vec2 p) {
+  return uMagCenter + (p - uMagCenter) / uMag;
+}
 
-/* ---------- D. DISPLAY : 같은 project를 선명하게 ---------- */
+vec3 sampleVideo(float index, vec2 uv) {
+  if (index < 0.5) return texture2D(uVideo0, uv).rgb;
+  if (index < 1.5) return texture2D(uVideo1, uv).rgb;
+  if (index < 2.5) return texture2D(uVideo2, uv).rgb;
+  return texture2D(uVideo3, uv).rgb;
+}
+
+/* scene 좌표 q에 있는 영상 pixel. render target이 아니라 원본 VideoTexture에서 바로 읽어 display가 선명하다. */
+vec3 videoAt(vec2 q) {
+  for (int i = 0; i < ${INSTANCES}; i++) {
+    vec4 r = uPlanes[i];
+    vec2 d = q - r.xy;
+    if (abs(d.x) <= r.z && abs(d.y) <= r.w) {
+      return sampleVideo(uPlaneVideo[i], vec2(0.5 + d.x / (2.0 * r.z), 0.5 - d.y / (2.0 * r.w)));
+    }
+  }
+  return CARBON;
+}
+
+/* ---------- D. DISPLAY : 같은 영상을 cover로 꽉 채워 선명하게 ---------- */
 vec3 displayColor(vec2 p, float dDisp) {
-  vec3 c = sceneAt(p);
-  // project 색은 그대로, 대비·밝기만 조금 올린다.
+  vec3 c = videoAt(displayMap(p));
+  // 영상 색은 그대로, 대비·밝기만 조금 올린다.
   c = clamp((c - 0.5) * 1.07 + 0.5, 0.0, 1.0) * 1.06;
-  // 화면 가장자리는 유리 아래로 살짝 가라앉는다(검은 선은 없다).
-  float edge = smoothstep(0.0, 22.0 * uUnit, -dDisp);
-  c *= mix(0.78, 1.0, edge);
-  // 위쪽 왼쪽에서 오는 아주 얇은 유리 sheen.
+  // 화면 가장자리는 유리 아래로 아주 조금 가라앉는다(검은 여백은 없다).
+  float edge = smoothstep(0.0, 18.0 * uUnit, -dDisp);
+  c *= mix(0.86, 1.0, edge);
+  // 위쪽 왼쪽에서 비스듬히 비치는 아주 얇은 유리 반사.
   vec2 local = (p - uDisplay.xy) / uDisplay.zw;
-  c += FROST * 0.035 * smoothstep(0.2, -1.0, local.x + local.y);
+  float band = smoothstep(0.35, 0.0, abs(local.x + local.y + 1.05));
+  c += mix(ICE, FROST, 0.5) * 0.045 * band;
   return c;
 }
 
 /* ---------- A / B. OUTSIDE + APPROACH ---------- */
 vec3 outsideColor(vec2 p, float dOut, float reach) {
   // Watch에 가까울수록 Watch 쪽 pixel을 끌어와 보여준다 -> 선이 Watch를 감싸듯 휘어 들어간다.
-  // case 외곽(dOut = 0)에서 rim과 같은 reach로 이어지고, 120단위 밖에서 0이 된다.
-  float f = 1.0 - smoothstep(0.0, 120.0 * uUnit, max(dOut, 0.0));
+  // case 외곽(dOut = 0)에서 rim과 같은 reach로 이어지고, 160단위 밖에서 0이 된다.
+  float f = 1.0 - smoothstep(0.0, 160.0 * uUnit, max(dOut, 0.0));
   vec2 q = p - normalOuter(p) * reach * pow(f, 1.5);
   vec3 c = outsideTreat(sceneAt(q));
   // case 바로 바깥의 아주 얕은 접촉 그림자.
-  return c * (1.0 - 0.32 * exp(-max(dOut, 0.0) / (5.0 * uUnit)));
+  return c * (1.0 - 0.34 * exp(-max(dOut, 0.0) / (6.0 * uUnit)));
 }
 
 /* ---------- C. GLASS / TITANIUM RIM ---------- */
@@ -141,11 +192,11 @@ vec3 rimColor(vec2 p, float dOut, float dDisp, float reach) {
   vec2 n = normalDisplay(p);
   vec2 t = vec2(-n.y, n.x);
 
-  // 굴절: display 가장자리(0)에서 외곽(reach)까지 이어지는 displacement + 가운데가 부푼 lens.
-  // display 쪽 내용이 유리를 따라 바깥으로 늘어나 보이고, 외곽에서는 APPROACH와 그대로 이어진다.
+  // 굴절: 안쪽은 display의 cover 배율, 바깥쪽은 원래 배율에서 시작해 이어지고,
+  // 그 위에 display 가장자리(0) -> 외곽(reach)의 displacement와 가운데가 부푼 lens가 얹힌다.
   float bulge = 0.08 * rimW * (1.0 + 0.5 * uSpeed);
   float delta = reach * s + bulge * sin(PI * s);
-  vec2 base = p - n * delta;
+  vec2 base = mix(displayMap(p), p, smoothstep(0.0, 1.0, s)) - n * delta;
   // 움직이는 방향으로 둘레를 따라 흐르는 stretch.
   base.x -= uVelocity * 40.0 * uUnit * sin(PI * s);
 
@@ -172,17 +223,22 @@ vec3 rimColor(vec2 p, float dOut, float dDisp, float reach) {
   vec3 L2 = normalize(vec3(0.6, 0.65, 0.45));
   float spec1 = pow(max(dot(N, normalize(L1 + V)), 0.0), 38.0);
   float spec2 = pow(max(dot(N, normalize(L2 + V)), 0.0), 26.0);
+  // 넓고 부드러운 highlight: rim의 위쪽 왼쪽 면 전체가 빛을 받는다.
+  float broad = pow(max(dot(n, normalize(vec2(-0.7, -0.75))), 0.0), 1.6) * sin(PI * s);
+  // titanium depth: 빛의 반대편(오른쪽 아래)으로 갈수록 깊게 어두워진다.
+  float away = max(dot(n, normalize(vec2(0.6, 0.8))), 0.0);
 
   // 몸체: 어두운 titanium glass. project는 luminance로만 비치고, hue는 항상 material 팔레트다.
-  // 밝은 project(TCHAIKIM 같은)가 지나가도 rim이 우윳빛으로 뜨지 않도록 luminance를 눌러 받는다.
+  // 밝은 영상이 지나가도 rim이 우윳빛으로 뜨지 않도록 luminance를 눌러 받는다.
   float Lc = L / (L + 0.55);
-  vec3 body = mix(CARBON, TITANIUM, 0.1 + 0.14 * (1.0 - abs(tilt)));
+  vec3 body = mix(CARBON, TITANIUM, 0.1 + 0.14 * (1.0 - abs(tilt))) * (1.0 - 0.3 * away);
   vec3 glass = body + ICE * Lc * (0.26 + 0.1 * uSpeed);
   glass += mix(ICE, FROST, 0.5) * fresnel * (0.34 + 0.22 * uSpeed);
+  glass += mix(ICE, FROST, 0.4) * broad * 0.16;
 
   // 바깥쪽 1/3은 어두운 titanium 금속 띠. 위쪽 왼쪽 빛을 받는 곳에만 가는 광택이 선다.
   float metal = smoothstep(0.6, 0.92, s);
-  vec3 titanium = mix(CARBON, TITANIUM, 0.3) + FROST * spec1 * 0.9;
+  vec3 titanium = mix(CARBON, TITANIUM, 0.3) * (1.0 - 0.35 * away) + FROST * spec1 * 0.9;
   glass = mix(glass, titanium, metal * 0.6);
 
   glass += FROST * spec1 * (0.7 + 0.35 * uSpeed);
@@ -209,7 +265,7 @@ void main() {
 
   float dOut = sdOuter(p);       // > 0 : Watch 밖
   float dDisp = sdDisplay(p);    // < 0 : display 안
-  // 굴절 거리(Watch 좌표계 18 = 1920에서 약 13px). 움직일수록 조금 강해진다 — 색이 아니라 intensity만.
+  // 굴절 거리(Watch 좌표계 18). 움직일수록 조금 강해진다 — 색이 아니라 intensity만.
   float reach = 18.0 * uUnit * (1.0 + 0.6 * uSpeed);
 
   // 세 영역을 경계 ±0.75px에서 섞는다(모서리 계단 없음).
@@ -227,13 +283,14 @@ void main() {
 `
 
 /** display 밖 project의 treatment: opacity, brightness, saturate. blur는 쓰지 않는다. */
-const OUTER_TREATMENT = new THREE.Vector3(0.66, 0.74, 0.74)
+const OUTER_TREATMENT = new THREE.Vector3(0.7, 0.76, 0.8)
 
 /** Carbon Black (#08090a). canvas 배경이자 project pass의 바탕. */
 const CARBON = new THREE.Color(0x08090a)
 
-/** texture 해상도(가로 px). placeholder라 이 정도면 충분하다. */
-const TEXTURE_WIDTH = 1600
+/** 옆 plane의 최대 기울기(rotateY, 5°)와 가짜 원근 거리. 3D carousel처럼 보이지 않을 만큼만. */
+const SIDE_TILT = (5 * Math.PI) / 180
+const FOCAL = 1600
 
 /** Watch 모양 하나(rounded rect). canvas CSS px, 위가 0. */
 export type FacesBox = { cx: number; cy: number; hx: number; hy: number; r: number }
@@ -243,7 +300,7 @@ export type FacesWatchGeometry = {
   outer: FacesBox
   /** display(화면). */
   display: FacesBox
-  /** Watch 좌표계 1단위의 px. rim 두께·굴절 거리가 Watch 크기에 맞춰 줄어든다. */
+  /** Watch 좌표계 1단위의 px. rim 두께·굴절 거리가 Watch 크기에 맞춰 바뀐다. */
   unit: number
 }
 
@@ -256,6 +313,8 @@ export type FacesRenderState = {
   velocity: number
   speed: number
   watch: FacesWatchGeometry | null
+  /** display cover 배율. */
+  magnification: number
 }
 
 export default class FacesScene {
@@ -263,29 +322,38 @@ export default class FacesScene {
   private target: THREE.WebGLRenderTarget
   private planesScene = new THREE.Scene()
   private camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -10, 10)
-  private geometry = new THREE.PlaneGeometry(1, 1, 1, 24)
-  private visuals: HTMLCanvasElement[] = []
-  private textures: THREE.CanvasTexture[] = []
+  private geometry = new THREE.PlaneGeometry(1, 1, 16, 24)
   private planeMaterials: THREE.ShaderMaterial[] = []
   private meshes: THREE.Mesh[] = []
+  private textures: THREE.VideoTexture[] = []
 
   private compositeScene = new THREE.Scene()
   private compositeGeometry = new THREE.PlaneGeometry(2, 2)
   private composite: THREE.ShaderMaterial
 
-  private bend = { value: 0 }
-
-  /** plane 한 장의 폭 / 높이와 plane 중심 간격(px). */
-  slideWidth = 1
-  slideHeight = 1
-  step = 1
-
-  /** 한 바퀴(project 4개)의 논리 거리. */
-  get loopWidth() {
-    return this.step * FACE_PROJECTS.length
+  private shared = {
+    uBend: { value: 0 },
+    uHalfView: { value: 1 },
+    uTilt: { value: SIDE_TILT },
+    uFocal: { value: FOCAL },
   }
 
-  constructor(canvas: HTMLCanvasElement) {
+  private width = 1
+  private height = 1
+
+  /** project마다 하나씩. 같은 영상이 바깥 plane / 굴절 / display 전부에 쓰인다. */
+  readonly videos: HTMLVideoElement[] = []
+  /** 원본 비율(가로 / 세로). loadedmetadata에서 실제 값으로 바뀐다. */
+  readonly aspects = FACE_PROJECTS.map((p) => p.aspect)
+
+  /** plane 공통 높이, 사이 간격, project별 폭과 중심(F45 중심 = 0), 한 바퀴 거리. */
+  planeHeight = 1
+  gap = 0
+  widths: number[] = []
+  centers: number[] = []
+  loopWidth = 1
+
+  constructor(canvas: HTMLCanvasElement, onMetadata: () => void) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' })
     this.renderer.setClearColor(CARBON, 1)
     this.camera.position.z = 5
@@ -295,26 +363,46 @@ export default class FacesScene {
     this.target.texture.magFilter = THREE.LinearFilter
     this.target.texture.generateMipmaps = false
 
-    for (const project of FACE_PROJECTS) {
-      const visual = createFaceVisual(project, TEXTURE_WIDTH)
-      const texture = new THREE.CanvasTexture(visual)
-      texture.generateMipmaps = true
-      texture.minFilter = THREE.LinearMipmapLinearFilter
-      texture.magFilter = THREE.LinearFilter
+    FACE_PROJECTS.forEach((project, i) => {
+      const video = document.createElement('video')
+      video.src = project.video
+      video.muted = true
+      video.defaultMuted = true
+      video.loop = true
+      video.playsInline = true
+      video.preload = 'metadata'
+      video.setAttribute('muted', '')
+      video.setAttribute('playsinline', '')
+      video.addEventListener('loadedmetadata', () => {
+        if (!video.videoWidth || !video.videoHeight) return
+        const aspect = video.videoWidth / video.videoHeight
+        if (Math.abs(aspect - this.aspects[i]) > 1e-3) {
+          this.aspects[i] = aspect
+          onMetadata()
+        }
+      })
 
+      const texture = new THREE.VideoTexture(video)
+      texture.minFilter = THREE.LinearFilter
+      texture.magFilter = THREE.LinearFilter
+      texture.generateMipmaps = false
+
+      // 같은 영상의 plane 두 장이 material 하나를 같이 쓴다.
       const material = new THREE.ShaderMaterial({
         vertexShader: PLANE_VERTEX,
         fragmentShader: PLANE_FRAGMENT,
-        uniforms: { uBend: this.bend, uMap: { value: texture } },
+        uniforms: { ...this.shared, uMap: { value: texture } },
       })
-      const mesh = new THREE.Mesh(this.geometry, material)
-      this.planesScene.add(mesh)
+      for (let copy = 0; copy < 2; copy++) {
+        const mesh = new THREE.Mesh(this.geometry, material)
+        this.planesScene.add(mesh)
+        this.meshes.push(mesh)
+      }
 
-      this.visuals.push(visual)
+      this.videos.push(video)
       this.textures.push(texture)
       this.planeMaterials.push(material)
-      this.meshes.push(mesh)
-    }
+    })
 
     this.composite = new THREE.ShaderMaterial({
       vertexShader: COMPOSITE_VERTEX,
@@ -323,6 +411,12 @@ export default class FacesScene {
       depthWrite: false,
       uniforms: {
         uScene: { value: this.target.texture },
+        uVideo0: { value: this.textures[0] },
+        uVideo1: { value: this.textures[1] },
+        uVideo2: { value: this.textures[2] },
+        uVideo3: { value: this.textures[3] },
+        uPlanes: { value: Array.from({ length: INSTANCES }, () => new THREE.Vector4()) },
+        uPlaneVideo: { value: Array.from({ length: INSTANCES }, (_, k) => Math.floor(k / 2)) },
         uSize: { value: new THREE.Vector2(1, 1) },
         uPixelRatio: { value: 1 },
         uWatch: { value: 0 },
@@ -331,6 +425,8 @@ export default class FacesScene {
         uDisplay: { value: new THREE.Vector4() },
         uDisplayR: { value: 0 },
         uUnit: { value: 1 },
+        uMagCenter: { value: new THREE.Vector2() },
+        uMag: { value: 1 },
         uVelocity: { value: 0 },
         uSpeed: { value: 0 },
         uOuterTreat: { value: OUTER_TREATMENT },
@@ -341,11 +437,10 @@ export default class FacesScene {
     this.compositeScene.add(quad)
   }
 
-  /** stage 크기와 slide 크기가 바뀔 때(refresh). */
-  resize(width: number, height: number, pixelRatio: number, slideWidth: number, slideHeight: number, step: number) {
-    this.slideWidth = slideWidth
-    this.slideHeight = slideHeight
-    this.step = step
+  /** canvas 크기가 바뀔 때(refresh). */
+  resize(width: number, height: number, pixelRatio: number) {
+    this.width = width
+    this.height = height
     this.renderer.setPixelRatio(pixelRatio)
     this.renderer.setSize(width, height, false)
     this.target.setSize(Math.round(width * pixelRatio), Math.round(height * pixelRatio))
@@ -354,9 +449,27 @@ export default class FacesScene {
     this.camera.top = height / 2
     this.camera.bottom = -height / 2
     this.camera.updateProjectionMatrix()
-    for (const mesh of this.meshes) mesh.scale.set(slideWidth, slideHeight, 1)
+    this.shared.uHalfView.value = width / 2
     this.composite.uniforms.uSize.value.set(width, height)
     this.composite.uniforms.uPixelRatio.value = pixelRatio
+  }
+
+  /**
+   * project를 원본 비율로 놓는다. 높이는 모두 같고 폭은 영상마다 다르다.
+   * 다음 중심 = 지금 중심 + 지금 폭 / 2 + 간격 + 다음 폭 / 2. 한 바퀴 = 모든 폭 + 모든 간격.
+   */
+  layout(planeHeight: number, gap: number) {
+    this.planeHeight = planeHeight
+    this.gap = gap
+    this.widths = this.aspects.map((a) => planeHeight * a)
+    this.centers = []
+    let center = 0
+    this.widths.forEach((w, i) => {
+      if (i > 0) center += this.widths[i - 1] / 2 + gap + w / 2
+      this.centers.push(center)
+    })
+    this.loopWidth = this.widths.reduce((sum, w) => sum + w + gap, 0)
+    this.meshes.forEach((mesh, k) => mesh.scale.set(this.widths[Math.floor(k / 2)], planeHeight, 1))
   }
 
   /**
@@ -365,15 +478,30 @@ export default class FacesScene {
    */
   planeX(index: number, position: number) {
     const half = this.loopWidth / 2
-    return gsap.utils.wrap(-half, half, index * this.step - position)
+    return gsap.utils.wrap(-half, half, this.centers[index] - position)
+  }
+
+  /** project i의 두 instance 중 하나라도 화면(또는 그 근처)에 걸리는지. 안 보이는 영상은 재생을 멈춘다. */
+  isNearView(index: number, position: number, margin: number) {
+    const x = this.planeX(index, position)
+    const reach = this.width / 2 + this.widths[index] / 2 + margin
+    return Math.abs(x) < reach || Math.abs(x + (x < 0 ? this.loopWidth : -this.loopWidth)) < reach
   }
 
   render(state: FacesRenderState) {
-    // 1. project pass -> offscreen
-    this.meshes.forEach((mesh, i) => {
-      mesh.position.x = this.planeX(i, state.position)
+    // 1. project pass -> offscreen. project마다 wrap된 자리와 한 바퀴 옆자리에 한 장씩.
+    const planes = this.composite.uniforms.uPlanes.value as THREE.Vector4[]
+    FACE_PROJECTS.forEach((_, i) => {
+      const x = this.planeX(i, state.position)
+      const twin = x + (x < 0 ? this.loopWidth : -this.loopWidth)
+      this.meshes[i * 2].position.x = x
+      this.meshes[i * 2 + 1].position.x = twin
+      const hw = this.widths[i] / 2
+      const hh = this.planeHeight / 2
+      planes[i * 2].set(this.width / 2 + x, this.height / 2, hw, hh)
+      planes[i * 2 + 1].set(this.width / 2 + twin, this.height / 2, hw, hh)
     })
-    this.bend.value = state.bend
+    this.shared.uBend.value = state.bend
     this.renderer.setRenderTarget(this.target)
     this.renderer.render(this.planesScene, this.camera)
     this.renderer.setRenderTarget(null)
@@ -388,21 +516,21 @@ export default class FacesScene {
       u.uDisplay.value.set(w.display.cx, w.display.cy, w.display.hx, w.display.hy)
       u.uDisplayR.value = w.display.r
       u.uUnit.value = w.unit
+      // cover 배율의 중심: display의 가로 중심, plane 줄의 세로 중심.
+      u.uMagCenter.value.set(w.display.cx, this.height / 2)
     }
+    u.uMag.value = state.magnification
     u.uVelocity.value = state.velocity
     u.uSpeed.value = state.speed
     this.renderer.render(this.compositeScene, this.camera)
   }
 
-  /** 웹폰트가 늦게 뜨면 placeholder의 글자를 다시 그린다. */
-  repaint() {
-    FACE_PROJECTS.forEach((project, i) => {
-      paintFaceVisual(this.visuals[i], project)
-      this.textures[i].needsUpdate = true
-    })
-  }
-
   dispose() {
+    for (const video of this.videos) {
+      video.pause()
+      video.removeAttribute('src')
+      video.load()
+    }
     this.geometry.dispose()
     this.compositeGeometry.dispose()
     for (const m of this.planeMaterials) m.dispose()

@@ -1,39 +1,53 @@
-import { useEffect, useRef } from 'react'
-import { FACE_ASPECT, paintFaceVisual } from './facePainter'
-import { FACE_PROJECTS, type FaceProject } from './facesData'
-
-/** WebGL slider와 같은 painter로 그린 프로젝트 화면. 실제 이미지가 오면 <img>로 바뀐다. */
-function FaceVisual({ project }: { project: FaceProject }) {
-  const ref = useRef<HTMLCanvasElement>(null)
-
-  useEffect(() => {
-    const canvas = ref.current
-    if (!canvas) return
-    const draw = () => {
-      const width = Math.round(canvas.clientWidth * Math.min(window.devicePixelRatio || 1, 2))
-      if (width === 0) return
-      canvas.width = width
-      canvas.height = Math.round(width / FACE_ASPECT)
-      paintFaceVisual(canvas, project)
-    }
-    draw()
-    // 웹폰트가 뜬 뒤 placeholder 글자를 다시 그린다.
-    document.fonts?.load('40px Anton').then(draw)
-  }, [project])
-
-  return <canvas ref={ref} className="faces__visual" aria-hidden="true" />
-}
+import { useEffect, useRef, type CSSProperties } from 'react'
+import useMediaQuery from '../../hooks/useMediaQuery'
+import { FACE_PROJECTS } from './facesData'
 
 /**
- * 모바일 / 터치 / reduced motion용 FACES. pin·WebGL 없이 같은 프로젝트 화면을
+ * 모바일 / 터치 / reduced motion용 FACES. pin·WebGL 없이 같은 프로젝트 영상을
  * 손가락으로 넘겨 보는 native 가로 strip이다(최종 모바일 디자인은 추후).
+ *
+ * 영상은 원본 비율 그대로, 화면에 걸린 것만 재생한다. reduced motion에서는 자동 재생하지 않고 첫 화면만 둔다.
  */
 export default function FacesRail() {
+  const listRef = useRef<HTMLOListElement>(null)
+  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+
+  useEffect(() => {
+    const list = listRef.current
+    if (!list || prefersReducedMotion) return
+    const videos = Array.from(list.querySelectorAll('video'))
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const video = entry.target as HTMLVideoElement
+          if (entry.isIntersecting) video.play().catch(() => {})
+          else video.pause()
+        }
+      },
+      { threshold: 0.25 },
+    )
+    videos.forEach((video) => observer.observe(video))
+    return () => {
+      observer.disconnect()
+      videos.forEach((video) => video.pause())
+    }
+  }, [prefersReducedMotion])
+
   return (
-    <ol className="faces__rail">
+    <ol ref={listRef} className="faces__rail">
       {FACE_PROJECTS.map((project) => (
-        <li key={project.id} className="faces__slide">
-          <FaceVisual project={project} />
+        <li key={project.id} className="faces__slide" style={{ '--aspect': project.aspect } as CSSProperties}>
+          <video
+            className="faces__visual"
+            // #t: 재생 전에도 첫 화면이 보이게 한다(Safari는 preload만으로는 첫 프레임을 그리지 않는다).
+            src={`${project.video}#t=0.001`}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-hidden="true"
+            draggable={false}
+          />
           <div className="faces__slide-meta">
             <p className="faces__meta-index">{project.index}</p>
             <h3 className="faces__meta-title">{project.title}</h3>
