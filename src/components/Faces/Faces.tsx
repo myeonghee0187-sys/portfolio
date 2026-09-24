@@ -124,8 +124,15 @@ export default function Faces({ interactive, ready }: FacesProps) {
               ))}
             </ol>
 
-            {/* 위치·모양은 임시다(Figma 전). 화면 한 곳에만 있다. */}
-            <FacesMeta active={active} />
+            {/*
+              Watch 아래의 한 줄(footer band). 가운데는 active project 정보, 오른쪽 끝은 Crown 자리다.
+              Crown 자체는 About에서 오던 Watch의 Crown이 그대로 이 자리로 옮겨 온다(useScrollScene).
+              여기에는 그 크기만큼의 빈 자리만 있다.
+            */}
+            <div className="faces__footer">
+              <FacesMeta active={active} />
+              <div className="faces__crown-slot" aria-hidden="true" />
+            </div>
           </>
         ) : (
           <FacesRail />

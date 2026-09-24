@@ -108,13 +108,13 @@
 }
 
 /*
- * 정면 Crown. FACES의 controller. 옆모습 원통(지름 약 77)보다 17% 크다(90).
+ * 정면 Crown. FACES의 controller. 옆모습 원통(지름 약 77)보다 30% 크다(100).
  * 옆모습과 같은 중심에 있고, 전환 중에 3/4 각도(가로로 눌린 타원)에서 펴지며 들어온다.
  * 재질: dark titanium 받침, 동심원 brushed cap, ice 반사, frost specular, 아주 얇은 electric ice edge.
  * 배경 버튼 / neon glow는 없다.
  */
 .watch__crown-front {
-  --crown-d: calc(90 * var(--wu));
+  --crown-d: calc(100 * var(--wu));
   position: absolute;
   top: 50%;
   left: 50%;

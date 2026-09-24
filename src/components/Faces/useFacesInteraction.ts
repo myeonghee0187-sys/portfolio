@@ -18,9 +18,9 @@ const LOOP_TO_SCROLL = 0.9
 
 /**
  * current가 target을 따라잡는 비율(60fps 한 프레임). 1:1로 붙지 않고 살짝 늦게 따라오는 물성.
- * 멈추면 약 0.5초 안에 95%가 따라붙고 그 뒤로 길게 미끄러지지 않는다.
+ * 멈추면 약 0.6초 안에 95%가 따라붙고 그 뒤로 길게 미끄러지지 않는다.
  */
-const EASE = 0.09
+const EASE = 0.075
 
 /** drag 1px당 rail 이동(px). 손보다 조금 빠르게 넘어간다. */
 const DRAG_SPEED = 1.8
@@ -42,13 +42,15 @@ const MAX_PIXEL_RATIO = 1.5
 const PLAY_MARGIN = 240
 
 /*
- * WebGL로 그리는 Watch의 모양. Watch 좌표계(600 x 760), watch_face.png에서 잰 값이다.
- *   CASE     case 외곽 실루엣(투명하지 않은 영역). 모서리는 원으로 맞춘 근사.
- *   DISPLAY  display. DOM Watch의 구멍(WatchAssembly.css)과 같은 자리·모양이라,
- *            About -> FACES에서 DOM case가 녹아 없어질 때 두 그림이 같은 자리에 겹친다.
+ * WebGL로 그리는 Watch의 모양. Watch 좌표계(600 x 760).
+ *   CASE     case 외곽 실루엣(watch_face.png의 투명하지 않은 영역). 모서리는 원으로 맞춘 근사.
+ *   DISPLAY  display. rim 두께를 PNG(좌 56 / 우 54 / 위 62 / 아래 46)보다 18% 얇게 두어
+ *            같은 Watch 크기에서 project가 보이는 면적을 넓힌다(좌 46 / 우 44.6 / 위 50.7 / 아래 38.1).
+ *            DOM case의 구멍(WatchAssembly.css)보다 조금 넓어서, About -> FACES에서 steel case가 녹는 동안
+ *            rim이 PNG 두께에서 이 두께로 얇아진다.
  */
 const CASE = { x0: 2.3, y0: 2.3, x1: 596.1, y1: 756.1, r: 152 }
-const DISPLAY = { x0: 58, y0: 64, x1: 542, y1: 710, r: 96 }
+const DISPLAY = { x0: 48.3, y0: 53, x1: 551.5, y1: 718, r: 106 }
 
 /** active가 바뀌려면 새 후보가 지금 active보다 plane 간격의 이 비율만큼 더 가까워야 한다. */
 const ACTIVE_HYSTERESIS = 0.04
@@ -57,7 +59,6 @@ const ACTIVE_HYSTERESIS = 0.04
 const DRAG_THRESHOLD = 4
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
-const smoothstep = (t: number) => t * t * (3 - 2 * t)
 
 type FacesInteractionOptions = {
   enabled: boolean
@@ -151,35 +152,6 @@ export default function useFacesInteraction({
       return { outer: box(CASE), display: box(DISPLAY), unit }
     }
 
-    /*
-     * display cover 배율. 가운데에 온 project가 display를 꽉 채우는 object-fit: cover 배율이고,
-     * 두 project 사이에서는 위치를 따라 부드럽게 이어진다.
-     *   가로 영상(F45, TCHAIKIM)  plane 높이(62vh)가 display 높이(약 59.5vh)보다 커서 1배 — 안과 밖이 같은 크기다.
-     *   세로 영상(JADUYA, T100)   폭이 display보다 좁아 약 1.58배로 채운다.
-     * 1보다 작게는 줄이지 않는다. About -> FACES 동안 Watch가 작을 때도 display 안이 밖보다 작아지지 않고,
-     * project가 display 안으로 그대로 올라온다.
-     */
-    const coverScale = (index: number, display: FacesBox) =>
-      Math.max(1, (display.hx * 2) / scene.widths[index], (display.hy * 2) / scene.planeHeight)
-
-    const magnification = (position: number, watch: FacesWatchGeometry | null) => {
-      if (!watch) return 1
-      let left = -1
-      let right = -1
-      FACE_PROJECTS.forEach((_, i) => {
-        const x = scene.planeX(i, position)
-        if (x <= 0 && (left < 0 || x > scene.planeX(left, position))) left = i
-        if (x > 0 && (right < 0 || x < scene.planeX(right, position))) right = i
-      })
-      if (left < 0 || right < 0) return coverScale(Math.max(left, right), watch.display)
-      const xl = scene.planeX(left, position)
-      const xr = scene.planeX(right, position)
-      const f = smoothstep(clamp(-xl / (xr - xl), 0, 1))
-      const sl = coverScale(left, watch.display)
-      const sr = coverScale(right, watch.display)
-      return sl + (sr - sl) * f
-    }
-
     let active = -1
     const detectActive = (position: number) => {
       const distances = FACE_PROJECTS.map((_, i) => Math.abs(scene.planeX(i, position)))
@@ -254,7 +226,7 @@ export default function useFacesInteraction({
         ? `${current.toFixed(2)} ${watch.outer.cx.toFixed(1)} ${watch.outer.cy.toFixed(1)} ${watch.unit.toFixed(4)}`
         : `${current.toFixed(2)}`
       if (key !== lastKey || videoDirty || !canWatchFrames) {
-        scene.render({ position: current, bend, velocity, speed, watch, magnification: magnification(current, watch) })
+        scene.render({ position: current, bend, velocity, speed, watch })
         lastKey = key
         videoDirty = false
       }
@@ -392,7 +364,7 @@ export default function useFacesInteraction({
           widths: scene.widths,
           centers: scene.centers,
           aspects: scene.aspects,
-          magnification: magnification(current, watch),
+          stripPosition: scene.stripPosition,
           display: watch ? { w: watch.display.hx * 2, h: watch.display.hy * 2 } : null,
           playing: scene.videos.map((v) => !v.paused),
           pinStart: trigger?.start ?? 0,

@@ -31,24 +31,13 @@
   cursor: grabbing;
 }
 
-/*
- * WebGL slider. 오른쪽 끝은 Crown controller 자리라 project가 폭의 약 7% 동안 Carbon Black 쪽으로 옅어진다.
- * 끝까지 완전히 지우지 않아서 검은 패널처럼 끊겨 보이지 않는다.
- */
+/* WebGL wave gallery + Watch. 화면 전체가 한 장의 canvas다. */
 .faces__canvas {
   position: absolute;
   inset: 0;
   display: block;
   width: 100%;
   height: 100%;
-  -webkit-mask-image: linear-gradient(
-    90deg,
-    #000 0,
-    #000 93%,
-    rgb(0 0 0 / 0.5) 97.5%,
-    rgb(0 0 0 / 0.22) 100%
-  );
-  mask-image: linear-gradient(90deg, #000 0, #000 93%, rgb(0 0 0 / 0.5) 97.5%, rgb(0 0 0 / 0.22) 100%);
 }
 
 /* 스크린리더용 프로젝트 목록. 화면에는 plane과 아래 metadata로만 보인다. */
@@ -63,20 +52,41 @@
   white-space: nowrap;
 }
 
-/* ---------------- Active project info (임시 위치) ---------------- */
+/* ---------------- Footer band: metadata + Crown ---------------- */
 
 /*
- * Watch 바로 아래 한 곳. text block도 하나뿐이다(Faces.tsx의 FacesMeta).
- * Watch는 stage 가운데에 높이 70%(useScrollScene의 FACES_WATCH_HEIGHT)라 아래 끝이 85cqh이고, 그 28px 아래다.
+ * Watch 아래의 한 줄. 가운데 column은 active project 정보(Faces.tsx의 FacesMeta, text block 하나),
+ * 오른쪽 column 끝은 FACES Crown(정면)의 자리다. 양쪽 column 폭이 같아서 metadata는 화면 가운데에 온다.
+ * Crown은 About의 Watch에서 떨어져 나와 이 자리(.faces__crown-slot)의 중심으로 옮겨 온다.
  */
-.faces__meta {
+.faces__footer {
+  /*
+   * 정면 Crown의 지름: Watch 좌표계 100(DigitalCrown.css의 --crown-d).
+   * FACES Watch는 stage 높이의 70%(760단위)라 1단위 = 70cqh / 760.
+   */
+  --faces-crown-d: calc(70cqh / 760 * 100);
   position: absolute;
-  top: calc(85cqh + 28px);
-  left: 50%;
+  right: 0;
+  bottom: clamp(20px, 4cqh, 56px);
+  left: 0;
   z-index: 1;
-  transform: translateX(-50%);
-  text-align: center;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 clamp(32px, 2.5cqw, 56px);
   pointer-events: none;
+}
+
+.faces__meta {
+  grid-column: 2;
+  text-align: center;
+}
+
+.faces__crown-slot {
+  grid-column: 3;
+  justify-self: end;
+  width: var(--faces-crown-d);
+  height: var(--faces-crown-d);
 }
 
 .faces__meta-block p,

@@ -27,14 +27,11 @@ const PIN_VIEWPORTS = 3
 const FACES_WATCH_HEIGHT = 0.7
 
 /**
- * FACES Crown(정면)의 자리. 화면 오른쪽 끝, 가운데보다 조금 아래.
- *   top 64%, right -10px, translateY(-50%)  — 오른쪽이 화면 밖으로 10px 걸친다(화면 옆면에 달린 controller).
+ * 정면 Crown의 지름(Watch 좌표계). DigitalCrown.css의 --crown-d, Faces.css의 --faces-crown-d와 같다.
+ * FACES에서 Crown은 Watch 아래 footer band의 오른쪽 끝 자리(.faces__crown-slot)로 옮겨 가고,
+ * 본체 전체가 화면 안에 보인다.
  */
-const CROWN_FRONT_TOP = 0.64
-const CROWN_FRONT_RIGHT = -10
-
-/** 정면 Crown의 지름(Watch 좌표계). DigitalCrown.css의 --crown-d와 같다. */
-const CROWN_FRONT_D = 90
+const CROWN_FRONT_D = 100
 
 /** 카드가 화면 밖에서 출발/퇴장할 때 확보하는 여유 px. */
 const OFFSCREEN_GAP = 40
@@ -114,7 +111,7 @@ const easeInSine = (t: number) => 1 - Math.cos((t * Math.PI) / 2)
  *                        Watch는 A가 끝낸 자리에 그대로 있고 아무도 건드리지 않는다.
  *   C. FACES mode        pin이 끝나도 Watch는 그 자리에 남는다. FACES가 올라오는 한 화면 동안
  *                        watch face와 display 덮개가 빠지고(= FACES slider가 display로 보인다),
- *                        Watch가 FACES 크기로 커지고, Crown이 화면 오른쪽 끝 controller 자리로 옮겨가며
+ *                        Watch가 FACES 크기로 커지고, Crown이 Watch 아래 footer band 오른쪽 끝의 controller 자리로 옮겨가며
  *                        정면으로 돌아서고,
  *                        마지막에 steel case가 같은 실루엣의 WebGL glass Watch로 이어진다.
  *
@@ -436,7 +433,7 @@ export default function useScrollScene(enabled: boolean) {
        *   - watch face(시계·이름·THE ONE BEHIND THE FACES)가 빠지고
        *   - display를 덮던 검은 화면이 빠져, Watch case의 구멍으로 FACES slider(WebGL)가 보이기 시작하고
        *   - 같은 Watch가 FACES 크기(뷰포트 높이의 70%)까지 커지고
-       *   - Crown이 Watch에서 떨어져 화면 오른쪽 끝의 controller 자리로 옮겨가며 옆모습에서 정면으로 돌아선다.
+       *   - Crown이 Watch에서 떨어져 footer band 오른쪽 끝의 controller 자리로 옮겨가며 옆모습에서 정면으로 돌아선다.
        *   - 마지막에 steel case(PNG)가 녹아 없어지고, 같은 실루엣의 WebGL Watch(Blue / Ice glass rim +
        *     display)가 그 자리를 이어받는다. FACES canvas가 Watch 자리를 다 덮은 뒤라 빈틈이 없다.
        * Watch 위치는 그대로다. FACES pin 동안에는 크기도 위치도 고정이다.
@@ -458,7 +455,8 @@ export default function useScrollScene(enabled: boolean) {
         /*
          * Crown이 옮겨갈 거리. Watch 안의 좌표(scale 전)로 돌려준다.
          * FACES에서 Watch는 화면 정중앙에 About 크기(sA)로 있고, 그 레이어 전체가 화면 중심 기준으로
-         * facesScale만큼 커진다. 그 두 scale을 되돌려 정면 Crown이 top 64% / right -10px에 오게 한다.
+         * facesScale만큼 커진다. 그 두 scale을 되돌려 정면 Crown의 중심이 footer의 Crown 자리 중심에 오게 한다.
+         * 자리는 FACES stage 안에서 잰다 — FACES pin 동안 stage는 화면 맨 위에 붙어 있다.
          * Crown 박스는 Watch 좌표계 (582, 200)에 54 x 80(중심 609, 240)이고 Watch 중심은 (300, 380)이다.
          */
         const crownDetach = () => {
@@ -470,8 +468,16 @@ export default function useScrollScene(enabled: boolean) {
           // FACES 크기에서 붙어 있을 때의 Crown 중심과, 옮겨갈 정면 Crown의 중심(화면 px).
           const attachedX = viewportW / 2 + (609 - 300) * u * s
           const attachedY = viewportH / 2 + (240 - 380) * u * s
-          const targetX = viewportW - CROWN_FRONT_RIGHT - (CROWN_FRONT_D * u * s) / 2
-          const targetY = viewportH * CROWN_FRONT_TOP
+          const facesStage = faces.querySelector<HTMLElement>('.faces__stage')
+          const slot = faces.querySelector<HTMLElement>('.faces__crown-slot')
+          let targetX = viewportW - 48 - (CROWN_FRONT_D * u * s) / 2
+          let targetY = viewportH - 48 - (CROWN_FRONT_D * u * s) / 2
+          if (facesStage && slot) {
+            const st = facesStage.getBoundingClientRect()
+            const r = slot.getBoundingClientRect()
+            targetX = r.left - st.left + r.width / 2
+            targetY = r.top - st.top + r.height / 2
+          }
           return { x: (targetX - attachedX) / s, y: (targetY - attachedY) / s }
         }
 
@@ -500,7 +506,7 @@ export default function useScrollScene(enabled: boolean) {
         // 20~85%: 같은 Watch 레이어가 화면 중심(= Watch 중심) 기준으로 FACES 크기까지 커진다. 위치는 그대로다.
         facesTl.to(watchLayer, { scale: facesScale, ease: 'power1.inOut', duration: 0.65 }, 0.2)
 
-        // 20~85%: Crown이 오른쪽 끝 controller 자리로 옮겨간다. 순간이동 없이 가속 -> 감속.
+        // 20~85%: Crown이 footer band 오른쪽 끝의 controller 자리로 옮겨간다. 순간이동 없이 가속 -> 감속.
         facesTl.to(
           crown,
           {
