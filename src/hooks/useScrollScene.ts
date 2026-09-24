@@ -107,7 +107,8 @@ const easeInSine = (t: number) => 1 - Math.cos((t * Math.PI) / 2)
  *                        Watch는 A가 끝낸 자리에 그대로 있고 아무도 건드리지 않는다.
  *   C. FACES mode        pin이 끝나도 Watch는 그 자리에 남는다. FACES가 올라오는 한 화면 동안
  *                        watch face와 display 덮개가 빠지고(= FACES slider가 display로 보인다),
- *                        Watch가 조금 작아지고, Crown이 화면 오른쪽 끝 controller 자리로 옮겨간다.
+ *                        Watch가 조금 작아지고, Crown이 화면 오른쪽 끝 controller 자리로 옮겨가고,
+ *                        마지막에 steel case가 같은 실루엣의 WebGL glass Watch로 이어진다.
  *
  * Digital Crown의 wheel은 여기서 다루지 않는다. DigitalCrown이 page scroll을 직접 따라간다.
  */
@@ -428,11 +429,14 @@ export default function useScrollScene(enabled: boolean) {
        *   - display를 덮던 검은 화면이 빠져, Watch case의 구멍으로 FACES slider(WebGL)가 보이기 시작하고
        *   - Watch가 아주 조금 작아져(FACES_WATCH_SCALE) project가 먼저 보이고
        *   - Crown이 Watch에서 떨어져 화면 오른쪽 끝의 controller 자리로 옮겨간다.
+       *   - 마지막에 steel case(PNG)가 녹아 없어지고, 같은 실루엣의 WebGL Watch(Blue / Ice glass rim +
+       *     display)가 그 자리를 이어받는다. FACES canvas가 Watch 자리를 다 덮은 뒤라 빈틈이 없다.
        * Watch 위치는 그대로다. FACES pin 동안에는 크기도 위치도 고정이다.
        */
       const faces = document.querySelector<HTMLElement>('.faces')
       const face = watch.querySelector<HTMLElement>('.watch__face')
       const screen = watch.querySelector<HTMLElement>('.watch__screen')
+      const hardware = watch.querySelectorAll<HTMLElement>('.watch__case, .watch__glass')
       const crown = watch.querySelector<HTMLElement>('.watch__crown')
       const watchLayer = watch.closest<HTMLElement>('.watch-stage')
 
@@ -473,6 +477,12 @@ export default function useScrollScene(enabled: boolean) {
 
         // 45~70%: display를 덮던 검은 화면이 빠진다. 그 사이 FACES slider가 아래에서 display 안으로 올라온다.
         facesTl.to(screen, { opacity: 0, ease: 'none', duration: 0.25 }, 0.45)
+
+        /*
+         * 80~96%: steel case(PNG)와 display 유리 그림자가 녹아 없어지고, 그 아래 같은 실루엣으로 그려지던
+         * WebGL Watch가 드러난다. 80% 이후에는 FACES canvas가 Watch 자리를 전부 덮고 있다.
+         */
+        if (hardware.length) facesTl.to(hardware, { opacity: 0, ease: 'none', duration: 0.16 }, 0.8)
 
         // 25~80%: Watch 레이어가 화면 중심(= Watch 중심) 기준으로 조금 작아진다. 위치는 그대로다.
         facesTl.to(watchLayer, { scale: FACES_WATCH_SCALE, ease: 'power1.inOut', duration: 0.55 }, 0.25)

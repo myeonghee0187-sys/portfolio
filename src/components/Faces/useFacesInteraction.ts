@@ -3,7 +3,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { FACE_PROJECTS } from './facesData'
 import { FACE_ASPECT } from './facePainter'
-import FacesScene, { type FacesDisplayRect } from './facesScene'
+import FacesScene, { type FacesBox, type FacesWatchGeometry } from './facesScene'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -35,12 +35,20 @@ const DRAG_SPEED = 1.8
 const BEND_STRENGTH = 120
 const BEND_MAX = 32
 
-/** 빠르게 움직일 때만 생기는 RGB 분리(px). 한계 1px. glitch처럼 보이지 않게 아주 작게 둔다. */
-const RGB_STRENGTH = 4
-const RGB_MAX = 1
+/** 속도(stage 폭 기준)를 0~1 세기로. wheel 한 칸이 약 0.35, 빠른 drag가 1이다. */
+const SPEED_GAIN = 4
 
-/** display 모양(shader)이 Watch case 구멍보다 이만큼(px) 넓다. 구멍 가장자리까지 원본 그대로 보이게. */
-const DISPLAY_BLEED = 6
+/** 성능을 위해 pixel ratio는 1.5를 넘기지 않는다(Retina 2~3배로 그리지 않는다). */
+const MAX_PIXEL_RATIO = 1.5
+
+/*
+ * WebGL로 그리는 Watch의 모양. Watch 좌표계(600 x 760), watch_face.png에서 잰 값이다.
+ *   CASE     case 외곽 실루엣(투명하지 않은 영역). 모서리는 원으로 맞춘 근사.
+ *   DISPLAY  display. DOM Watch의 구멍(WatchAssembly.css)과 같은 자리·모양이라,
+ *            About -> FACES에서 DOM case가 녹아 없어질 때 두 그림이 같은 자리에 겹친다.
+ */
+const CASE = { x0: 2.3, y0: 2.3, x1: 596.1, y1: 756.1, r: 152 }
+const DISPLAY = { x0: 58, y0: 64, x1: 542, y1: 710, r: 96 }
 
 /** active가 바뀌려면 새 후보가 지금 active보다 plane 간격의 이 비율만큼 더 가까워야 한다. */
 const ACTIVE_HYSTERESIS = 0.04
@@ -90,9 +98,6 @@ export default function useFacesInteraction({
 
     const scene = new FacesScene(canvas)
 
-    // Hero / About에서 오는 같은 Watch. 그 display가 이 canvas를 들여다보는 창이다.
-    const screen = document.querySelector<HTMLElement>('.watch--stage .watch__screen')
-
     /* ---------- 상태 ---------- */
 
     let scrollOffset = 0
@@ -111,7 +116,8 @@ export default function useFacesInteraction({
       stageWidth = rect.width
       const slideWidth = clamp(rect.width * SLIDE_WIDTH_RATIO, SLIDE_MIN, SLIDE_MAX)
       const step = slideWidth * SLIDE_STEP_RATIO
-      scene.resize(rect.width, rect.height, Math.min(window.devicePixelRatio || 1, 2), slideWidth, slideWidth / FACE_ASPECT, step)
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO)
+      scene.resize(rect.width, rect.height, pixelRatio, slideWidth, slideWidth / FACE_ASPECT, step)
       loopWidth = scene.loopWidth
       // 화면 크기가 바뀌어도 drag로 옮겨 둔 위상은 그대로 둔다.
       if (oldLoop > 1 && oldLoop !== loopWidth) {
@@ -121,20 +127,25 @@ export default function useFacesInteraction({
       }
     }
 
-    /** Watch display(구멍)의 자리. canvas 좌표(CSS px). pin 전에는 stage가 움직이므로 매 프레임 잰다. */
-    const displayRect = (): FacesDisplayRect | null => {
-      if (!screen) return null
-      const s = screen.getBoundingClientRect()
+    /*
+     * WebGL Watch의 자리. DOM Watch(.watch--stage)의 실제 rect에서 매 프레임 잰다 —
+     * FACES pin 중에는 고정이지만, 그 전에는 stage가 아래에서 올라오므로 canvas 기준 위치가 바뀐다.
+     */
+    const watchEl = document.querySelector<HTMLElement>('.watch--stage')
+    const watchGeometry = (): FacesWatchGeometry | null => {
+      if (!watchEl) return null
+      const w = watchEl.getBoundingClientRect()
+      if (w.width === 0) return null
       const c = canvas.getBoundingClientRect()
-      if (s.width === 0) return null
-      return {
-        cx: s.left + s.width / 2 - c.left,
-        cy: s.top + s.height / 2 - c.top,
-        hw: s.width / 2 + DISPLAY_BLEED,
-        hh: s.height / 2 + DISPLAY_BLEED,
-        // .watch__screen의 모서리(Watch 좌표계 98 / 폭 488)를 실제 크기로.
-        radius: (s.width * 98) / 488 + DISPLAY_BLEED,
-      }
+      const unit = w.width / 600
+      const box = (b: typeof CASE): FacesBox => ({
+        cx: w.left - c.left + ((b.x0 + b.x1) / 2) * unit,
+        cy: w.top - c.top + ((b.y0 + b.y1) / 2) * unit,
+        hx: ((b.x1 - b.x0) / 2) * unit,
+        hy: ((b.y1 - b.y0) / 2) * unit,
+        r: b.r * unit,
+      })
+      return { outer: box(CASE), display: box(DISPLAY), unit }
     }
 
     let active = -1
@@ -166,16 +177,16 @@ export default function useFacesInteraction({
       current += (t - current) * (1 - (1 - EASE) ** frames)
       if (Math.abs(t - current) < 0.05) current = t
 
-      // 속도 = 아직 따라잡지 못한 거리. 멈추면 0이 되어 plane이 평평해진다.
+      // 속도 = 아직 따라잡지 못한 거리. 멈추면 0이 되어 plane은 평평해지고 Watch 굴절도 기본값으로 돌아온다.
       const velocity = (t - current) / stageWidth
+      const speed = clamp(Math.abs(velocity) * SPEED_GAIN, 0, 1)
       const bend = clamp(velocity * BEND_STRENGTH, -BEND_MAX, BEND_MAX)
-      const rgb = clamp(velocity * RGB_STRENGTH, -RGB_MAX, RGB_MAX)
-      const display = displayRect()
+      const watch = watchGeometry()
 
-      const key = `${current.toFixed(2)}|${bend.toFixed(2)}|${display ? `${display.cx.toFixed(1)},${display.cy.toFixed(1)},${display.hw.toFixed(1)}` : '-'}`
+      const key = `${current.toFixed(2)}|${velocity.toFixed(4)}|${watch ? `${watch.outer.cx.toFixed(1)},${watch.outer.cy.toFixed(1)},${watch.unit.toFixed(4)}` : '-'}`
       if (key === lastKey) return
       lastKey = key
-      scene.render({ position: current, bend, rgb, display })
+      scene.render({ position: current, bend, velocity, speed, watch })
       detectActive(current)
     }
 
