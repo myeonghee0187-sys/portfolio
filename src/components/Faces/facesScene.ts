@@ -350,6 +350,8 @@ uniform float uUnit;          // Watch 좌표계 1단위의 px
 uniform float uSlotW;         // display 폭(px) = 자리 하나
 uniform float uStripPos;      // display 가운데에 오는 띠 위의 위치(0 = F45 자리 가운데)
 uniform float uMediaAspect[4];
+uniform float uFitMode[4];     // 1 = contain-optical, 0 = cover (facesData의 fit)
+uniform vec2 uFocusUv[4];      // cover 창의 중심(영상 UV)
 
 uniform float uVelocity;      // 부호 있는 속도(stage 폭 기준)
 uniform float uSpeed;         // 0 ~ 1, 움직임의 세기
@@ -402,26 +404,115 @@ vec3 sampleVideo(int index, vec2 uv) {
   return texture2D(uVideo3, uv).rgb;
 }
 
+/* 영상 UV(왼쪽 위 0 ~ 오른쪽 아래 1)의 한 점. VideoTexture는 flipY라 세로를 뒤집어 읽는다. */
+vec3 videoAt(int j, vec2 uv) {
+  return sampleVideo(j, vec2(uv.x, 1.0 - uv.y));
+}
+
 /*
- * WATCH-LOCAL COVER. display rect 기준 local UV(0~1)를 object-fit: cover로 영상 UV로 바꾼다.
- *   영상이 display보다 가로로 길면(F45, TCHAIKIM)   가로만 display / 영상 비율로 좁혀 좌우를 잘라낸다.
- *   영상이 display보다 세로로 길면(JADUYA, T100)    세로만 좁혀 위아래를 잘라낸다.
- * 늘이지 않는다.
+ * OPTICAL EXTENSION. contain으로 담긴 영상 frame 바깥(위/아래)을 채우는 유리 연장부. 내용이 아니라 재질이다.
+ * 같은 VideoTexture의 가장자리 띠(영상 높이의 8%)를 세로로 평균낸 빛을 경계에서 display 끝까지 늘이고,
+ * 가로로는 멀어질수록 넓게 번지게(optical diffusion) 한다. 그래서 가장자리의 명암·색의 흐름은 느껴지지만
+ * 영상을 한 번 더 깔아놓은 것처럼(UI·글자·얼굴이 읽히게) 보이지 않는다.
+ *   e = 0   frame 경계. 영상의 마지막 한 줄 그대로라 main frame과 이음매가 없다.
+ *   e -> 1  display 가장자리(rim 쪽). hue가 빠지며 Titanium / Ice 재질이 되고 titanium 깊이만큼 가라앉는다.
+ * edge: 1 = 위쪽 가장자리, 0 = 아래쪽. x: 가로 local 좌표(0~1).
  */
-vec3 coverProject(int j, vec2 local) {
+const float EXT_EDGE = 0.08;
+
+vec3 edgeBand(int j, float x, float edge) {
+  // 가장자리 띠 네 줄의 평균. 한 줄만 늘이면 생기는 banding과 읽히는 detail을 없앤다.
+  vec3 c = vec3(0.0);
+  for (int k = 0; k < 4; k++) {
+    float depth = EXT_EDGE * (0.08 + 0.3 * float(k));
+    c += videoAt(j, vec2(x, mix(1.0 - depth, depth, edge)));
+  }
+  return c * 0.25;
+}
+
+vec3 opticalExtension(int j, float x, float e, float edge) {
+  // 유리 곡면을 지나는 것처럼 가운데로 아주 조금 모이고 물결친다.
+  float xr = 0.5 + (x - 0.5) * (1.0 - 0.05 * e) + 0.008 * e * sin(e * 8.0 + x * 6.0);
+  // 가로 diffusion: 경계에서는 0이고 바로 넓어지기 시작한다(가장자리 한 줄이 세로 줄무늬로 늘어나지 않게).
+  float spread = 0.1 * sqrt(e);
+  vec3 band = vec3(0.0);
+  for (int k = -2; k <= 2; k++) {
+    float fk = float(k);
+    band += edgeBand(j, clamp(xr + spread * fk * 0.5, 0.001, 0.999), edge) * (1.0 - abs(fk) * 0.25);
+  }
+  band /= 3.5;
+  // 경계의 한 줄 -> 띠의 평균으로 짧게(12%) 넘어간다. 여기가 main frame과의 blend band다.
+  // 한 줄도 같은 폭으로 가로로 번져서, 경계 바로 바깥이 세로 빗살무늬가 되지 않는다.
+  vec3 row = vec3(0.0);
+  for (int k = -2; k <= 2; k++) {
+    float fk = float(k);
+    row += videoAt(j, vec2(clamp(xr + spread * fk * 0.5, 0.001, 0.999), mix(1.0, 0.0, edge))) * (1.0 - abs(fk) * 0.25);
+  }
+  row /= 3.5;
+  vec3 c = mix(row, band, smoothstep(0.0, 0.12, e));
+
+  // 재질: 경계 가까이만 영상 색이 조금 남고, 곧 luminance만 남아 Titanium / Ice가 된다.
+  float L = luma(c);
+  vec3 media = mix(c, mix(vec3(L), c, 0.35), smoothstep(0.0, 0.14, e));
+  float Lc = L / (L + 0.45);
+  vec3 material = mix(CARBON, TITANIUM, 0.16) + mix(ICE, TITANIUM, 0.3) * Lc * 0.55;
+  vec3 col = mix(media, material, smoothstep(0.08, 0.55, e));
+  // 아주 옅은 Ice 반사가 연장부를 가로지른다(유리 안쪽 면).
+  col += ICE * 0.035 * smoothstep(0.2, 0.6, e) * (1.0 - smoothstep(0.6, 1.0, e));
+  // rim 쪽으로 titanium 깊이만큼 가라앉는다.
+  return col * mix(1.0, 0.55, smoothstep(0.3, 1.0, e));
+}
+
+/*
+ * WATCH DISPLAY FIT. display rect 기준 local UV(0~1)를 project의 fit 방식에 따라 영상 UV로 바꾼다.
+ * 결과의 a는 main 영상 frame 안이면 1, optical extension이면 0이다.
+ *   cover            display / 영상 비율로 한쪽만 좁혀 넘치는 쪽을 잘라낸다. 창의 중심은 focus.
+ *   contain-optical  영상 전체가 display 안에 들어오도록 담고(가로 영상은 폭을 채운다),
+ *                    남는 위아래는 optical extension. 늘이지 않는다.
+ */
+vec4 displayProject(int j, vec2 local) {
   float displayAspect = uDisplay.z / uDisplay.w;
   float mediaAspect = uMediaAspect[j];
-  vec2 uv = clamp(local, 0.0, 1.0);
-  if (mediaAspect > displayAspect) uv.x = 0.5 + (uv.x - 0.5) * displayAspect / mediaAspect;
-  else uv.y = 0.5 + (uv.y - 0.5) * mediaAspect / displayAspect;
-  return sampleVideo(j, vec2(uv.x, 1.0 - uv.y));
+  vec2 l = clamp(local, 0.0, 1.0);
+
+  if (uFitMode[j] < 0.5) {
+    vec2 span = mediaAspect > displayAspect ? vec2(displayAspect / mediaAspect, 1.0) : vec2(1.0, mediaAspect / displayAspect);
+    vec2 center = clamp(uFocusUv[j], span * 0.5, 1.0 - span * 0.5);
+    return vec4(videoAt(j, center + (l - 0.5) * span), 1.0);
+  }
+
+  if (mediaAspect >= displayAspect) {
+    // 가로 영상: 폭을 채우고, frame 높이는 display 높이의 displayAspect / mediaAspect.
+    float h = displayAspect / mediaAspect;
+    float top = 0.5 - 0.5 * h;
+    float v = (l.y - top) / h;
+    if (v >= 0.0 && v <= 1.0) return vec4(videoAt(j, vec2(l.x, v)), 1.0);
+    float e = v < 0.0 ? (top - l.y) / top : (l.y - (1.0 - top)) / top;
+    return vec4(opticalExtension(j, l.x, clamp(e, 0.0, 1.0), v < 0.0 ? 1.0 : 0.0), 0.0);
+  }
+  // 세로 영상을 contain으로 담는 경우: 높이를 채우고 좌우를 같은 재질로 연장한다(가장자리 세로 띠의 평균).
+  float w = mediaAspect / displayAspect;
+  float left = 0.5 - 0.5 * w;
+  float u = (l.x - left) / w;
+  if (u >= 0.0 && u <= 1.0) return vec4(videoAt(j, vec2(u, l.y)), 1.0);
+  float e = clamp(u < 0.0 ? (left - l.x) / left : (l.x - (1.0 - left)) / left, 0.0, 1.0);
+  vec3 c = vec3(0.0);
+  for (int k = 0; k < 4; k++) {
+    float depth = EXT_EDGE * (0.08 + 0.3 * float(k));
+    c += videoAt(j, vec2(u < 0.0 ? depth : 1.0 - depth, l.y));
+  }
+  c *= 0.25;
+  float L = luma(c);
+  vec3 material = mix(CARBON, TITANIUM, 0.16) + mix(ICE, TITANIUM, 0.3) * (L / (L + 0.45)) * 0.55;
+  return vec4(mix(c, material, smoothstep(0.08, 0.55, e)) * mix(1.0, 0.55, smoothstep(0.3, 1.0, e)), 0.0);
 }
 
 /*
  * display가 보여줄 영상. 띠 위에서 project j의 자리는 [j - 0.5, j + 0.5] x 자리 폭이고,
  * 자리 경계 양쪽 SEAM 안에서는 이웃 project의 가장자리 pixel을 늘여 섞는다(경계에서 정확히 반반).
+ * 각 자리는 자기 project의 fit 방식으로 채워져, 경계가 지나가는 동안에도 두 fit이 나란히 이어진다.
  */
-vec3 displayMedia(vec2 p) {
+vec4 displayMedia(vec2 p) {
   float x = uStripPos + (p.x - uDisplay.x);
   float len = 4.0 * uSlotW;
   float start = -0.5 * uSlotW;
@@ -429,33 +520,35 @@ vec3 displayMedia(vec2 p) {
   int j = int(clamp(floor((xr - start) / uSlotW), 0.0, 3.0));
   float slot = float(j) * uSlotW;
   float lv = (p.y - (uDisplay.y - uDisplay.w)) / (2.0 * uDisplay.w);
-  vec3 c = coverProject(j, vec2((xr - slot) / uSlotW + 0.5, lv));
+  vec4 c = displayProject(j, vec2((xr - slot) / uSlotW + 0.5, lv));
 
   float seam = SEAM * uUnit;
   float toLeft = xr - (slot - 0.5 * uSlotW);
   float toRight = (slot + 0.5 * uSlotW) - xr;
   if (toLeft < seam) {
     int k = j == 0 ? 3 : j - 1;
-    c = mix(c, coverProject(k, vec2(1.0, lv)), 0.5 * (1.0 - smoothstep(0.0, seam, toLeft)));
+    c = mix(c, displayProject(k, vec2(1.0, lv)), 0.5 * (1.0 - smoothstep(0.0, seam, toLeft)));
   } else if (toRight < seam) {
     int k = j == 3 ? 0 : j + 1;
-    c = mix(c, coverProject(k, vec2(0.0, lv)), 0.5 * (1.0 - smoothstep(0.0, seam, toRight)));
+    c = mix(c, displayProject(k, vec2(0.0, lv)), 0.5 * (1.0 - smoothstep(0.0, seam, toRight)));
   }
   return c;
 }
 
-/* ---------- D. DISPLAY : display rect 기준 cover로 꽉 채워 선명하게 ---------- */
+/* ---------- D. DISPLAY : display rect 기준 local UV로 project를 선명하게 ---------- */
 vec3 displayColor(vec2 p, float dDisp) {
-  vec3 c = displayMedia(p);
+  vec4 m = displayMedia(p);
+  vec3 c = m.rgb;
   // 영상 색은 그대로, 대비·밝기만 조금 올린다. 바깥 gallery보다 항상 선명하다.
   c = clamp((c - 0.5) * 1.06 + 0.5, 0.0, 1.0) * 1.04;
-  // 화면 가장자리는 유리 아래 검은 테두리 쪽으로 아주 조금 가라앉는다(검은 여백은 없다).
+  // 화면 가장자리는 유리 아래 검은 테두리 쪽으로 가라앉는다(검은 여백은 없다).
+  // main 영상 frame 위에서는 아주 약하게만 — project 화면은 그대로 읽혀야 한다.
   float edge = smoothstep(0.0, 14.0 * uUnit, -dDisp);
-  c *= mix(0.84, 1.0, edge);
-  // 위쪽 왼쪽에서 비스듬히 비치는 아주 얇은 유리 반사. 멈춰 있어도 있다.
+  c *= mix(mix(0.84, 0.95, m.a), 1.0, edge);
+  // 위쪽 왼쪽에서 비스듬히 비치는 아주 얇은 유리 반사. 멈춰 있어도 있다(main frame 위에서는 절반).
   vec2 local = (p - uDisplay.xy) / uDisplay.zw;
   float band = smoothstep(0.32, 0.0, abs(local.x + local.y + 1.05));
-  c += mix(ICE, FROST, 0.5) * 0.045 * band;
+  c += mix(ICE, FROST, 0.5) * mix(0.045, 0.022, m.a) * band;
   return c;
 }
 
@@ -817,6 +910,8 @@ export default class FacesScene {
         uSlotW: { value: 1 },
         uStripPos: { value: 0 },
         uMediaAspect: { value: [...this.aspects] },
+        uFitMode: { value: FACE_PROJECTS.map((p) => (p.fit === 'contain-optical' ? 1 : 0)) },
+        uFocusUv: { value: FACE_PROJECTS.map((p) => new THREE.Vector2(...(p.focus ?? [0.5, 0.5]))) },
         uVelocity: { value: 0 },
         uSpeed: { value: 0 },
         uOuterTreat: { value: OUTER_TREATMENT },
