@@ -1,5 +1,5 @@
-import f45Video from '../../../assets/vid/faces/hero.mp4'
-import tchaikimVideo from '../../../assets/vid/faces/shop.mp4'
+import f45Video from '../../../assets/vid/faces/f45-faces-4x5.mp4'
+import tchaikimVideo from '../../../assets/vid/faces/tchaikim-faces-4x5.mp4'
 import jaduyaVideo from '../../../assets/vid/faces/intro_vid.mp4'
 import t100Video from '../../../assets/vid/faces/splash.mp4'
 
@@ -21,17 +21,11 @@ export type FaceProject = {
    */
   aspect: number
   /**
-   * Watch display 안에서 영상을 맞추는 방식. 바깥 gallery는 언제나 원본 비율 그대로다.
-   *   contain-optical  영상 frame 전체를 자르지 않고 담는다(object-fit: contain). 남는 위아래(또는 좌우)는
-   *                    같은 영상의 가장자리를 늘인 optical glass extension으로 채운다. 가로로 긴 화면용.
-   *   cover            display를 꽉 채우고 넘치는 쪽을 잘라낸다(object-fit: cover). 세로로 긴 화면용.
+   * Watch display는 모든 project를 object-fit: cover로 채운다(바깥 gallery는 언제나 원본 비율 그대로다).
+   * 그때 잘라내고 남길 창의 중심(영상 UV, 왼쪽 위 0 ~ 오른쪽 아래 1). 없으면 가운데.
    */
-  fit: FaceFit
-  /** cover일 때 잘라내고 남길 창의 중심(영상 UV, 왼쪽 위 0 ~ 오른쪽 아래 1). 없으면 가운데. */
   focus?: [number, number]
 }
-
-export type FaceFit = 'contain-optical' | 'cover'
 
 export const FACE_PROJECTS: FaceProject[] = [
   {
@@ -39,18 +33,18 @@ export const FACE_PROJECTS: FaceProject[] = [
     index: '01',
     title: 'F45 KOREA',
     category: 'RESPONSIVE WEB REDESIGN',
+    // FACES 전용 4:5 영상(864 x 1080). Watch display와 비율이 가까워 cover로 거의 전체가 보인다.
     video: f45Video,
-    aspect: 1620 / 1080,
-    fit: 'contain-optical',
+    aspect: 864 / 1080,
   },
   {
     id: 'tchaikim',
     index: '02',
     title: 'TCHAIKIM',
     category: 'FASHION BRAND WEB REDESIGN',
+    // FACES 전용 4:5 영상(960 x 1200). PixVerse 결과(960 x 1280)의 위쪽 80px(워터마크 자리)을 잘라 만들었다.
     video: tchaikimVideo,
-    aspect: 1916 / 1080,
-    fit: 'contain-optical',
+    aspect: 960 / 1200,
   },
   {
     id: 'jaduya',
@@ -59,7 +53,6 @@ export const FACE_PROJECTS: FaceProject[] = [
     category: 'MOBILE UX/UI PLATFORM',
     video: jaduyaVideo,
     aspect: 1664 / 3648,
-    fit: 'cover',
     // 캐릭터 위로 사과가 튀어 오르는 동작까지 창 안에 남도록 조금 위를 중심으로 둔다.
     focus: [0.5, 0.46],
   },
@@ -70,6 +63,5 @@ export const FACE_PROJECTS: FaceProject[] = [
     category: 'MOBILE WEB APP',
     video: t100Video,
     aspect: 1080 / 2352,
-    fit: 'cover',
   },
 ]
