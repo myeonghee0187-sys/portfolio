@@ -44,13 +44,13 @@ const PLAY_MARGIN = 240
 /*
  * WebGL로 그리는 Watch의 모양. Watch 좌표계(600 x 760).
  *   CASE     case 외곽 실루엣(watch_face.png의 투명하지 않은 영역). 모서리는 원으로 맞춘 근사.
- *   DISPLAY  display. rim 두께를 PNG(좌 56 / 우 54 / 위 62 / 아래 46)보다 18% 얇게 두어
- *            같은 Watch 크기에서 project가 보이는 면적을 넓힌다(좌 46 / 우 44.6 / 위 50.7 / 아래 38.1).
- *            DOM case의 구멍(WatchAssembly.css)보다 조금 넓어서, About -> FACES에서 steel case가 녹는 동안
+ *   DISPLAY  display. rim 두께는 PNG(좌 56 / 우 54 / 위 62 / 아래 46)에서 두 번 얇게 해
+ *            좌 40.5 / 우 39.3 / 위 44.6 / 아래 33.5다. 같은 Watch 크기에서 project 화면이 frame보다 크게 읽힌다.
+ *            DOM case의 구멍(WatchAssembly.css)보다 넓어서, About -> FACES에서 steel case가 녹는 동안
  *            rim이 PNG 두께에서 이 두께로 얇아진다.
  */
 const CASE = { x0: 2.3, y0: 2.3, x1: 596.1, y1: 756.1, r: 152 }
-const DISPLAY = { x0: 48.3, y0: 53, x1: 551.5, y1: 718, r: 106 }
+const DISPLAY = { x0: 42.8, y0: 46.9, x1: 556.8, y1: 722.6, r: 112 }
 
 /** active가 바뀌려면 새 후보가 지금 active보다 plane 간격의 이 비율만큼 더 가까워야 한다. */
 const ACTIVE_HYSTERESIS = 0.04
@@ -364,7 +364,7 @@ export default function useFacesInteraction({
           widths: scene.widths,
           centers: scene.centers,
           aspects: scene.aspects,
-          stripPosition: scene.stripPosition,
+          displaySlot: scene.displaySlot,
           display: watch ? { w: watch.display.hx * 2, h: watch.display.hy * 2 } : null,
           playing: scene.videos.map((v) => !v.paused),
           pinStart: trigger?.start ?? 0,
