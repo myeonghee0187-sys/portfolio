@@ -36,8 +36,8 @@ import { FACE_PROJECTS } from './facesData'
 /* ---------------- gallery pass ---------------- */
 
 /**
- * plane과 bridge가 함께 쓰는 wave. 모든 점(vertex)이 자기 가로 위치에서 같은 곡선을 따른다.
- * 그래서 plane 가장자리와 bridge가 같은 곡선 위에 있고, 이음매에서 위치·기울기·깊이가 같다.
+ * plane과 bridge가 함께 쓰는 wave와 흡수(absorption). 모든 점(vertex)이 자기 가로 위치에서 같은 곡선을 따르고,
+ * plane 가장자리와 bridge 끝은 같은 함수(galleryPoint)로 놓인다. 그래서 이음매에서 위치·기울기·깊이가 같다.
  */
 const WAVE_CHUNK = /* glsl */ `
 uniform float uFreq;       // wave 주파수(rad / px)
@@ -49,6 +49,11 @@ uniform float uFocal;      // 원근 초점 거리(px)
 uniform float uBend;       // velocity: 세로 가운데가 뒤로 처지는 양(px)
 uniform float uVelCurve;   // velocity: plane 휨이 조금 더 깊어지는 양(px)
 uniform float uShadeDepth; // 멀리 물러난 곳이 Carbon 쪽으로 가라앉는 정도
+
+uniform float uFocusRange; // Watch 중심에서 이 거리(px) 안으로 들어온 project부터 흡수가 시작된다
+uniform float uAbsorbOn;   // 0 = Watch 없음(또는 About -> FACES 초반), 1 = FACES
+uniform vec4 uAbsorbBox;   // Watch display: 중심 xy, 반폭·반높이 zw (wave 좌표, y 위가 +)
+uniform float uAbsorbR;    // display 모서리 반지름
 
 const float PI = 3.141592653589793;
 
@@ -69,6 +74,55 @@ float waveShade(float x) {
   return 1.0 - uShadeDepth * clamp(-waveZ(x) / (2.0 * uAmpZ), 0.0, 1.0);
 }
 
+/* focus influence: project 중심이 Watch 중심에서 uFocusRange 밖이면 0, 겹치면 1. smoothstep으로 부드럽게. */
+float focusOf(float cx) {
+  float f = 1.0 - clamp(abs(cx - uAbsorbBox.x) / uFocusRange, 0.0, 1.0);
+  return uAbsorbOn * f * f * (3.0 - 2.0 * f);
+}
+
+/*
+ * 비선형 압축. display 중심에서의 거리 d를 D·tanh(d / D)로 옮긴다.
+ * 가운데(영상의 중요한 부분)는 거의 그대로이고 멀리 있는 가장자리일수록 강하게 당겨져,
+ * 반폭 h인 plane의 끝이 display 반폭 t 바로 안쪽에 온다. plane이 display보다 작으면 그대로다.
+ */
+float squeeze(float d, float h, float t) {
+  if (h <= t) return d;
+  float D = t / tanh(h / t);
+  return D * tanh(d / D);
+}
+
+/* display의 둥근 모서리 밖에 있는 점을 모서리 원 위로 옮긴다. 곧은 변 쪽은 squeeze가 이미 안쪽에 둔다. */
+vec2 toRoundedRect(vec2 p, vec2 c, vec2 b, float r) {
+  vec2 d = p - c;
+  vec2 a = abs(d);
+  vec2 inner = b - r;
+  if (a.x > inner.x && a.y > inner.y) {
+    vec2 k = a - inner;
+    float L = length(k);
+    if (L > r) a = inner + k / L * r;
+  }
+  return c + sign(d) * a;
+}
+
+/*
+ * plane 위 한 점의 최종 위치. 층 순서대로:
+ *   1. GLOBAL WAVE / 2. BASE CURVE      멀리 있을 때의 원래 자리와 휨
+ *   FOCUS ABSORPTION                    Watch 중심에 가까워질수록(f) 그 점이 display의 둥근 사각형 안으로
+ *                                       비선형으로 끌려 들어가고, wave 높이·깊이와 휨은 그만큼 펴진다.
+ * cx: plane 중심의 wave 위 가로 위치, halfW / halfH: plane 반폭·반높이, local: plane 안의 좌표, u: 가로 uv.
+ */
+vec3 galleryPoint(float cx, float halfW, float halfH, vec2 local, float u, float sag, float f) {
+  vec2 p = vec2(cx + local.x, local.y);
+  if (f > 0.0) {
+    vec2 rel = p - uAbsorbBox.xy;
+    vec2 q = uAbsorbBox.xy + vec2(squeeze(rel.x, halfW, uAbsorbBox.z), squeeze(rel.y, halfH, uAbsorbBox.w));
+    q = toRoundedRect(q, uAbsorbBox.xy, uAbsorbBox.zw, uAbsorbR);
+    p = mix(p, q, f);
+  }
+  float open = 1.0 - f;
+  return vec3(p.x, p.y + waveY(p.x) * open, (waveZ(p.x) + (sag + uVelCurve) * sin(u * PI)) * open);
+}
+
 /* 원근. w로 나누게 두어 texture도 원근에 맞게 보간된다. */
 vec4 projectWave(vec3 world) {
   float w = (uFocal - world.z) / uFocal;
@@ -77,32 +131,59 @@ vec4 projectWave(vec3 world) {
 }
 `
 
+/**
+ * plane과 bridge의 fragment가 함께 쓰는 visibility redistribution.
+ * 흡수되는 project의 pixel 중 Watch 밖에 남는 것만 가라앉는다. Watch 안(과 rim 근처)은 그대로다.
+ */
+const ABSORB_FADE_CHUNK = /* glsl */ `
+uniform vec4 uWatchOuter;  // Watch case 외곽: 중심 xy, 반폭·반높이 zw (canvas CSS px, 위가 0)
+uniform float uWatchOuterR;
+uniform float uWatchUnit;
+uniform float uPixelRatio;
+uniform float uCanvasH;
+uniform float uAbsorbFade; // f = 1일 때 Watch에서 먼 pixel이 가라앉는 최대 비율
+
+float absorbDim(float f) {
+  if (f <= 0.0) return 1.0;
+  vec2 p = vec2(gl_FragCoord.x, uCanvasH * uPixelRatio - gl_FragCoord.y) / uPixelRatio;
+  vec2 q = abs(p - uWatchOuter.xy) - uWatchOuter.zw + uWatchOuterR;
+  float dOut = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - uWatchOuterR;
+  return 1.0 - uAbsorbFade * f * smoothstep(0.0, 180.0 * uWatchUnit, dOut);
+}
+`
+
 const PLANE_VERTEX = /* glsl */ `
 ${WAVE_CHUNK}
 uniform float uSag;        // plane 자체의 휨(px). 폭이 넓을수록 크다.
 varying vec2 vUv;
 varying float vShade;
+varying float vFocus;
 
 void main() {
   vUv = uv;
-  // 이 점의 wave 위 가로 위치(= project 논리 위치 - slider 위치 + plane 안의 x)와 세로 위치(px).
-  float x = modelMatrix[3][0] + position.x * modelMatrix[0][0];
-  float y = position.y * modelMatrix[1][1];
-  // 1. GLOBAL WAVE + 2. BASE CURVE(+ 5. VELOCITY): 가운데가 앞으로 나온 아주 얕은 원통 면이 wave에 얹힌다.
-  vec3 world = vec3(x, y + waveY(x), waveZ(x) + (uSag + uVelCurve) * sin(uv.x * PI));
+  // plane 중심의 wave 위 가로 위치(= project 논리 위치 - slider 위치)와 plane 안의 좌표(px).
+  float cx = modelMatrix[3][0];
+  float halfW = modelMatrix[0][0] * 0.5;
+  float halfH = modelMatrix[1][1] * 0.5;
+  vec2 local = vec2(position.x * modelMatrix[0][0], position.y * modelMatrix[1][1]);
+  float f = focusOf(cx);
+  vec3 world = galleryPoint(cx, halfW, halfH, local, uv.x, uSag, f);
   // 5. VELOCITY: 움직이는 동안 세로 가운데가 뒤로 처진다. 위·아래 끝은 제자리다.
   world.x += sin(uv.y * PI) * uBend;
   gl_Position = projectWave(world);
-  vShade = waveShade(x);
+  vShade = mix(waveShade(world.x), 1.0, f);
+  vFocus = f;
 }
 `
 
 const PLANE_FRAGMENT = /* glsl */ `
 precision highp float;
+${ABSORB_FADE_CHUNK}
 uniform sampler2D uMap;
 uniform float uFeather;    // 좌우 가장자리에서 영상이 bridge 쪽으로 늘어나기 시작하는 폭(plane 폭 비율)
 varying vec2 vUv;
 varying float vShade;
+varying float vFocus;
 
 const vec3 CARBON = vec3(0.031, 0.035, 0.039);
 
@@ -119,7 +200,7 @@ void main() {
     float d2 = uFeather * (2.0 * x * x - x * x * x);
     u = u < 0.5 ? d2 : 1.0 - d2;
   }
-  vec3 c = texture2D(uMap, vec2(u, vUv.y)).rgb * vShade;
+  vec3 c = texture2D(uMap, vec2(u, vUv.y)).rgb * vShade * absorbDim(vFocus);
   // 위·아래 가장자리의 계단만 1px 안에서 Carbon으로 녹인다. 좌우는 bridge와 이어진다.
   float a = clamp(min(vUv.y, 1.0 - vUv.y) / max(fwidth(vUv.y), 1e-5), 0.0, 1.0);
   gl_FragColor = vec4(mix(CARBON, c, a), 1.0);
@@ -133,44 +214,72 @@ uniform float uWA;         // 왼쪽 project(A) 폭
 uniform float uWB;         // 오른쪽 project(B) 폭
 uniform float uSagA;       // A의 휨(px)
 uniform float uSagB;       // B의 휨(px)
+uniform float uPlaneH;     // project 공통 높이(px)
 varying float vT;
 varying float vV;
 varying float vShade;
+varying float vFocusA;
+varying float vFocusB;
+varying float vStretch;
 
 void main() {
   /*
    * 3. OPTICAL BRIDGE. A의 오른쪽 가장자리에서 B의 왼쪽 가장자리까지 같은 wave 위에 놓인 면.
-   * 양쪽 plane의 휨(base curve)이 가장자리에서 가진 기울기를 cubic Hermite로 이어 받아,
-   * 두 휜 면 사이에서 살짝 들어갔다 나온다. 위치·기울기·깊이 모두 이음매에서 같다.
+   * 양 끝은 plane과 같은 galleryPoint로 놓인다 — 한쪽 project가 Watch에 흡수되며 좁아지면
+   * bridge 끝도 그 가장자리를 따라가 늘어난다(찢어지지 않는다).
+   * 가운데는 두 끝을 잇는 직선에 wave의 곡률을 더하고, 양쪽 plane 휨의 기울기를 cubic Hermite로 이어 받는다.
    * 양쪽 plane 밑으로 2%씩 겹쳐 그려 머리카락 같은 틈이 생기지 않게 한다.
    */
-  float t = mix(-0.02, 1.02, uv.x);
-  float x = modelMatrix[3][0] - uGap * 0.5 + t * uGap;
+  float bx = modelMatrix[3][0];
   float y = position.y * modelMatrix[1][1];
+  float halfH = uPlaneH * 0.5;
+  float cxA = bx - uGap * 0.5 - uWA * 0.5;
+  float cxB = bx + uGap * 0.5 + uWB * 0.5;
+  float fA = focusOf(cxA);
+  float fB = focusOf(cxB);
+  vec3 A = galleryPoint(cxA, uWA * 0.5, halfH, vec2(uWA * 0.5, y), 1.0, uSagA, fA);
+  vec3 B = galleryPoint(cxB, uWB * 0.5, halfH, vec2(-uWB * 0.5, y), 0.0, uSagB, fB);
+
+  float t = mix(-0.02, 1.02, uv.x);
+  vec3 world = mix(A, B, t);
+  // 끝과 끝 사이에서 wave의 곡률을 되살린다(끝에서는 0).
+  float openA = 1.0 - fA;
+  float openB = 1.0 - fB;
+  float open = mix(openA, openB, t);
+  vec2 waveHere = vec2(waveY(world.x), waveZ(world.x)) * open;
+  vec2 waveLine = mix(vec2(waveY(A.x), waveZ(A.x)) * openA, vec2(waveY(B.x), waveZ(B.x)) * openB, t);
+  world.yz += waveHere - waveLine;
   // 가장자리에서 휨의 기울기: A 오른쪽은 뒤로(-), B 왼쪽은 앞으로(+) 기운다.
-  float slopeA = -PI * (uSagA + uVelCurve) / uWA;
-  float slopeB = PI * (uSagB + uVelCurve) / uWB;
+  float slopeA = -PI * (uSagA + uVelCurve) / uWA * openA;
+  float slopeB = PI * (uSagB + uVelCurve) / uWB * openB;
   float t2 = t * t;
   float t3 = t2 * t;
-  float dip = ((t3 - 2.0 * t2 + t) * slopeA + (t3 - t2) * slopeB) * uGap;
-  vec3 world = vec3(x, y + waveY(x), waveZ(x) + dip);
+  world.z += ((t3 - 2.0 * t2 + t) * slopeA + (t3 - t2) * slopeB) * (B.x - A.x);
   world.x += sin(uv.y * PI) * uBend;
   gl_Position = projectWave(world);
 
   vT = clamp(t, 0.0, 1.0);
   vV = uv.y;
-  vShade = waveShade(x);
+  vShade = mix(mix(waveShade(A.x), 1.0, fA), mix(waveShade(B.x), 1.0, fB), vT) ;
+  vFocusA = fA;
+  vFocusB = fB;
+  // 흡수 때문에 bridge가 원래 간격보다 몇 배 늘어났는지.
+  vStretch = max(B.x - A.x, 1.0) / uGap;
 }
 `
 
 const BRIDGE_FRAGMENT = /* glsl */ `
 precision highp float;
+${ABSORB_FADE_CHUNK}
 uniform sampler2D uMapA;
 uniform sampler2D uMapB;
 uniform float uBridgeDim;  // bridge 가운데가 가라앉는 정도(공간감은 남긴다)
 varying float vT;
 varying float vV;
 varying float vShade;
+varying float vFocusA;
+varying float vFocusB;
+varying float vStretch;
 
 const vec3 CARBON = vec3(0.031, 0.035, 0.039);
 const float PI = 3.141592653589793;
@@ -186,12 +295,21 @@ void main() {
    */
   float lensV = (vV - 0.5) * (1.0 - 0.06 * mid) + 0.5;
   float ripple = 0.012 * mid * sin(vV * 11.0 + t * 3.0);
-  vec3 a = texture2D(uMapA, vec2(1.0 - 0.025 * t, lensV + ripple)).rgb;
-  vec3 b = texture2D(uMapB, vec2(0.025 * (1.0 - t), lensV - ripple)).rgb;
+  /*
+   * 한쪽 project가 Watch에 흡수되면 bridge가 길어진다. 그때 흡수되지 않은 이웃 쪽은 더 넓은 가장자리 띠
+   * (최대 10%)를 읽어 영상 내용이 더 빨리 드러나고, 흡수되는 쪽은 얇은 빛줄기로 남는다.
+   */
+  float grow = clamp(vStretch, 1.0, 4.0);
+  float stripA = 0.025 * mix(grow, 1.0, vFocusA);
+  float stripB = 0.025 * mix(grow, 1.0, vFocusB);
+  vec3 a = texture2D(uMapA, vec2(1.0 - stripA * t, lensV + ripple)).rgb * absorbDim(vFocusA);
+  vec3 b = texture2D(uMapB, vec2(stripB * (1.0 - t), lensV - ripple)).rgb * absorbDim(vFocusB);
 
   // 공간적으로 섞는다. 섞이는 경계가 세로 직선이 아니라 영상을 따라 휘어 opacity crossfade처럼 보이지 않는다.
+  // 흡수되는 쪽이 있으면 경계가 그쪽(Watch 쪽)으로 물러나 이웃이 bridge의 더 많은 부분을 차지한다.
   float warp = 0.14 * mid * (dot(a - b, vec3(0.33)) + 0.35 * sin(vV * 7.0 - t * 2.0));
-  float w = smoothstep(0.08, 0.92, t + warp);
+  float shift = 0.22 * (vFocusB - vFocusA);
+  float w = smoothstep(0.08, 0.92, t + warp - shift);
   vec3 c = mix(a, b, w);
 
   // bridge 가운데는 조금 가라앉는다. 검은 구멍이 아니라 project 사이의 숨 쉬는 간격이다.
@@ -499,6 +617,14 @@ const EDGE_FEATHER = 0.06
 /** bridge 가운데가 가라앉는 정도. 0이면 양쪽 영상 밝기 그대로, 1이면 검정. */
 const BRIDGE_DIM = 0.4
 
+/*
+ * FOCUS ABSORPTION. project 중심이 Watch 중심에서 stage 폭 x 0.24(1920에서 461px) 안으로 들어오면
+ * 그 project의 바깥 plane이 display의 둥근 사각형 안으로 비선형 압축되기 시작하고, 중심이 겹치면 다 들어간다.
+ * 그 사이 Watch 밖에 남는 그 project의 pixel은 최대 45%까지 가라앉는다(Watch에서 180단위 떨어진 곳 기준).
+ */
+const FOCUS_RANGE = 0.24
+const ABSORB_FADE = 0.45
+
 /** velocity가 1일 때 plane의 휨이 더 깊어지는 양(stage 폭 비율). */
 const VELOCITY_CURVE = 0.018
 
@@ -556,9 +682,21 @@ export default class FacesScene {
     uVelCurve: { value: 0 },
     uShadeDepth: { value: SHADE_DEPTH },
     uGap: { value: 0 },
+    uPlaneH: { value: 1 },
+    uFocusRange: { value: 1 },
+    uAbsorbOn: { value: 0 },
+    uAbsorbBox: { value: new THREE.Vector4() },
+    uAbsorbR: { value: 0 },
+    uWatchOuter: { value: new THREE.Vector4() },
+    uWatchOuterR: { value: 0 },
+    uWatchUnit: { value: 1 },
+    uPixelRatio: { value: 1 },
+    uCanvasH: { value: 1 },
+    uAbsorbFade: { value: ABSORB_FADE },
   }
 
   private width = 1
+  private height = 1
 
   /** project마다 하나씩. 같은 영상이 바깥 plane / bridge / 굴절 / display 전부에 쓰인다. */
   readonly videos: HTMLVideoElement[] = []
@@ -692,6 +830,7 @@ export default class FacesScene {
   /** canvas 크기가 바뀔 때(refresh). wave도 stage 크기에 맞춰 다시 정한다. */
   resize(width: number, height: number, pixelRatio: number) {
     this.width = width
+    this.height = height
     this.renderer.setPixelRatio(pixelRatio)
     this.renderer.setSize(width, height, false)
     this.target.setSize(Math.round(width * pixelRatio), Math.round(height * pixelRatio))
@@ -706,6 +845,9 @@ export default class FacesScene {
     this.shared.uAmpZ.value = width * WAVE_DEPTH
     this.shared.uFocal.value = width * FOCAL
     this.shared.uFlat.value.set(width * WAVE_FLAT[0], width * WAVE_FLAT[1])
+    this.shared.uFocusRange.value = width * FOCUS_RANGE
+    this.shared.uPixelRatio.value = pixelRatio
+    this.shared.uCanvasH.value = height
 
     const u = this.composite.uniforms
     u.uSize.value.set(width, height)
@@ -743,6 +885,7 @@ export default class FacesScene {
       m.uniforms.uSagB.value = sags[next]
     })
     this.shared.uGap.value = gap
+    this.shared.uPlaneH.value = planeHeight
     this.composite.uniforms.uMediaAspect.value = [...this.aspects]
   }
 
@@ -753,6 +896,12 @@ export default class FacesScene {
   planeX(index: number, position: number) {
     const half = this.loopWidth / 2
     return gsap.utils.wrap(-half, half, this.centers[index] - position)
+  }
+
+  /** project i의 focus influence(shader의 focusOf와 같은 식, QA용). 0 = 멀다, 1 = Watch 중심. */
+  focus(index: number, position: number) {
+    const f = 1 - Math.min(1, Math.abs(this.planeX(index, position)) / this.shared.uFocusRange.value)
+    return this.shared.uAbsorbOn.value * smoothstep(f)
   }
 
   /** project i의 두 instance 중 하나라도 화면(또는 그 근처)에 걸리는지. 안 보이는 영상은 재생을 멈춘다. */
@@ -787,6 +936,25 @@ export default class FacesScene {
   }
 
   render(state: FacesRenderState) {
+    /*
+     * 흡수 대상: Watch display의 둥근 사각형(wave 좌표, y 위가 +). FACES pin 중에는 display가 stage 가운데에 있다.
+     * About -> FACES에서 stage가 아직 올라오는 동안에는 display가 stage 중심에서 멀다. 그 차이가 stage 높이의
+     * 12%보다 작아진 뒤(steel case가 녹는 마지막 구간)에야 흡수를 켠다 — plane이 display 쪽으로 튀어 오르지 않게.
+     */
+    const w = state.watch
+    const g = this.shared
+    if (w) {
+      const offset = Math.abs(w.display.cy - this.height / 2)
+      g.uAbsorbOn.value = 1 - smoothstep(Math.min(1, Math.max(0, (offset - this.height * 0.02) / (this.height * 0.1))))
+      g.uAbsorbBox.value.set(w.display.cx - this.width / 2, this.height / 2 - w.display.cy, w.display.hx, w.display.hy)
+      g.uAbsorbR.value = w.display.r
+      g.uWatchOuter.value.set(w.outer.cx, w.outer.cy, w.outer.hx, w.outer.hy)
+      g.uWatchOuterR.value = w.outer.r
+      g.uWatchUnit.value = w.unit
+    } else {
+      g.uAbsorbOn.value = 0
+    }
+
     // 1. gallery pass -> offscreen. project와 bridge마다 wrap된 자리와 한 바퀴 옆자리에 한 장씩.
     const place = (mesh: THREE.Mesh, twin: THREE.Mesh, x: number) => {
       mesh.position.x = x
@@ -806,7 +974,6 @@ export default class FacesScene {
 
     // 2. composite pass -> 화면
     const u = this.composite.uniforms
-    const w = state.watch
     u.uWatch.value = w ? 1 : 0
     if (w) {
       u.uOuter.value.set(w.outer.cx, w.outer.cy, w.outer.hx, w.outer.hy)

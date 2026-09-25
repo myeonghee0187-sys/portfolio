@@ -365,6 +365,7 @@ export default function useFacesInteraction({
           centers: scene.centers,
           aspects: scene.aspects,
           displaySlot: scene.displaySlot,
+          focus: FACE_PROJECTS.map((_, i) => +scene.focus(i, current).toFixed(3)),
           display: watch ? { w: watch.display.hx * 2, h: watch.display.hy * 2 } : null,
           playing: scene.videos.map((v) => !v.paused),
           pinStart: trigger?.start ?? 0,
