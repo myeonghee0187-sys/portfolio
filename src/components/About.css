@@ -8,7 +8,7 @@
 .about {
   /* Figma about frame의 상단 여백 100px. 화면이 좁아지면 함께 줄어든다. */
   padding-top: calc(100 * min(1px, 100vw / 1920, 100dvh / 1080));
-  background: #08090a;
+  background: var(--color-carbon-black);
 }
 
 /*
@@ -28,6 +28,8 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
+  /* pin 중(position: fixed)에도 stage가 스스로 같은 바탕을 들고 있다. pin-spacer에는 스타일을 주지 않는다. */
+  background: var(--color-carbon-black);
 }
 
 /*
@@ -59,6 +61,10 @@
  * 가장자리가 stage(1080) 안에서 끝나 잘리는 선이 생기지 않는다.
  *
  * opacity는 scroll 연출 중 JS가 0.9(이동) -> 1(HOLD)로 바꾼다. 정적 배치에서는 1.
+ *
+ * About -> FACES에서는 이 빛이 About stage와 함께 올라가지 않는다. JS가 stage가 올라간 만큼 반대로 내려
+ * 화면 가운데(Watch 뒤)에 두고 0.9 -> 0.3으로 가라앉힌다. FACES canvas가 같은 두 gradient를 같은 세기로
+ * 이어 그리므로(facesScene.ts의 ambientGlow) 아래 값을 바꾸면 그쪽도 같이 바꿔야 한다.
  */
 .about__ambient {
   position: absolute;
@@ -86,8 +92,8 @@
       transparent 100%
     );
   pointer-events: none;
-  /* opacity만 바뀌므로 compositor에서 끝난다. 큰 gradient를 다시 그리지 않는다. */
-  will-change: opacity;
+  /* opacity와 transform만 바뀌므로 compositor에서 끝난다. 큰 gradient를 다시 그리지 않는다. */
+  will-change: opacity, transform;
 }
 
 /* ---------------- 카드 (157:148 / 152 / 156 / 160) ---------------- */

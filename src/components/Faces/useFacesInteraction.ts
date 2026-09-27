@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { FACE_PROJECTS } from './facesData'
 import FacesScene, { type FacesBox, type FacesWatchGeometry } from './facesScene'
+import { sharedAmbient } from '../../hooks/sharedAmbient'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -12,9 +13,14 @@ const PLANE_HEIGHT_RATIO = 0.62
 /** project 사이 간격 = stage 폭의 8%. 한 장의 긴 웹페이지도, 떨어진 카드 갤러리도 아닌 정도. */
 const GAP_RATIO = 0.08
 
-/** 한 바퀴를 도는 세로 scroll 길이. 최소 2.8화면, 가로 한 바퀴 거리의 0.9배. */
-const MIN_PIN_VIEWPORTS = 2.8
-const LOOP_TO_SCROLL = 0.9
+/**
+ * 한 바퀴를 도는 세로 scroll 길이 = LOOP_WIDTH / RAIL_SPEED.
+ * RAIL_SPEED는 세로 scroll 1px당 rail이 움직이는 px이다. project 4개였을 때 1920 x 1080에서 검수한 속도
+ * (한 바퀴 2299px / pin 3024px ≈ 0.76)를 그대로 둔다 — project 수가 바뀌어도 한 project가 지나가는 속도는 같고,
+ * pin 길이만 한 바퀴 거리를 따라 줄거나 는다. 아주 작은 화면에서도 최소 2화면은 머문다.
+ */
+const RAIL_SPEED = 0.76
+const MIN_PIN_VIEWPORTS = 2
 
 /**
  * current가 target을 따라잡는 비율(60fps 한 프레임). 1:1로 붙지 않고 살짝 늦게 따라오는 물성.
@@ -73,7 +79,7 @@ type FacesInteractionOptions = {
  * FACES slider.
  *
  * 세로 scroll과 drag의 역할이 다르다.
- *   세로 scroll  = page 진행. pin 동안 project 4개를 정확히 한 바퀴(LOOP_WIDTH) 돈 뒤 pin이 풀린다.
+ *   세로 scroll  = page 진행. pin 동안 project 전체(FACE_PROJECTS)를 정확히 한 바퀴(LOOP_WIDTH) 돈 뒤 pin이 풀린다.
  *   drag         = 자유 탐색. 제한 없이 몇 바퀴든 돈다. document scroll은 건드리지 않는다.
  *
  *   scrollOffset = scrollProgress * LOOP_WIDTH        (0 -> LOOP_WIDTH, 한 번만)
@@ -125,6 +131,12 @@ export default function useFacesInteraction({
         dragOffset *= ratio
         current *= ratio
       }
+      /*
+       * 불투명 canvas는 한 번도 그리지 않았거나 크기가 바뀐 직후에는 검게 보인다. 루프가 아직 돌지 않는
+       * (FACES가 화면 밖인) 동안에도 지금 상태로 한 장 그려 두어, FACES 윗변이 화면에 처음 들어오는 프레임도
+       * Carbon 바탕이다. 루프가 돌면 다음 프레임에 정확한 자리로 다시 그린다.
+       */
+      scene.render({ position: current, bend: 0, velocity: 0, speed: 0, watch: watchGeometry(), ambient: ambientState() })
     }
 
     // 영상의 실제 비율이 미리 둔 값과 다르면 다시 재고, 한 바퀴 거리가 바뀌었으니 pin 길이도 다시 계산한다.
@@ -150,6 +162,16 @@ export default function useFacesInteraction({
         r: b.r * unit,
       })
       return { outer: box(CASE), display: box(DISPLAY), unit }
+    }
+
+    /*
+     * SHARED ICE AMBIENT. About의 .about__ambient와 같은 빛을 canvas의 빈 바탕에도 깐다.
+     * 세기는 About -> FACES timeline이 정하는 값(sharedAmbient)을 그대로 읽고, 중심은 화면 가운데(= Watch 중심)다.
+     * About -> FACES 동안 About의 ambient도 화면 가운데에 머물러서, 두 section이 맞닿는 선에서 빛이 같다.
+     */
+    const ambientState = () => {
+      const c = canvas.getBoundingClientRect()
+      return { level: sharedAmbient.level, cx: c.width / 2, cy: window.innerHeight / 2 - c.top }
     }
 
     let active = -1
@@ -222,17 +244,18 @@ export default function useFacesInteraction({
       const bend = clamp(velocity * BEND_STRENGTH, -BEND_MAX, BEND_MAX)
       const watch = watchGeometry()
 
-      const key = watch
-        ? `${current.toFixed(2)} ${watch.outer.cx.toFixed(1)} ${watch.outer.cy.toFixed(1)} ${watch.unit.toFixed(4)}`
-        : `${current.toFixed(2)}`
+      const ambient = ambientState()
+      const key = `${current.toFixed(2)} ${ambient.level.toFixed(4)} ${ambient.cy.toFixed(1)} ${
+        watch ? `${watch.outer.cx.toFixed(1)} ${watch.outer.cy.toFixed(1)} ${watch.unit.toFixed(4)}` : ''
+      }`
       if (key !== lastKey || videoDirty || !canWatchFrames) {
-        scene.render({ position: current, bend, velocity, speed, watch })
+        scene.render({ position: current, bend, velocity, speed, watch, ambient })
         lastKey = key
         videoDirty = false
       }
       detectActive(current)
 
-      // FACES Crown(정면)의 wheel은 slider 위치를 따라 돈다. 한 바퀴(project 4개) = 360°.
+      // FACES Crown(정면)의 wheel은 slider 위치를 따라 돈다. 한 바퀴(project 전체) = 360°.
       const wheel = `${((current / loopWidth) * 360).toFixed(2)}deg`
       if (frontWheel && wheel !== lastWheel) {
         frontWheel.style.rotate = wheel
@@ -265,7 +288,7 @@ export default function useFacesInteraction({
         start: 'top top',
         end: () => {
           measure()
-          return `+=${Math.max(window.innerHeight * MIN_PIN_VIEWPORTS, loopWidth * LOOP_TO_SCROLL)}`
+          return `+=${Math.max(window.innerHeight * MIN_PIN_VIEWPORTS, loopWidth / RAIL_SPEED)}`
         },
         pin: stage,
         pinSpacing: true, // pin-spacer는 높이만 담당한다. 따로 스타일링하지 않는다.
@@ -365,6 +388,9 @@ export default function useFacesInteraction({
           centers: scene.centers,
           aspects: scene.aspects,
           displaySlot: scene.displaySlot,
+          projects: FACE_PROJECTS.map((p) => `${p.index} ${p.title}`),
+          counts: scene.counts,
+          ambient: ambientState(),
           focus: FACE_PROJECTS.map((_, i) => +scene.focus(i, current).toFixed(3)),
           display: watch ? { w: watch.display.hx * 2, h: watch.display.hy * 2 } : null,
           playing: scene.videos.map((v) => !v.paused),

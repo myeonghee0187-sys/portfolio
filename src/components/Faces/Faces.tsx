@@ -78,7 +78,7 @@ function FacesMeta({ active }: { active: number }) {
  * Watch는 이 섹션이 만들지 않는다. Hero / About에서 오던 WatchStage의 Watch가 그대로 남아 있고,
  * Watch case의 display 자리에 구멍이 있어서 이 섹션의 WebGL canvas를 그대로 들여다본다.
  *
- *   세로 scroll = page 진행. pin 동안 project 4개를 한 바퀴 돌고 다음으로 넘어간다.
+ *   세로 scroll = page 진행. pin 동안 project 전체(FACE_PROJECTS)를 한 바퀴 돌고 다음으로 넘어간다.
  *   drag        = 자유 탐색. 몇 바퀴든 돈다.
  */
 export default function Faces({ interactive, ready }: FacesProps) {

@@ -7,7 +7,8 @@
 
 .faces {
   position: relative;
-  background: #08090a;
+  /* About과 같은 바탕. canvas의 빈 영역도 같은 값으로 그려진다(facesScene.ts). */
+  background: var(--color-carbon-black);
   color: #f3f4f4;
 }
 
@@ -25,6 +26,8 @@
   /* 세로 scroll은 브라우저가 그대로 처리하고, 가로 drag만 가져온다. */
   touch-action: pan-y;
   user-select: none;
+  /* pin 중(position: fixed)에도 stage가 스스로 같은 바탕을 들고 있다. pin-spacer에는 스타일을 주지 않는다. */
+  background: var(--color-carbon-black);
 }
 
 .faces__stage.is-dragging {

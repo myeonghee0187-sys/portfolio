@@ -33,6 +33,9 @@ import { FACE_PROJECTS } from './facesData'
  * Watch의 hue는 바뀌지 않고, 영상의 명암·선·움직임만 굴절된 detail로 비친다.
  */
 
+/** 한 바퀴에 놓이는 project 수. 숫자로 적지 않고 facesData에서만 읽는다. */
+const PROJECT_COUNT = FACE_PROJECTS.length
+
 /* ---------------- gallery pass ---------------- */
 
 /**
@@ -188,8 +191,6 @@ varying vec2 vUv;
 varying float vShade;
 varying float vFocus;
 
-const vec3 CARBON = vec3(0.031, 0.035, 0.039);
-
 void main() {
   /*
    * EDGE FEATHER. 좌우 끝 uFeather 안에서는 가장자리로 갈수록 영상이 점점 더 늘어난다
@@ -204,9 +205,13 @@ void main() {
     u = u < 0.5 ? d2 : 1.0 - d2;
   }
   vec3 c = texture2D(uMap, vec2(u, vUv.y)).rgb * vShade * absorbDim(vFocus);
-  // 위·아래 가장자리의 계단만 1px 안에서 Carbon으로 녹인다. 좌우는 bridge와 이어진다.
+  /*
+   * 위·아래 가장자리의 계단만 1px 안에서 녹인다. 좌우는 bridge와 이어진다.
+   * gallery pass는 빈 바탕이 투명(0)인 premultiplied 색으로 그린다. alpha = 이 pixel을 project가 덮은 정도.
+   * Carbon 바탕은 composite가 그 아래에 깐다(1px 가장자리는 전과 같이 Carbon으로 녹는다).
+   */
   float a = clamp(min(vUv.y, 1.0 - vUv.y) / max(fwidth(vUv.y), 1e-5), 0.0, 1.0);
-  gl_FragColor = vec4(mix(CARBON, c, a), 1.0);
+  gl_FragColor = vec4(c * a, a);
 }
 `
 
@@ -284,7 +289,6 @@ varying float vFocusA;
 varying float vFocusB;
 varying float vStretch;
 
-const vec3 CARBON = vec3(0.031, 0.035, 0.039);
 const float PI = 3.141592653589793;
 
 void main() {
@@ -317,8 +321,9 @@ void main() {
 
   // bridge 가운데는 조금 가라앉는다. 검은 구멍이 아니라 project 사이의 숨 쉬는 간격이다.
   c *= mix(1.0, 1.0 - uBridgeDim, pow(mid, 1.4)) * vShade;
+  // plane과 같이 premultiplied + coverage. 위·아래 1px은 composite의 Carbon 바탕으로 녹는다.
   float edge = clamp(min(vV, 1.0 - vV) / max(fwidth(vV), 1e-5), 0.0, 1.0);
-  gl_FragColor = vec4(mix(CARBON, c, edge), 1.0);
+  gl_FragColor = vec4(c * edge, edge);
 }
 `
 
@@ -333,11 +338,11 @@ void main() {
 const COMPOSITE_FRAGMENT = /* glsl */ `
 precision highp float;
 
-uniform sampler2D uScene;     // gallery pass 결과
-uniform sampler2D uVideo0;    // project 영상. gallery pass와 같은 VideoTexture다.
-uniform sampler2D uVideo1;
-uniform sampler2D uVideo2;
-uniform sampler2D uVideo3;
+#define PROJECT_COUNT ${PROJECT_COUNT}
+
+uniform sampler2D uScene;     // gallery pass 결과. premultiplied 색 + coverage(빈 바탕은 투명 0)
+// project 영상. gallery pass와 같은 VideoTexture다(project마다 하나).
+${FACE_PROJECTS.map((_, i) => `uniform sampler2D uVideo${i};`).join('\n')}
 
 uniform vec2 uSize;           // canvas CSS px
 uniform float uPixelRatio;
@@ -352,16 +357,23 @@ uniform float uUnit;          // Watch 좌표계 1단위의 px
 // display: project마다 display 폭 하나씩의 자리를 차지하는 띠.
 uniform float uSlotW;         // display 폭(px) = 자리 하나
 uniform float uStripPos;      // display 가운데에 오는 띠 위의 위치(0 = F45 자리 가운데)
-uniform float uMediaAspect[4];
-uniform vec2 uFocusUv[4];      // cover 창의 중심(영상 UV)
+uniform float uMediaAspect[PROJECT_COUNT];
+uniform vec2 uFocusUv[PROJECT_COUNT];  // cover 창의 중심(영상 UV)
 
 uniform float uVelocity;      // 부호 있는 속도(stage 폭 기준)
 uniform float uSpeed;         // 0 ~ 1, 움직임의 세기
 
 uniform vec3 uOuterTreat;     // OUTSIDE: opacity, brightness, saturate
+uniform float uContact;       // case 바깥 접촉 그림자의 세기. WebGL Watch가 steel case를 이어받을 때 0 -> 1
+
+// SHARED ICE AMBIENT: About의 .about__ambient와 같은 빛(About.css와 같은 gradient, 같은 opacity).
+uniform vec2 uAmbientCenter;  // 빛의 중심(canvas CSS px) = 화면 가운데 = Watch 중심
+uniform float uAmbientUnit;   // About 좌표계 1단위의 px(About.css의 --about-u)
+uniform float uAmbient;       // 세기 = .about__ambient의 opacity(sharedAmbient.level)
 
 // Apple Watch Portfolio material. project가 무엇이든 이 색만 쓴다.
-const vec3 CARBON = vec3(0.031, 0.035, 0.039);     // #08090A
+// CARBON은 About / FACES 공통 바탕(index.css --color-carbon-black)과 같은 8bit 값이다. 색 변환 없이 그대로 나간다.
+const vec3 CARBON = vec3(8.0, 9.0, 10.0) / 255.0;  // #08090A
 const vec3 ELECTRIC = vec3(0.094, 0.427, 0.898);   // #186DE5
 const vec3 ICE = vec3(0.831, 0.898, 0.937);        // #D4E5EF
 const vec3 TITANIUM = vec3(0.467, 0.490, 0.510);   // #777D82
@@ -389,21 +401,72 @@ vec2 normalDisplay(vec2 p) {
   return g / max(length(g), 1e-5);
 }
 
-vec3 sceneAt(vec2 p) {
-  return texture2D(uScene, vec2(p.x / uSize.x, 1.0 - p.y / uSize.y)).rgb;
+vec4 sceneAt4(vec2 p) {
+  return texture2D(uScene, vec2(p.x / uSize.x, 1.0 - p.y / uSize.y));
 }
+vec3 sceneAt(vec2 p) { return sceneAt4(p).rgb; }
 float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 
-vec3 outsideTreat(vec3 c) {
-  vec3 m = mix(vec3(luma(c)), c, uOuterTreat.z) * uOuterTreat.y;
-  return mix(CARBON, m, uOuterTreat.x);
+/*
+ * OUTSIDE treatment(premultiplied 색 c, coverage a). project가 덮은 만큼만 saturate 뒤에
+ * brightness · opacity를 Carbon 기준으로 건다. 영상은 전과 같이 가라앉고(차이 0.4 / 255 이하),
+ * 덮이지 않은 나머지(1 - a)에는 아무것도 더하지 않는다 — 그 자리는 outsideAt이 바탕으로 채운다.
+ */
+vec3 outsideTreat(vec3 c, float a) {
+  vec3 m = mix(vec3(luma(c)), c, uOuterTreat.z);
+  return CARBON * a + (m - CARBON * a) * (uOuterTreat.y * uOuterTreat.x);
+}
+
+/*
+ * SHARED ICE AMBIENT. About.css .about__ambient의 두 radial-gradient를 같은 stop으로 다시 그린다.
+ * CSS와 같은 합성(두 층을 겹친 뒤 opacity를 곱해 Carbon 위에 얹는다)이라 About stage와 FACES canvas가
+ * 맞닿는 선에서 두 쪽 빛이 같은 값이다. 돌려주는 값은 Carbon 위에 더해지는 양이다.
+ *   Ice Glow        620 x 520  (About 좌표계)
+ *   Metal reflection 1040 x 300
+ * element 박스(1920 x 1080) 밖은 CSS처럼 0이다.
+ */
+float iceAlpha(float r) {
+  if (r < 0.22) return mix(0.12, 0.075, r / 0.22);
+  if (r < 0.45) return mix(0.075, 0.045, (r - 0.22) / 0.23);
+  if (r < 0.71) return mix(0.045, 0.015, (r - 0.45) / 0.26);
+  if (r < 0.88) return mix(0.015, 0.004, (r - 0.71) / 0.17);
+  return mix(0.004, 0.0, clamp((r - 0.88) / 0.12, 0.0, 1.0));
+}
+float metalAlpha(float r) {
+  if (r < 0.4) return mix(0.06, 0.035, r / 0.4);
+  if (r < 0.72) return mix(0.035, 0.012, (r - 0.4) / 0.32);
+  return mix(0.012, 0.0, clamp((r - 0.72) / 0.28, 0.0, 1.0));
+}
+const vec3 AMBIENT_ICE = vec3(212.0, 229.0, 239.0) / 255.0;
+const vec3 AMBIENT_METAL = vec3(164.0, 169.0, 173.0) / 255.0;
+vec3 ambientGlow(vec2 p) {
+  if (uAmbient <= 0.0) return vec3(0.0);
+  vec2 d = (p - uAmbientCenter) / uAmbientUnit;
+  if (abs(d.x) > 960.0 || abs(d.y) > 540.0) return vec3(0.0);
+  float ice = iceAlpha(length(d / vec2(620.0, 520.0)));
+  float metal = metalAlpha(length(d / vec2(1040.0, 300.0)));
+  float alpha = ice + metal * (1.0 - ice);
+  vec3 light = AMBIENT_ICE * ice + AMBIENT_METAL * metal * (1.0 - ice);
+  /*
+   * 8bit에서 아주 어두운 gradient는 한 단계씩 끊겨 둥근 띠(banding)가 보인다. CSS gradient처럼 1 / 255 안에서
+   * dither한다. 빛이 거의 없는 곳(1단계 미만)에서는 dither도 줄어 순수 Carbon은 정확히 8 / 9 / 10으로 남는다.
+   */
+  float noise = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) - 0.5;
+  float amount = clamp(uAmbient * alpha * 255.0, 0.0, 1.0);
+  return uAmbient * (light - CARBON * alpha) + noise / 255.0 * amount;
+}
+
+/*
+ * OUTSIDE 한 점. project가 덮지 않은 만큼(1 - coverage) Carbon 바탕 + ambient가 깔린다.
+ * 빈 바탕은 정확히 #08090A(+ About과 같은 ambient)이고, 영상 pixel에는 ambient가 섞이지 않는다.
+ */
+vec3 outsideAt(vec4 s, vec2 p) {
+  return outsideTreat(s.rgb, s.a) + (CARBON + ambientGlow(p)) * (1.0 - s.a);
 }
 
 vec3 sampleVideo(int index, vec2 uv) {
-  if (index == 0) return texture2D(uVideo0, uv).rgb;
-  if (index == 1) return texture2D(uVideo1, uv).rgb;
-  if (index == 2) return texture2D(uVideo2, uv).rgb;
-  return texture2D(uVideo3, uv).rgb;
+${FACE_PROJECTS.map((_, i) => `  if (index == ${i}) return texture2D(uVideo${i}, uv).rgb;`).join('\n')}
+  return CARBON;
 }
 
 /* 영상 UV(왼쪽 위 0 ~ 오른쪽 아래 1)의 한 점. VideoTexture는 flipY라 세로를 뒤집어 읽는다. */
@@ -430,10 +493,10 @@ vec3 displayProject(int j, vec2 local) {
  */
 vec3 displayMedia(vec2 p) {
   float x = uStripPos + (p.x - uDisplay.x);
-  float len = 4.0 * uSlotW;
+  float len = float(PROJECT_COUNT) * uSlotW;
   float start = -0.5 * uSlotW;
   float xr = start + mod(x - start, len);
-  int j = int(clamp(floor((xr - start) / uSlotW), 0.0, 3.0));
+  int j = int(clamp(floor((xr - start) / uSlotW), 0.0, float(PROJECT_COUNT - 1)));
   float slot = float(j) * uSlotW;
   float lv = (p.y - (uDisplay.y - uDisplay.w)) / (2.0 * uDisplay.w);
   vec3 c = displayProject(j, vec2((xr - slot) / uSlotW + 0.5, lv));
@@ -442,10 +505,10 @@ vec3 displayMedia(vec2 p) {
   float toLeft = xr - (slot - 0.5 * uSlotW);
   float toRight = (slot + 0.5 * uSlotW) - xr;
   if (toLeft < seam) {
-    int k = j == 0 ? 3 : j - 1;
+    int k = j == 0 ? PROJECT_COUNT - 1 : j - 1;
     c = mix(c, displayProject(k, vec2(1.0, lv)), 0.5 * (1.0 - smoothstep(0.0, seam, toLeft)));
   } else if (toRight < seam) {
-    int k = j == 3 ? 0 : j + 1;
+    int k = j == PROJECT_COUNT - 1 ? 0 : j + 1;
     c = mix(c, displayProject(k, vec2(0.0, lv)), 0.5 * (1.0 - smoothstep(0.0, seam, toRight)));
   }
   return c;
@@ -477,10 +540,14 @@ vec3 outsideColor(vec2 p, float dOut, float reach) {
   vec2 q = p - n * reach * w;
   // Watch 가까이에서는 둘레를 따라 조금 늘어난다(rim의 stretch가 바깥으로 이어지는 부분).
   float spread = (5.0 + 10.0 * uSpeed) * uUnit * w * w;
-  vec3 c = sceneAt(q) * 0.4 + (sceneAt(q + t * spread) + sceneAt(q - t * spread)) * 0.3;
-  c = outsideTreat(c);
-  // case 바로 바깥의 아주 얕은 접촉 그림자.
-  return c * (1.0 - 0.3 * exp(-max(dOut, 0.0) / (5.0 * uUnit)));
+  vec4 s = sceneAt4(q) * 0.4 + (sceneAt4(q + t * spread) + sceneAt4(q - t * spread)) * 0.3;
+  vec3 c = outsideAt(s, p);
+  /*
+   * case 바로 바깥의 아주 얕은 접촉 그림자. WebGL Watch의 그림자라서, DOM steel case가 아직 덮고 있는
+   * About -> FACES 동안에는 켜지 않는다 — 그때 켜 두면 About과 맞닿는 선 아래(canvas)에만 그림자가 생겨
+   * case 옆에서 바탕이 끊겨 보인다. FACES에서는 1이다.
+   */
+  return c * (1.0 - 0.3 * uContact * exp(-max(dOut, 0.0) / (5.0 * uUnit)));
 }
 
 /* ---------- C. GLASS / TITANIUM RIM ---------- */
@@ -565,7 +632,7 @@ void main() {
   vec2 p = vec2(gl_FragCoord.x, uSize.y * uPixelRatio - gl_FragCoord.y) / uPixelRatio;
 
   if (uWatch < 0.5) {
-    gl_FragColor = vec4(outsideTreat(sceneAt(p)), 1.0);
+    gl_FragColor = vec4(outsideAt(sceneAt4(p), p), 1.0);
     return;
   }
 
@@ -594,8 +661,17 @@ void main() {
  */
 const OUTER_TREATMENT = new THREE.Vector3(0.9, 0.95, 0.92)
 
-/** Carbon Black (#08090a). canvas 배경이자 gallery pass의 바탕. */
+/**
+ * Carbon Black (#08090a). 화면(canvas)을 지울 때의 색. 화면 출력은 sRGB라 hex 그대로 8 / 9 / 10이 된다.
+ */
 const CARBON = new THREE.Color(0x08090a)
+
+/**
+ * gallery pass(offscreen)는 투명(0, 0, 0, 0)으로 지운다. 빈 바탕의 색은 composite가 CARBON으로 직접 깐다.
+ * 전에는 여기를 Carbon hex로 지웠는데, three.js가 render target의 clear color를 linear로 바꿔 넣어
+ * 빈 바탕이 0.6 / 255(거의 순수 검정)가 되었고, 그것이 About(#08090A)과 FACES 사이의 검은 band였다.
+ */
+const GALLERY_CLEAR = new THREE.Color(0x000000)
 
 /*
  * GLOBAL WAVE. 길이는 stage 폭, 높이는 stage 높이에 비례한다(1920 x 1080 값은 괄호).
@@ -650,6 +726,8 @@ export type FacesWatchGeometry = {
 export type FacesRenderState = {
   /** 풀지 않은(unwrapped) 논리 위치(px). 커질수록 plane이 왼쪽으로 간다. */
   position: number
+  /** SHARED ICE AMBIENT의 세기(= About .about__ambient의 opacity)와 중심(canvas CSS px). */
+  ambient: { level: number; cx: number; cy: number }
   /** project plane 자체의 휨(px). */
   bend: number
   /** 부호 있는 속도(stage 폭 기준)와 0~1 세기. */
@@ -704,6 +782,7 @@ export default class FacesScene {
 
   private width = 1
   private height = 1
+  private pixelRatio = 0
 
   /** project마다 하나씩. 같은 영상이 바깥 plane / bridge / 굴절 / display 전부에 쓰인다. */
   readonly videos: HTMLVideoElement[] = []
@@ -718,6 +797,17 @@ export default class FacesScene {
   loopWidth = 1
   /** 마지막으로 그린 display 띠 위치(자리 단위, 0 = F45, 1 = TCHAIKIM ...). QA용. */
   displaySlot = 0
+
+  /** scene 안의 실제 개수(QA용). project마다 plane 2장(wrap된 자리 + 한 바퀴 옆자리), bridge 2장. */
+  get counts() {
+    return {
+      videos: this.videos.length,
+      textures: this.textures.length,
+      planes: this.meshes.length,
+      bridges: this.bridges.length,
+      sceneObjects: this.planesScene.children.length,
+    }
+  }
 
   constructor(canvas: HTMLCanvasElement, onMetadata: () => void) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' })
@@ -774,7 +864,7 @@ export default class FacesScene {
       this.planeMaterials.push(material)
     })
 
-    // project i의 오른쪽과 다음 project의 왼쪽을 잇는 bridge. T100 -> F45(다음 바퀴)도 같은 방식이다.
+    // project i의 오른쪽과 다음 project의 왼쪽을 잇는 bridge. 마지막 project -> F45(다음 바퀴)도 같은 방식이다.
     // 새 texture를 만들지 않고 양쪽 project의 VideoTexture를 그대로 읽는다. plane보다 먼저 그려 plane 밑으로 겹친다.
     FACE_PROJECTS.forEach((_, i) => {
       const next = (i + 1) % FACE_PROJECTS.length
@@ -809,10 +899,7 @@ export default class FacesScene {
       depthWrite: false,
       uniforms: {
         uScene: { value: this.target.texture },
-        uVideo0: { value: this.textures[0] },
-        uVideo1: { value: this.textures[1] },
-        uVideo2: { value: this.textures[2] },
-        uVideo3: { value: this.textures[3] },
+        ...Object.fromEntries(this.textures.map((texture, i) => [`uVideo${i}`, { value: texture }])),
         uSize: { value: new THREE.Vector2(1, 1) },
         uPixelRatio: { value: 1 },
         uWatch: { value: 0 },
@@ -828,6 +915,10 @@ export default class FacesScene {
         uVelocity: { value: 0 },
         uSpeed: { value: 0 },
         uOuterTreat: { value: OUTER_TREATMENT },
+        uContact: { value: 0 },
+        uAmbientCenter: { value: new THREE.Vector2() },
+        uAmbientUnit: { value: 1 },
+        uAmbient: { value: 0 },
       },
     })
     const quad = new THREE.Mesh(this.compositeGeometry, this.composite)
@@ -837,11 +928,16 @@ export default class FacesScene {
 
   /** canvas 크기가 바뀔 때(refresh). wave도 stage 크기에 맞춰 다시 정한다. */
   resize(width: number, height: number, pixelRatio: number) {
+    // canvas 크기를 다시 쓰면 drawing buffer가 비워진다(불투명 canvas라 다음 그리기 전까지 검게 보인다).
+    // ScrollTrigger refresh마다 부르므로 실제로 바뀔 때만 쓴다.
+    if (width !== this.width || height !== this.height || pixelRatio !== this.pixelRatio) {
+      this.renderer.setPixelRatio(pixelRatio)
+      this.renderer.setSize(width, height, false)
+      this.target.setSize(Math.round(width * pixelRatio), Math.round(height * pixelRatio))
+    }
     this.width = width
     this.height = height
-    this.renderer.setPixelRatio(pixelRatio)
-    this.renderer.setSize(width, height, false)
-    this.target.setSize(Math.round(width * pixelRatio), Math.round(height * pixelRatio))
+    this.pixelRatio = pixelRatio
     this.camera.left = -width / 2
     this.camera.right = width / 2
     this.camera.top = height / 2
@@ -860,6 +956,8 @@ export default class FacesScene {
     const u = this.composite.uniforms
     u.uSize.value.set(width, height)
     u.uPixelRatio.value = pixelRatio
+    // About의 --about-u와 같은 식. FACES stage와 About stage는 같은 크기(100% x 100dvh)다.
+    u.uAmbientUnit.value = Math.min(width / 1920, height / 1080)
   }
 
   /**
@@ -977,8 +1075,10 @@ export default class FacesScene {
     this.shared.uBend.value = state.bend
     this.shared.uVelCurve.value = this.width * VELOCITY_CURVE * state.speed
     this.renderer.setRenderTarget(this.target)
+    this.renderer.setClearColor(GALLERY_CLEAR, 0)
     this.renderer.render(this.planesScene, this.camera)
     this.renderer.setRenderTarget(null)
+    this.renderer.setClearColor(CARBON, 1)
 
     // 2. composite pass -> 화면
     const u = this.composite.uniforms
@@ -989,15 +1089,19 @@ export default class FacesScene {
       u.uDisplay.value.set(w.display.cx, w.display.cy, w.display.hx, w.display.hy)
       u.uDisplayR.value = w.display.r
       u.uUnit.value = w.unit
+      // 흡수와 같은 신호: display가 stage 가운데에 거의 다 온(steel case가 녹는) 구간에서 0 -> 1.
+      u.uContact.value = g.uAbsorbOn.value
       const displayW = w.display.hx * 2
       this.displaySlot = this.slotAt(state.position, displayW)
-      // 띠는 네 자리마다 반복되므로 shader에는 한 바퀴 안의 값만 넘긴다(float 정밀도).
+      // 띠는 project 수만큼의 자리마다 반복되므로 shader에는 한 바퀴 안의 값만 넘긴다(float 정밀도).
       const n = this.widths.length
       u.uSlotW.value = displayW
       u.uStripPos.value = gsap.utils.wrap(-0.5, n - 0.5, this.displaySlot) * displayW
     }
     u.uVelocity.value = state.velocity
     u.uSpeed.value = state.speed
+    u.uAmbient.value = state.ambient.level
+    u.uAmbientCenter.value.set(state.ambient.cx, state.ambient.cy)
     this.renderer.render(this.compositeScene, this.camera)
   }
 

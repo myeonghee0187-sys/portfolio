@@ -4,6 +4,15 @@
   box-sizing: border-box;
 }
 
+:root {
+  /*
+   * Portfolio 공통 바탕. About과 FACES는 section / stage(pin 대상) / WebGL clear·composite까지
+   * 전부 이 한 값이다(facesScene.ts의 CARBON도 같은 8 / 9 / 10). 두 section 사이에서 바뀌는 것은
+   * 바탕이 아니라 Watch 뒤의 ambient 빛뿐이다.
+   */
+  --color-carbon-black: #08090a;
+}
+
 html,
 body {
   margin: 0;
@@ -61,5 +70,5 @@ html.intro-scroll-lock body {
   --site-header-h: max(64px, calc(104 * var(--site-u)));
   min-height: 100vh;
   min-height: 100dvh;
-  background: #08090a;
+  background: var(--color-carbon-black);
 }

@@ -1,11 +1,12 @@
 import f45Video from '../../../assets/vid/faces/f45-faces-4x5.mp4'
 import tchaikimVideo from '../../../assets/vid/faces/tchaikim-faces-4x5.mp4'
 import jaduyaVideo from '../../../assets/vid/faces/intro_vid.mp4'
-import t100Video from '../../../assets/vid/faces/splash.mp4'
 
 /**
  * FACES에 놓이는 프로젝트. 배열 순서가 곧 rail 위의 순서다(왼쪽 -> 오른쪽).
  * WebGL slider, 모바일 fallback, metadata가 전부 이 배열 하나를 읽는다.
+ * project 수는 어디에도 숫자로 적지 않는다 — plane / bridge / VideoTexture / display 띠 / 한 바퀴 거리가
+ * 전부 FACE_PROJECTS.length에서 나온다. (T100은 완성 전이라 이번 FACES에서 빠져 있다. asset은 그대로 있다.)
  */
 export type FaceProject = {
   id: string
@@ -55,13 +56,5 @@ export const FACE_PROJECTS: FaceProject[] = [
     aspect: 1664 / 3648,
     // 캐릭터 위로 사과가 튀어 오르는 동작까지 창 안에 남도록 조금 위를 중심으로 둔다.
     focus: [0.5, 0.46],
-  },
-  {
-    id: 't100',
-    index: '04',
-    title: 'T100',
-    category: 'MOBILE WEB APP',
-    video: t100Video,
-    aspect: 1080 / 2352,
   },
 ]

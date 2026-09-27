@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
 import { ABOUT_CARDS } from '../components/About'
+import { sharedAmbient } from './sharedAmbient'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -87,6 +88,12 @@ const REFLECTION_SHIFT = 4
 
 /** 이동 중 ambient reflection의 opacity. HOLD에서 1이 된다(약 +11%). */
 const AMBIENT_REST = 0.9
+
+/**
+ * About -> FACES가 끝났을 때 남는 ambient의 비율(About 값의 1/3, opacity 0.9 -> 0.3).
+ * 0으로 꺼지지 않는다 — FACES 빈 바탕에 같은 Ice 빛이 아주 낮게 남아 있고, 그 위로 project 빛이 주인공이 된다.
+ */
+const AMBIENT_FACES_RATIO = 1 / 3
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
@@ -268,6 +275,19 @@ export default function useScrollScene(enabled: boolean) {
         ? (gsap.quickSetter(ambient, 'opacity') as (v: number) => void)
         : () => {}
 
+      /*
+       * ambient의 세기 = 카드 쪽 값(이동 0.9 / HOLD 1) x About -> FACES에서 가라앉는 비율.
+       * 두 곳(renderCards, facesTl)이 각자 자기 값만 바꾸고, 쓰기는 여기 한 곳에서 한다.
+       * 같은 값이 FACES canvas의 ambient로도 넘어간다(sharedAmbient).
+       */
+      let ambientCards = AMBIENT_REST
+      const ambientFade = { value: 1 }
+      const writeAmbient = () => {
+        const level = ambientCards * ambientFade.value
+        setAmbientOpacity(level)
+        sharedAmbient.level = level
+      }
+
       /** 좌표를 다시 잰다. 매 프레임이 아니라 refresh 때만 부른다. */
       const measureCards = () => {
         cards.length = 0
@@ -390,7 +410,8 @@ export default function useScrollScene(enabled: boolean) {
         }
 
         // Watch 뒤 ambient도 HOLD에서만 아주 조금 밝아진다.
-        setAmbientOpacity(lerp(AMBIENT_REST, 1, pairFocus))
+        ambientCards = lerp(AMBIENT_REST, 1, pairFocus)
+        writeAmbient()
       }
 
       /*
@@ -436,6 +457,9 @@ export default function useScrollScene(enabled: boolean) {
        *   - Crown이 Watch에서 떨어져 footer band 오른쪽 끝의 controller 자리로 옮겨가며 옆모습에서 정면으로 돌아선다.
        *   - 마지막에 steel case(PNG)가 녹아 없어지고, 같은 실루엣의 WebGL Watch(Blue / Ice glass rim +
        *     display)가 그 자리를 이어받는다. FACES canvas가 Watch 자리를 다 덮은 뒤라 빈틈이 없다.
+       *   - 바탕은 두 section 모두 같은 Carbon Black이다. 바뀌는 것은 Watch 뒤의 Ice Ambient뿐이다:
+       *     About의 ambient가 About stage와 함께 올라가지 않고 Watch(화면 가운데)에 머물며 가라앉고,
+       *     아래에서 올라오는 FACES canvas가 같은 빛을 같은 세기로 이어 그린다(sharedAmbient).
        * Watch 위치는 그대로다. FACES pin 동안에는 크기도 위치도 고정이다.
        */
       const faces = document.querySelector<HTMLElement>('.faces')
@@ -542,6 +566,24 @@ export default function useScrollScene(enabled: boolean) {
           0.46,
         )
 
+        /*
+         * ABOUT AMBIENT -> SHARED ICE AMBIENT -> FACES.
+         * 0 ~ 100%: About stage는 이 구간 동안 정확히 한 화면 올라간다. ambient는 그만큼 반대로 내려와
+         *           화면 가운데(= Watch 뒤)에 그대로 머문다. About stage의 overflow가 FACES 윗변에서 잘라 주고,
+         *           그 아래는 FACES canvas가 같은 빛을 이어 그린다.
+         * 20 ~ 85%: Watch가 FACES 크기로 커지는 것과 같은 구간·같은 ease로 0.9 -> 0.3까지 가라앉는다.
+         */
+        if (ambient) {
+          gsap.set(ambient, { xPercent: -50, yPercent: -50, x: 0, y: 0 })
+          facesTl.fromTo(ambient, { y: 0 }, { y: () => window.innerHeight, ease: 'none', duration: 1 }, 0)
+        }
+        facesTl.fromTo(
+          ambientFade,
+          { value: 1 },
+          { value: AMBIENT_FACES_RATIO, ease: 'power1.inOut', duration: 0.65, onUpdate: writeAmbient, immediateRender: false },
+          0.2,
+        )
+
         // timeline 길이를 scroll 구간 전체(1)에 맞춘다. 위 시간이 곧 구간 안의 비율이 된다.
         facesTl.set({}, {}, 1)
       }
@@ -558,6 +600,8 @@ export default function useScrollScene(enabled: boolean) {
           }
         }
         ambient?.style.removeProperty('opacity')
+        ambient?.style.removeProperty('transform')
+        sharedAmbient.level = 0
       }
 
       // context가 revert될 때 GSAP이 함께 불러준다.
