@@ -7,7 +7,7 @@ import {
 } from 'react'
 import gsap from 'gsap'
 import { CustomEase } from 'gsap/CustomEase'
-import introVideoSrc from '../../assets/vid/opening_video1.mp4'
+import introVideoSrc from '../../assets/vid/opening-watch-final.mp4'
 import './IntroVideo.css'
 
 gsap.registerPlugin(CustomEase)
@@ -18,13 +18,13 @@ const SCROLL_LOCK_CLASS = 'intro-scroll-lock'
 const SCROLLBAR_HIDDEN_CLASS = 'intro-scrollbar-hidden'
 
 /* ------------------------------------------------------------------ *
- * 좌측 상단 문구 타이밍 (영상 길이 8.04s, 24fps)
+ * 좌측 상단 문구 타이밍 (opening-watch-final.mp4: 5.04s, 24fps)
  * ------------------------------------------------------------------ */
 
 /**
- * 첫 문구가 사라지기 시작하는 지점(초).
- * 여러 개의 구체가 등장하는 장면 전환 지점으로, ffmpeg 장면 검출값 3.9167s를 반올림했다.
- * 문구를 더 빨리/늦게 바꾸고 싶으면 이 값만 조절하면 된다.
+ * 첫 문구가 두 번째 문구로 바뀌기 시작하는 지점(초).
+ * 지금 영상에서는 ending 전환(TRANSITION_START)이 이보다 먼저 시작되어 문구가 먼저 사라진다.
+ * 문구 구조를 그대로 두기 위해 값만 남겨 둔다.
  */
 const INTRO_TEXT_CHANGE_TIME = 3.9
 
@@ -42,13 +42,19 @@ const TEXT_SWAP_DELAY_SEC = (TEXT_FADE_MS + TEXT_SWAP_GAP_MS) / 1000
  * 모든 시점은 setTimeout이 아니라 video.currentTime 기준이다.
  * ------------------------------------------------------------------ */
 
-/** 전환 시작 / 끝(영상 시간, 초). 영상은 이 구간에도 멈추지 않고 원래 속도로 재생된다. */
-const TRANSITION_START = 3.5
-const TRANSITION_END = 4.45
+/**
+ * 전환 시작 / 끝(영상 시간, 초). 영상은 이 구간에도 멈추지 않고 원래 속도로 재생된다.
+ * 새 영상의 실제 frame 기준:
+ *   2.5s  display가 켜진다 / 2.7 ~ 3.1s  카메라가 켜진 display 쪽으로 다가간다
+ *   3.15 ~ 3.2s  display 빛이 가라앉고 왼쪽 아래에 기계 부품이 비치기 시작 / 3.3s부터 기계·회로 장면
+ * 그래서 Watch가 충분히 가까워진 2.95s에 시작하고, 기계 장면이 뚜렷해지는 동안 Carbon Black으로 덮는다.
+ */
+const TRANSITION_START = 2.95
+const TRANSITION_END = 3.85
 const TRANSITION_DURATION = TRANSITION_END - TRANSITION_START
 
 /** 확대에 쓰는 시간(초)과 배율. 끝까지 가지 않고 약간 먼저 멈춰, 마지막은 색만 수렴한다. */
-const ZOOM_DURATION = 0.85
+const ZOOM_DURATION = 0.8
 /**
  * 확대 ease = CSS 'ease' 곡선. 짧게 가속한 뒤 길게 감속한다.
  * 순수 ease-out(cubic-bezier(0.33, 1, 0.68, 1))은 첫 0.1초에 5.6%를 한 번에 당겨 화면이 튀어 보였다.
@@ -59,10 +65,11 @@ const ZOOM_SCALE = 1.18
 const ZOOM_SCALE_NARROW = 1.1
 
 /**
- * 확대 초점. 영상 원본 frame 기준 비율(0~1)이다 — 3.5s 전후 가운데 구체의 중심.
+ * 확대 초점. 영상 원본 frame 기준 비율(0~1)이다 — 2.7 ~ 3.2s 켜진 Watch display의 중심
+ * (빛나는 display 테두리의 bounding box 가운데, 약 x 49 ~ 50% / y 38 ~ 40%).
  * 화면 좌표(transform-origin)는 object-fit: cover crop을 계산해 viewport마다 따로 구한다.
  */
-const ZOOM_FOCUS = { x: 0.5, y: 0.43 }
+const ZOOM_FOCUS = { x: 0.5, y: 0.39 }
 
 /** Carbon Black overlay의 opacity keyframe(전환 진행률 → opacity). 뒤로 갈수록 빨리 짙어진다. */
 const OVERLAY_KEYS: ReadonlyArray<readonly [number, number]> = [
