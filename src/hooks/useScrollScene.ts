@@ -109,6 +109,23 @@ const easeOutSine = (t: number) => Math.sin((t * Math.PI) / 2)
 const easeInSine = (t: number) => 1 - Math.cos((t * Math.PI) / 2)
 
 /**
+ * Primary border가 "읽는 자리에 들어왔다"고 보는 거리. 경로(-1 출발 ~ 0 정지 자리 ~ +1 퇴장) 위에서
+ * 정지 자리까지 이만큼 남았을 때 켜진다. 재질 focus가 절반을 넘는 지점과 같다(FOCUS_RANGE / 2).
+ */
+const READ_ALONG = FOCUS_RANGE / 2
+
+/** Primary border가 켜지고 꺼지는 데 걸리는 timeline 길이. 꺼짐이 더 짧아서 두 장이 동시에 0.5를 넘지 않는다. */
+const BORDER_IN = 0.07
+const BORDER_OUT = 0.05
+
+/** 짝이 경로를 따라 들어오다 정지 자리까지 READ_ALONG만 남은 timeline 위치(= 읽는 구간의 시작). */
+const readingEntry = (phase: (typeof PAIR_PHASES)[number]) =>
+  phase.enterStart + (phase.enterEnd - phase.enterStart) * ((2 / Math.PI) * Math.asin(1 - READ_ALONG))
+
+/** 짝이 Watch 양옆에 정지해 있는 구간(plateau)의 가운데. */
+const plateauMid = (phase: (typeof PAIR_PHASES)[number]) => (phase.enterEnd + phase.holdEnd) / 2
+
+/**
  * Hero -> About scroll 연출.
  *
  * ScrollTrigger 두 개가 순서대로 이어진다. 구간이 겹치지 않아 서로의 transform을 건드리지 않는다.
@@ -272,7 +289,7 @@ export default function useScrollScene(enabled: boolean) {
       }
 
       const ambient = inner.querySelector<HTMLElement>('.about__ambient')
-      const ice = inner.querySelector<HTMLElement>('.about__ice')
+      const light = inner.querySelector<HTMLElement>('.about-faces-transition-light')
       const setAmbientOpacity = ambient
         ? (gsap.quickSetter(ambient, 'opacity') as (v: number) => void)
         : () => {}
@@ -284,13 +301,15 @@ export default function useScrollScene(enabled: boolean) {
        */
       let ambientCards = AMBIENT_REST
       const ambientFade = { value: 1 }
-      const boundaryLight = { value: 0 }
+      /** About -> FACES 경계 Ice Reflection의 opacity / scale. About DOM과 FACES canvas가 같은 값을 쓴다. */
+      const boundaryLight = { value: 0, scale: 0.82 }
       const writeAmbient = () => {
         const level = ambientCards * ambientFade.value
         setAmbientOpacity(level)
         sharedAmbient.level = level
         sharedAmbient.ice = boundaryLight.value
-        if (ice) ice.style.opacity = String(boundaryLight.value)
+        sharedAmbient.iceScale = boundaryLight.scale
+        if (light) light.style.opacity = String(boundaryLight.value)
       }
 
       /** 좌표를 다시 잰다. 매 프레임이 아니라 refresh 때만 부른다. */
@@ -451,6 +470,46 @@ export default function useScrollScene(enabled: boolean) {
       measureCards()
       renderCards(0)
 
+      /*
+       * Primary border — 읽기 순서대로 한 장씩(WHO I AM -> HOW I SEE -> HOW I REFINE -> HOW I MAKE).
+       *
+       * 같은 짝의 두 장은 같은 keyframe(enterEnd)에 정지 자리에 도착하므로, 도착 시각만으로는 순서가 없다.
+       * 그래서 짝의 "읽는 구간"을 두 장이 나눠 갖는다.
+       *   앞 장  짝이 읽는 자리에 들어오는 순간(readingEntry)
+       *   뒤 장  짝이 Watch 양옆에 멈춰 있는 구간의 가운데(plateauMid)
+       * 다음 장이 켜지는 label에서 앞 장이 꺼진다. 꺼짐(0.05)이 켜짐(0.07)보다 짧아서
+       * 어느 프레임에서도 0.5를 넘는 카드는 한 장뿐이다. 새 ScrollTrigger 없이 이 timeline에만 얹는다.
+       */
+      const borderCards = (['who', 'see', 'refine', 'make'] as const).map((name) =>
+        inner.querySelector<HTMLElement>(`[data-about-card="${name}"]`),
+      )
+      if (borderCards.every(Boolean)) {
+        const [who, see, refine, make] = borderCards as HTMLElement[]
+        const [pair1, pair2] = PAIR_PHASES
+        cardsTl.addLabel('whoBorderActive', readingEntry(pair1))
+        cardsTl.addLabel('seeBorderActive', plateauMid(pair1))
+        cardsTl.addLabel('refineBorderActive', readingEntry(pair2))
+        cardsTl.addLabel('makeBorderActive', plateauMid(pair2))
+        // About 카드 순서가 끝나는 곳. 마지막 장도 여기서 꺼진다.
+        cardsTl.addLabel('aboutBorderEnd', 1 - BORDER_OUT)
+
+        const border = '--about-primary-border-opacity'
+        gsap.set(borderCards, { [border]: 0 })
+        const on = (el: HTMLElement, label: string) =>
+          cardsTl.fromTo(el, { [border]: 0 }, { [border]: 1, duration: BORDER_IN, ease: 'none', immediateRender: false }, label)
+        const off = (el: HTMLElement, label: string) =>
+          cardsTl.fromTo(el, { [border]: 1 }, { [border]: 0, duration: BORDER_OUT, ease: 'none', immediateRender: false }, label)
+
+        on(who, 'whoBorderActive')
+        off(who, 'seeBorderActive')
+        on(see, 'seeBorderActive')
+        off(see, 'refineBorderActive')
+        on(refine, 'refineBorderActive')
+        off(refine, 'makeBorderActive')
+        on(make, 'makeBorderActive')
+        off(make, 'aboutBorderEnd')
+      }
+
       /* ---------- C. About -> FACES : 같은 Watch가 FACES mode가 된다 ---------- */
 
       /*
@@ -603,9 +662,10 @@ export default function useScrollScene(enabled: boolean) {
           gsap.set(ambient, { xPercent: -50, yPercent: -50, x: 0, y: 0 })
           facesTl.fromTo(ambient, { y: 0 }, { y: () => window.innerHeight, ease: 'none', duration: 1 }, 0)
         }
-        if (ice) {
-          gsap.set(ice, { xPercent: -50, yPercent: -50, x: 0, y: 0 })
-          facesTl.fromTo(ice, { y: 0 }, { y: () => window.innerHeight, ease: 'none', duration: 1 }, 0)
+        if (light) {
+          // 화면 가운데(Watch 중심)에 머문다 — About stage가 올라가는 만큼 반대로 내려온다.
+          gsap.set(light, { xPercent: -50, yPercent: -50, x: 0, y: 0, scale: boundaryLight.scale })
+          facesTl.fromTo(light, { y: 0 }, { y: () => window.innerHeight, ease: 'none', duration: 1 }, 0)
         }
         facesTl.fromTo(
           ambientFade,
@@ -616,9 +676,30 @@ export default function useScrollScene(enabled: boolean) {
 
         // timeline 길이를 scroll 구간 전체(1)에 맞춘다. 위 시간이 곧 구간 안의 비율이 된다.
         facesTl.set({}, {}, 1)
-        facesTl.to(boundaryLight, { value: 0.35, duration: 0.2, ease: 'none', onUpdate: writeAmbient }, 0)
-        facesTl.to(boundaryLight, { value: 1, duration: 0.35, ease: 'power1.inOut', onUpdate: writeAmbient }, 0.2)
-        facesTl.to(boundaryLight, { value: 0.32, duration: 0.45, ease: 'power1.inOut', onUpdate: writeAmbient }, 0.55)
+        /*
+         * 경계 Ice Reflection. 새 ScrollTrigger 없이 이 timeline(About -> FACES)의 progress에 그대로 묶인다.
+         *   0    -> 0.25  About 종료 접근   opacity 0 -> 0.32, scale 0.82 -> 0.92
+         *   0.25 -> 0.58  경계 / Watch 확대  opacity -> 1(peak), scale -> 1.12
+         *   0.58 -> 1     FACES 진입 완료   opacity -> 0.32, scale -> 1.32 (FACES optical light로 가라앉는다)
+         * 바탕색은 그대로다. 되감으면 같은 값을 거꾸로 지나간다.
+         */
+        facesTl.fromTo(
+          boundaryLight,
+          { value: 0, scale: 0.82 },
+          { value: 0.32, scale: 0.92, duration: 0.25, ease: 'none', onUpdate: writeAmbient, immediateRender: false },
+          0,
+        )
+        facesTl.to(boundaryLight, { value: 1, scale: 1.12, duration: 0.33, ease: 'sine.inOut', onUpdate: writeAmbient }, 0.25)
+        facesTl.to(boundaryLight, { value: 0.32, scale: 1.32, duration: 0.42, ease: 'sine.inOut', onUpdate: writeAmbient }, 0.58)
+        /*
+         * DOM 쪽 scale은 같은 keyframe·같은 ease의 transform tween으로 둔다(위 y tween과 한 transform에 합쳐진다).
+         * quickSetter('scale')는 transform이 아니라 별도의 CSS scale 속성을 써서 두 번 곱해진다.
+         */
+        if (light) {
+          facesTl.fromTo(light, { scale: 0.82 }, { scale: 0.92, duration: 0.25, ease: 'none', immediateRender: false }, 0)
+          facesTl.to(light, { scale: 1.12, duration: 0.33, ease: 'sine.inOut' }, 0.25)
+          facesTl.to(light, { scale: 1.32, duration: 0.42, ease: 'sine.inOut' }, 0.58)
+        }
 
         /*
          * Crown이 정면 controller가 된 직후 딱 한 번 도는 cue.
@@ -657,8 +738,9 @@ export default function useScrollScene(enabled: boolean) {
         ambient?.style.removeProperty('transform')
         sharedAmbient.level = 0
         sharedAmbient.ice = 0
-        ice?.style.removeProperty('opacity')
-        ice?.style.removeProperty('transform')
+        sharedAmbient.iceScale = 0.82
+        light?.style.removeProperty('opacity')
+        light?.style.removeProperty('transform')
         crown?.removeEventListener('animationend', clearCue)
         crown?.classList.remove('watch__crown--controller', 'watch__crown--cue')
         const button = crown?.querySelector<HTMLButtonElement>('button')

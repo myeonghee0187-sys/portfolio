@@ -13,6 +13,8 @@ import './About.css'
  *
  * 이고, 각 장면에서 두 카드의 세로 중심이 Watch의 세로 중심과 같은 선에 놓인다.
  *
+ *   name - Primary border가 켜지는 의미 순서의 이름(who -> see -> refine -> make).
+ *          화면의 좌우가 아니라 이 순서로 한 장씩 켜진다(useScrollScene).
  *   pair - 어느 짝인지(0: 먼저, 1: 나중).
  *   side - Watch의 어느 쪽에 서는지. 세로로 흐르는 방향도 이것으로 정해진다.
  *          left는 아래 -> 위, right는 위 -> 아래로 흘러 Watch 양옆에서 서로 교차한다.
@@ -23,6 +25,7 @@ import './About.css'
 export const ABOUT_CARDS = [
   {
     id: 'am',
+    name: 'who',
     title: 'WHO I AM',
     body: [
       '브랜드와 사용자의 목적을 이해하고,',
@@ -34,6 +37,7 @@ export const ABOUT_CARDS = [
   },
   {
     id: 'see',
+    name: 'see',
     title: 'HOW I SEE',
     body: [
       '사용자가 어디에서 멈추고',
@@ -45,6 +49,7 @@ export const ABOUT_CARDS = [
   },
   {
     id: 'refine',
+    name: 'refine',
     title: 'HOW I REFINE',
     body: [
       '작은 디테일부터 전체 화면의 흐름까지 살펴본 뒤,',
@@ -56,6 +61,7 @@ export const ABOUT_CARDS = [
   },
   {
     id: 'make',
+    name: 'make',
     title: 'HOW I MAKE',
     body: [
       'Figma에서 끝내지 않고',
@@ -81,10 +87,20 @@ export default function About({ inlineWatch }: AboutProps) {
         <div className="about__inner">
           {/* Watch 주변의 차가운 반사. 카드 유리가 흐릴 빛 정보이기도 하다. */}
           <div className="about__ambient" aria-hidden="true" />
-          <div className="about__ice" aria-hidden="true" />
+          {/*
+            About -> FACES 경계에서 한 번 밝아지는 Ice Reflection의 About 쪽 절반.
+            FACES 쪽 절반은 FACES canvas가 같은 식으로 project 뒤에 그린다(facesScene의 handoff light).
+          */}
+          <div className="about-faces-transition-light" aria-hidden="true" />
 
           {ABOUT_CARDS.map((card) => (
-            <article key={card.id} className={`about__card about__card--${card.id}`}>
+            <article
+              key={card.id}
+              className={`about__card about__card--${card.id}`}
+              data-about-card={card.name}
+            >
+              {/* Primary border 전용 layer. 기본 black glass border 위에 겹쳐 켜진다. */}
+              <span className="about__card-primary" aria-hidden="true" />
               <h2 className="about__card-title">{card.title}</h2>
               <p className="about__card-body">
                 {card.body.map((line, i) => (

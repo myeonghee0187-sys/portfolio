@@ -1,4 +1,11 @@
-/** Journey copy and preserved card geometry, in 1920px design coordinates. */
+/**
+ * Journey copy와 card 배치. 좌표는 1920 기준 world 좌표다.
+ *
+ * card 크기는 여기서 정하지 않는다 — 7장 모두 Journey.css의 공통 크기(1920에서 560 x 400)를 쓴다.
+ * 경로도 여기 좌표로 그리지 않는다. 각 card 안의 anchor element를 실제로 재서 잇는다(useJourneyInteraction).
+ */
+export type JourneyAnchor = 'top' | 'bottom' | 'left' | 'right'
+
 export type JourneyNode = {
   id: string
   /** Scroll timeline label; never rendered as a section index. */
@@ -7,11 +14,14 @@ export type JourneyNode = {
   description: string[]
   keywords?: string[]
   meta?: { label: string; value: string; date?: boolean }[]
-  /** Card center in the Journey world. */
+  /** card 중심(world 좌표). */
   position: { x: number; y: number }
-  width: number
-  height: number
-  compact?: boolean
+  /**
+   * 경로가 card에 닿는 변. 좌우에 놓인 card는 경로 쪽 변(왼쪽 card는 right, 오른쪽 card는 left),
+   * 처음과 끝의 가운데 card는 경로가 떠나고(bottom) 도착하는(top) 변이다.
+   * card의 scale 기준점도 이 변이라, 비활성 상태로 작아져도 경로 끝과 card 사이에 틈이 생기지 않는다.
+   */
+  anchor: JourneyAnchor
 }
 
 export const JOURNEY_NODES: JourneyNode[] = [
@@ -30,8 +40,7 @@ export const JOURNEY_NODES: JourneyNode[] = [
       { label: '과정', value: 'UXUI 디자인 & 웹기획 프론트엔드 부트캠프' },
     ],
     position: { x: 960, y: 0 },
-    width: 620,
-    height: 561,
+    anchor: 'bottom',
   },
   {
     id: 'uxui',
@@ -44,8 +53,7 @@ export const JOURNEY_NODES: JourneyNode[] = [
     ],
     keywords: ['Wireframe', 'User Flow', 'IA', 'Prototype'],
     position: { x: 470, y: 1060 },
-    width: 580,
-    height: 449,
+    anchor: 'right',
   },
   {
     id: 'visual-tools',
@@ -58,9 +66,7 @@ export const JOURNEY_NODES: JourneyNode[] = [
     ],
     keywords: ['Photoshop', 'Illustrator'],
     position: { x: 1420, y: 1500 },
-    width: 392,
-    height: 325,
-    compact: true,
+    anchor: 'left',
   },
   {
     id: 'frontend',
@@ -73,8 +79,7 @@ export const JOURNEY_NODES: JourneyNode[] = [
     ],
     keywords: ['HTML', 'CSS', 'Javascript', 'React'],
     position: { x: 1450, y: 2180 },
-    width: 580,
-    height: 492,
+    anchor: 'left',
   },
   {
     id: 'workflow',
@@ -87,8 +92,7 @@ export const JOURNEY_NODES: JourneyNode[] = [
     ],
     keywords: ['VS CODE', 'VITE', 'GIT', 'GITHUB', 'VERCEL'],
     position: { x: 470, y: 2900 },
-    width: 580,
-    height: 539,
+    anchor: 'right',
   },
   {
     id: 'ai-workflow',
@@ -106,8 +110,7 @@ export const JOURNEY_NODES: JourneyNode[] = [
       { label: '제작', value: 'Midjourney ‧ Kling AI' },
     ],
     position: { x: 1250, y: 3560 },
-    width: 520,
-    height: 383,
+    anchor: 'left',
   },
   {
     id: 'now',
@@ -120,8 +123,7 @@ export const JOURNEY_NODES: JourneyNode[] = [
     ],
     keywords: ['UXUI', 'WEB', 'FRONT-END', 'AI'],
     position: { x: 960, y: 4750 },
-    width: 620,
-    height: 490,
+    anchor: 'top',
   },
 ]
 

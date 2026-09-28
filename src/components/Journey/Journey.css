@@ -1,5 +1,16 @@
-/* Card centers, dimensions and state motion retain the existing geometry. */
+/* Card 중심 좌표와 active / completed / upcoming motion은 그대로다. */
 .journey {
+  /*
+   * Card 공통 크기 시스템. 7장이 모두 같은 크기와 여백을 쓴다(card별 override 없음).
+   *   1920 x 1080       560 x 400, padding 40
+   *   더 작은 데스크톱   폭 460 ~ 560 / 높이 340 ~ 400 사이에서 뷰포트를 따라간다. padding은 40 그대로.
+   * 글자는 card 폭을 따라 함께 줄어든다(--card-u = card 폭 / 560, 1920에서 정확히 1px = Figma 값).
+   */
+  --journey-card-width: clamp(460px, 29.1667vw, 560px);
+  --journey-card-height: clamp(340px, 37.037vh, 400px);
+  --journey-card-padding: 40px;
+  --journey-card-radius: 20px;
+  --card-u: calc(var(--journey-card-width) / 560);
   position: relative;
   background: var(--color-carbon-black);
   color: #f3f4f4;
@@ -52,22 +63,32 @@
   pointer-events: none;
 }
 
+/*
+ * 세 path가 같은 d(하나의 경로)를 쓴다. 선 굵기는 world 배율과 상관없이 실제 px이다.
+ * non-scaling-stroke에서는 dash 길이도 화면 px로 적용되므로 useJourneyInteraction이 길이를 world 배율로 환산한다.
+ */
 .journey__path path {
   fill: none;
   stroke-linecap: round;
-  stroke-width: 1.6px;
+  stroke-linejoin: round;
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
 }
 
-.journey__path-base {
+/* 아직 지나지 않은 길 */
+.journey__path .journey__path-base {
   stroke: rgb(119 125 130 / 0.18);
 }
 
-.journey__path-drawn {
-  stroke: rgb(212 229 239 / 0.30);
+/* 지나온 길 */
+.journey__path .journey__path-drawn {
+  stroke: rgb(212 229 239 / 0.3);
 }
 
-.journey__path-accent {
-  stroke: rgb(24 109 229 / 0.62);
+/* 지금 그려지는 끝(active). 공통 규칙(.journey__path path)보다 우선해야 2.5px이 된다. */
+.journey__path .journey__path-accent {
+  stroke: rgb(24 109 229 / 0.64);
+  stroke-width: 2.5px;
 }
 
 .journey__node {
@@ -81,23 +102,45 @@
 }
 
 .journey__card {
-  --text-u: var(--ju);
   position: absolute;
   left: 0;
   top: 0;
-  width: calc(var(--card-w) * var(--ju));
-  height: calc(var(--card-h) * var(--ju));
-  padding: calc(40 * var(--ju)) calc(44 * var(--ju));
+  box-sizing: border-box;
+  /* 제목 + 본문 묶음은 위, meta / keyword 묶음은 아래 끝에 붙는다. 두 묶음 사이는 최소 20px. */
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: var(--journey-card-width);
+  height: var(--journey-card-height);
+  padding: var(--journey-card-padding);
+  /*
+   * scale 기준점은 경로가 닿는 변(data-anchor)이다. 비활성 상태로 작아져도 그 변은 제자리에 있어서
+   * 경로 끝과 card 사이에 틈이 생기지 않는다. scale / 투명도 / blur 값 자체는 이전과 같다.
+   */
   transform: translate(-50%, -50%) scale(calc(0.9 + 0.1 * var(--node-in) - 0.05 * var(--node-out)));
   border: 1px solid color-mix(in srgb, rgb(212 229 239 / 0.10), rgb(24 109 229 / 0.55) calc(var(--node-in) * (1 - var(--node-out)) * 100%));
-  border-radius: calc(24 * var(--ju));
+  border-radius: var(--journey-card-radius);
   background: linear-gradient(rgb(255 255 255 / calc(0.025 + 0.02 * var(--node-in) - 0.012 * var(--node-out))), rgb(255 255 255 / calc(0.025 + 0.02 * var(--node-in) - 0.012 * var(--node-out)))), var(--color-carbon-black);
   opacity: calc(0.3 + 0.7 * var(--node-in) - 0.38 * var(--node-out));
   filter: blur(calc(2.4px * (1 - var(--node-in)) + 1.1px * var(--node-out)));
   will-change: transform, opacity, filter;
+}
+
+.journey__card[data-anchor='right'] {
+  transform-origin: 100% 50%;
+}
+
+.journey__card[data-anchor='left'] {
+  transform-origin: 0% 50%;
+}
+
+.journey__card[data-anchor='top'] {
+  transform-origin: 50% 0%;
+}
+
+.journey__card[data-anchor='bottom'] {
+  transform-origin: 50% 100%;
 }
 
 .journey__card::after {
@@ -111,30 +154,72 @@
   opacity: calc(var(--node-in) * (1 - var(--node-out)));
 }
 
-.journey__headline {
+/*
+ * 경로가 card에 닿는 한 점. 보이지 않고 위치만 준다(2 x 2, 중심이 card 바깥선보다 2px 안쪽).
+ * 경로는 이 점까지 이어지고 card의 불투명한 바탕이 그 안쪽을 덮는다 — 끊겨 보이는 틈이 없다.
+ */
+.journey-card__anchor {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  pointer-events: none;
+}
+
+.journey__card[data-anchor='right'] .journey-card__anchor {
+  top: calc(50% - 1px);
+  right: 0;
+}
+
+.journey__card[data-anchor='left'] .journey-card__anchor {
+  top: calc(50% - 1px);
+  left: 0;
+}
+
+.journey__card[data-anchor='top'] .journey-card__anchor {
+  top: 0;
+  left: calc(50% - 1px);
+}
+
+.journey__card[data-anchor='bottom'] .journey-card__anchor {
+  bottom: 0;
+  left: calc(50% - 1px);
+}
+
+/* 제목 + 본문. 제목과 본문 사이 32. */
+.journey-card__main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(32 * var(--card-u));
+}
+
+/*
+ * Titanium gradient. 7장 모두 같은 4단계 값이다.
+ * 어두운 stop이 없어서 글자 가운데를 검은 띠가 지나가지 않는다. bevel / stroke / 그림자 없음.
+ */
+.journey-card__title {
   margin: 0;
   font-family: 'Anton', sans-serif;
   font-weight: 400;
-  font-size: calc(40 * var(--text-u));
+  font-size: calc(40 * var(--card-u));
   line-height: 1;
-  letter-spacing: calc(1 * var(--text-u));
-  color: transparent;
-  background: linear-gradient(180deg, #55595d 0%, #f5f6f6 17%, #a4a9ad 31%, #ffffff 43%, #8d9093 57%, #dde0e2 75%, #7b8085 100%);
+  letter-spacing: calc(1 * var(--card-u));
+  background-image: linear-gradient(180deg, #f5f6f6 0%, #d5dadd 36%, #a0a7ac 68%, #777d82 100%);
+  -webkit-background-clip: text;
   background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
-.journey__card-body {
-  display: flex;
-  flex-direction: column;
-  gap: calc(20 * var(--text-u));
-  margin-top: calc(40 * var(--text-u));
+/* 본문과 meta는 활성일 때만 선명해진다(이전 motion 그대로). */
+.journey__desc,
+.journey-card__meta {
   opacity: calc(var(--node-in) * (1 - 0.82 * var(--node-out)));
   transform: translateY(calc((1 - var(--node-in)) * 10 * var(--ju)));
 }
 
 .journey__desc {
   margin: 0;
-  font: 500 calc(24 * var(--text-u))/1.4 'SUIT', sans-serif;
+  font: 500 calc(24 * var(--card-u))/1.4 'SUIT', sans-serif;
   color: #f3f4f4;
   word-break: keep-all;
 }
@@ -143,23 +228,24 @@
   display: block;
 }
 
-.journey__meta, .journey__keywords {
+/* Meta / keyword. 한 색만 쓴다 — Body(Frost White)보다 한 단계 낮다. */
+.journey__meta,
+.journey__keywords {
   margin: 0;
   padding: 0;
-  font: 500 calc(20 * var(--text-u))/1 'SUIT', sans-serif;
-  color: #777d82;
+  font: 500 calc(20 * var(--card-u))/1 'SUIT', sans-serif;
+  color: #8d9499;
 }
 
+/* label 열 폭을 모든 row가 함께 쓴다(row div는 display: contents). */
 .journey__meta {
-  display: flex;
-  flex-direction: column;
-  gap: calc(12 * var(--text-u));
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: calc(12 * var(--card-u));
 }
 
 .journey__meta > div {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: calc(12 * var(--text-u));
+  display: contents;
 }
 
 .journey__meta dd {
@@ -183,20 +269,14 @@
   margin: 0 0.32em;
 }
 
-.journey__node--compact .journey__card {
-  --text-u: calc(var(--ju) * 0.78);
-  padding: calc(26 * var(--ju)) calc(28 * var(--ju));
-  border-radius: calc(16 * var(--ju));
-}
-
-.journey__node[data-node='ai-workflow'] .journey__card {
-  --text-u: calc(var(--ju) * 0.9);
-}
-
+/*
+ * 처음과 마지막 card의 경로 끝점. 4~6px Ice point 하나뿐이다(고리 / pulse 없음).
+ * card 바깥선과 20px 떨어져 있고, 경로가 곧게 떠나고 도착하는 구간 위에 놓인다.
+ */
 .journey__point {
   position: absolute;
   left: -2.5px;
-  top: calc(var(--card-h) / 2 * var(--ju) + 20px);
+  top: calc(var(--journey-card-height) / 2 + 20px);
   width: 5px;
   height: 5px;
   border-radius: 50%;
@@ -205,7 +285,7 @@
 }
 
 .journey__node[data-node='now'] .journey__point {
-  top: calc(var(--card-h) / -2 * var(--ju) - 22.5px);
+  top: calc(var(--journey-card-height) / -2 - 25px);
 }
 
 /* The same seven cards become a document with one central vertical path. */
@@ -245,22 +325,24 @@
   height: auto;
 }
 
+/* Mobile / 연출 꺼짐: 고정 560 x 400을 쓰지 않는다. */
 .journey--static .journey__node .journey__card {
-  --text-u: 0.72px;
+  --card-u: 0.72px;
   position: relative;
   top: auto;
   left: auto;
   width: 100%;
   height: auto;
-  min-height: 280px;
-  padding: 30px 24px;
+  min-height: 0;
+  padding: 28px;
   border-radius: 18px;
   transform: none;
   filter: none;
   opacity: 1;
 }
 
-.journey--static .journey__card-body {
+.journey--static .journey__desc,
+.journey--static .journey-card__meta {
   transform: none;
   opacity: 1;
 }

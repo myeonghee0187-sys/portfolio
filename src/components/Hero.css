@@ -16,9 +16,8 @@
   height: calc(100vh - var(--site-header-h));
   height: calc(100dvh - var(--site-header-h));
   /*
-   * Anton은 ascent+descent가 line-height 1.4보다 커서 마지막 줄의 인라인 박스가
-   * 텍스트 프레임(672px) 아래로 8px 새어 나간다. Figma는 프레임을 정확히 672px로
-   * 쓰므로 여기서 잘라낸다. 대문자뿐이라 디센더가 없어서 잘리는 획은 없다.
+   * Hero 경계 밖으로 새는 것(Magic Rings 등)을 잘라낸다.
+   * 대형 타이포는 윗변 고정이라 아래쪽에 여유가 있어 여기에 잘리지 않는다.
    */
   overflow: hidden;
   background: #08090a;
@@ -69,12 +68,19 @@
 
 .hero__headline {
   flex: none;
+  /*
+   * 윗변 고정. hero_inner는 items-end라 그대로 두면 글자가 줄어든 만큼 윗변이 내려간다.
+   * 첫 줄이 시작하는 높이(inner 윗변에서 379단위)를 그대로 두고, 줄어서 생긴 여백은 아래에 남긴다.
+   */
+  align-self: flex-start;
   width: calc(723 * var(--site-u));
-  margin: 0;
+  margin: calc(379 * var(--site-u)) 0 0;
   font-family: 'Anton', sans-serif;
   font-weight: 400;
-  font-size: calc(150 * var(--site-u));
-  line-height: 1.38;
+  /* 이전 150단위의 0.93배(정확히 7% 축소). transform이 아니라 실제 글자 크기를 줄인다. */
+  font-size: calc(139.5 * var(--site-u));
+  /* 이전 1.38의 0.95배. 글자만 줄이면 줄 간격이 상대적으로 벌어져 보인다. */
+  line-height: 1.311;
   color: #f3f4f4;
   /* Figma 텍스트 실폭(742)이 프레임(723)보다 넓다. 줄바꿈 없이 넘치는 것이 원본. */
   white-space: nowrap;

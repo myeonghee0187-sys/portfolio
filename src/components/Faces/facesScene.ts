@@ -369,7 +369,9 @@ uniform float uContact;       // case 바깥 접촉 그림자의 세기. WebGL W
 // SHARED ICE AMBIENT: About의 .about__ambient와 같은 빛(About.css와 같은 gradient, 같은 opacity).
 uniform vec2 uAmbientCenter;  // 빛의 중심(canvas CSS px) = 화면 가운데 = Watch 중심
 uniform float uAmbientUnit;   // About 좌표계 1단위의 px(About.css의 --about-u)
+// About -> FACES 경계의 Ice Reflection. About.css .about-faces-transition-light의 opacity / scale.
 uniform float uHandoffIce;
+uniform float uHandoffIceScale;
 uniform float uDisplayInteraction;
 uniform float uAmbient;       // 세기 = .about__ambient의 opacity(sharedAmbient.level)
 
@@ -441,29 +443,58 @@ float metalAlpha(float r) {
 }
 const vec3 AMBIENT_ICE = vec3(212.0, 229.0, 239.0) / 255.0;
 const vec3 AMBIENT_METAL = vec3(164.0, 169.0, 173.0) / 255.0;
+/*
+ * About -> FACES 경계의 Ice Reflection. About.css .about-faces-transition-light와 같은 규칙이다.
+ * About stage와 이 canvas가 맞닿는 선에서 두 쪽 값이 같아야 가로 띠가 생기지 않는다.
+ *   박스      1200 x 880 (About 좌표계), 중심 = 화면 가운데(Watch 중심)
+ *   ellipse   farthest-corner라 반지름은 박스 반쪽의 √2배 = 848.5 x 622.3, 여기에 scale을 곱한다
+ *   clip      border-radius 50%가 r = 1/√2 바깥을 잘라낸다
+ * 돌려주는 값은 premultiplied(rgb는 이미 alpha가 곱해져 있다)이고 opacity도 곱한 뒤다.
+ */
+vec4 handoffLight(vec2 d) {
+  if (uHandoffIce <= 0.0) return vec4(0.0);
+  // element 자신의 좌표(scale 전). CSS에서는 gradient와 mask가 같은 transform으로 함께 커진다.
+  vec2 local = d / uHandoffIceScale;
+  float r = length(local / vec2(848.528, 622.254));
+  if (r > 0.70711) return vec4(0.0);
+  // Watch 자리 mask. About.css의 mask-image(ellipse 274 x 360, 84.7% -> 100%)와 같다.
+  float hole = clamp((length(local / vec2(274.0, 360.0)) - 0.847) / 0.153, 0.0, 1.0);
+  if (hole <= 0.0) return vec4(0.0);
+  vec4 a = vec4(vec3(245.0, 246.0, 246.0) / 255.0 * 0.4, 0.4);
+  vec4 b = vec4(AMBIENT_ICE * 0.28, 0.28);
+  vec4 c = vec4(vec3(24.0, 109.0, 229.0) / 255.0 * 0.1, 0.1);
+  vec4 l = r < 0.22 ? mix(a, b, r / 0.22)
+    : r < 0.48 ? mix(b, c, (r - 0.22) / 0.26)
+    : mix(c, vec4(0.0), clamp((r - 0.48) / 0.26, 0.0, 1.0));
+  return l * uHandoffIce * hole;
+}
+
 vec3 ambientGlow(vec2 p) {
-  if (uAmbient <= 0.0) return vec3(0.0);
   vec2 d = (p - uAmbientCenter) / uAmbientUnit;
-  if (abs(d.x) > 960.0 || abs(d.y) > 540.0) return vec3(0.0);
-  float ice = iceAlpha(length(d / vec2(620.0, 520.0)));
-  float metal = metalAlpha(length(d / vec2(1040.0, 300.0)));
-  float alpha = ice + metal * (1.0 - ice);
-  vec3 light = AMBIENT_ICE * ice + AMBIENT_METAL * metal * (1.0 - ice);
+  vec3 glow = vec3(0.0);
+  float coverage = 0.0;
+  if (uAmbient > 0.0 && abs(d.x) <= 960.0 && abs(d.y) <= 540.0) {
+    float ice = iceAlpha(length(d / vec2(620.0, 520.0)));
+    float metal = metalAlpha(length(d / vec2(1040.0, 300.0)));
+    float alpha = ice + metal * (1.0 - ice);
+    vec3 light = AMBIENT_ICE * ice + AMBIENT_METAL * metal * (1.0 - ice);
+    glow += uAmbient * (light - CARBON * alpha);
+    coverage += uAmbient * alpha;
+  }
+  /*
+   * 경계 빛은 ambient와 따로 계산한다. ambient가 0이거나 박스 밖이어도 사라지지 않는다.
+   * About DOM에서는 이 빛이 .about__ambient 위에 normal로 겹쳐진다(같은 z-index, DOM 순서가 뒤).
+   * 여기서도 같은 순서로 합성해야 두 section이 맞닿는 선에서 값이 같다: 아래 층(Carbon + ambient)을 (1 - a)만큼 가린다.
+   */
+  vec4 h = handoffLight(d);
+  glow = glow * (1.0 - h.a) + h.rgb - CARBON * h.a;
+  coverage += h.a;
   /*
    * 8bit에서 아주 어두운 gradient는 한 단계씩 끊겨 둥근 띠(banding)가 보인다. CSS gradient처럼 1 / 255 안에서
    * dither한다. 빛이 거의 없는 곳(1단계 미만)에서는 dither도 줄어 순수 Carbon은 정확히 8 / 9 / 10으로 남는다.
    */
   float noise = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) - 0.5;
-  float amount = clamp(uAmbient * alpha * 255.0, 0.0, 1.0);
-  float r = length((d - vec2(0.0, 54.0)) / vec2(960.0, 540.0));
-  vec4 a = vec4(vec3(245.0, 246.0, 246.0) / 255.0 * 0.15, 0.15);
-  vec4 b = vec4(AMBIENT_ICE * 0.10, 0.10);
-  vec4 c = vec4(vec3(24.0, 109.0, 229.0) / 255.0 * 0.035, 0.035);
-  vec4 iceLight = r < 0.20 ? mix(a, b, r / 0.20)
-    : r < 0.44 ? mix(b, c, (r - 0.20) / 0.24)
-    : mix(c, vec4(0.0), clamp((r - 0.44) / 0.28, 0.0, 1.0));
-  return uAmbient * (light - CARBON * alpha) + noise / 255.0 * amount
-    + uHandoffIce * (iceLight.rgb - CARBON * iceLight.a);
+  return glow + noise / 255.0 * clamp(coverage * 255.0, 0.0, 1.0);
 }
 
 /*
@@ -740,7 +771,7 @@ export type FacesRenderState = {
   /** 풀지 않은(unwrapped) 논리 위치(px). 커질수록 plane이 왼쪽으로 간다. */
   position: number
   /** SHARED ICE AMBIENT의 세기(= About .about__ambient의 opacity)와 중심(canvas CSS px). */
-  ambient: { level: number; ice: number; cx: number; cy: number }
+  ambient: { level: number; ice: number; iceScale: number; cx: number; cy: number }
   interaction?: number
   /** project plane 자체의 휨(px). */
   bend: number
@@ -934,6 +965,7 @@ export default class FacesScene {
         uAmbientUnit: { value: 1 },
         uAmbient: { value: 0 },
         uHandoffIce: { value: 0 },
+        uHandoffIceScale: { value: 0.82 },
         uDisplayInteraction: { value: 0 },
       },
     })
@@ -1118,6 +1150,7 @@ export default class FacesScene {
     u.uSpeed.value = state.speed
     u.uAmbient.value = state.ambient.level
     u.uHandoffIce.value = state.ambient.ice
+    u.uHandoffIceScale.value = state.ambient.iceScale
     u.uDisplayInteraction.value = state.interaction ?? 0
     u.uAmbientCenter.value.set(state.ambient.cx, state.ambient.cy)
     this.renderer.render(this.compositeScene, this.camera)
