@@ -8,16 +8,9 @@
   height: 100dvh;
   overflow: hidden;
   background: #000;
+  /* opacity는 IntroVideo.tsx가 영상 시간에 맞춰 직접 쓴다(CSS transition을 두면 한 박자씩 늦는다). */
   opacity: 1;
-  /* transition-duration은 IntroVideo.tsx가 인라인으로 넣는다. */
-  transition-property: opacity;
-  transition-timing-function: ease;
   will-change: opacity;
-}
-
-.intro--fading {
-  opacity: 0;
-  pointer-events: none;
 }
 
 /*
@@ -103,6 +96,18 @@
   border-color: rgba(255, 255, 255, 0.9);
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
+}
+
+/*
+ * Ending 전환의 Carbon Black. Hero 배경과 같은 색이라 마지막 frame에서 이음매가 없다.
+ * 문구와 SKIP 위까지 덮고, 클릭은 그대로 아래(SKIP)로 통과시킨다.
+ */
+.intro__ending-overlay {
+  position: absolute;
+  inset: 0;
+  background: #08090a;
+  opacity: 0;
+  pointer-events: none;
 }
 
 @media (max-width: 640px) {

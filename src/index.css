@@ -54,6 +54,14 @@ html.intro-scroll-lock body {
 }
 
 /*
+ * Ending 전환 후반: 잠금은 풀렸지만(Hero layout을 최종 폭으로 미리 맞춘다) Intro가 아직 화면에 있는 짧은 구간.
+ * 기본 스크롤바는 밝은 띠로 그려져 어두운 전환 위에 튀므로, Intro가 사라질 때까지만 투명하게 둔다.
+ */
+html.intro-scrollbar-hidden {
+  scrollbar-color: transparent transparent;
+}
+
+/*
  * 포트폴리오 본문 shell.
  * --site-u는 Figma 1920 기준 디자인을 비례 축소하기 위한 단위로,
  * 뷰포트 1920px에서 정확히 1px(= 디자인 1:1)이고 그보다 좁으면 함께 줄어든다.
