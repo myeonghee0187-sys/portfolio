@@ -15,7 +15,9 @@ export type FaceProject = {
   title: string
   category: string
   /** 프로젝트 영상. 소리는 쓰지 않는다(muted). */
-  video: string
+  media: string
+  liveUrl: string
+  caseStudyPath?: string
   /**
    * 영상의 원본 비율(가로 / 세로). loadedmetadata의 videoWidth / videoHeight로 다시 확인하지만,
    * 그 전에도 레이아웃이 튀지 않도록 원본 파일에서 잰 값을 미리 둔다.
@@ -31,28 +33,31 @@ export type FaceProject = {
 export const FACE_PROJECTS: FaceProject[] = [
   {
     id: 'f45',
+    liveUrl: 'https://myeonghee0187-sys.github.io/f45_korea/',
     index: '01',
     title: 'F45 KOREA',
     category: 'RESPONSIVE WEB REDESIGN',
     // FACES 전용 4:5 영상(864 x 1080). Watch display와 비율이 가까워 cover로 거의 전체가 보인다.
-    video: f45Video,
+    media: f45Video,
     aspect: 864 / 1080,
   },
   {
     id: 'tchaikim',
+    liveUrl: 'https://myeonghee0187-sys.github.io/tchaikim_all/',
     index: '02',
     title: 'TCHAIKIM',
     category: 'FASHION BRAND WEB REDESIGN',
     // FACES 전용 4:5 영상(960 x 1200). PixVerse 결과(960 x 1280)의 위쪽 80px(워터마크 자리)을 잘라 만들었다.
-    video: tchaikimVideo,
+    media: tchaikimVideo,
     aspect: 960 / 1200,
   },
   {
     id: 'jaduya',
+    liveUrl: 'https://jaduya.vercel.app/',
     index: '03',
     title: 'JADUYA',
     category: 'MOBILE UX/UI PLATFORM',
-    video: jaduyaVideo,
+    media: jaduyaVideo,
     aspect: 1664 / 3648,
     // 캐릭터 위로 사과가 튀어 오르는 동작까지 창 안에 남도록 조금 위를 중심으로 둔다.
     focus: [0.5, 0.46],

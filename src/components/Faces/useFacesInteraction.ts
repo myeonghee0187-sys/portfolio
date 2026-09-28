@@ -4,6 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { FACE_PROJECTS } from './facesData'
 import FacesScene, { type FacesBox, type FacesWatchGeometry } from './facesScene'
 import { sharedAmbient } from '../../hooks/sharedAmbient'
+import { HANDOFF_VIEWPORTS, JOURNEY_VIEWPORTS, PANEL_TRIGGER_ID, panelTiming } from '../../hooks/panelTiming'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -62,7 +63,7 @@ const DISPLAY = { x0: 42.8, y0: 46.9, x1: 556.8, y1: 722.6, r: 112 }
 const ACTIVE_HYSTERESIS = 0.04
 
 /** 이만큼(px) 움직이기 전까지는 drag로 보지 않는다. 나중에 project 링크 클릭을 살려 두기 위해서다. */
-const DRAG_THRESHOLD = 4
+const DRAG_THRESHOLD = 7
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
@@ -109,6 +110,20 @@ export default function useFacesInteraction({
     let scrollOffset = 0
     let dragOffset = 0
     let current = 0
+    let dragCurrent = 0
+    let pointerId = -1
+    let lastX = 0
+    let downX = 0
+    let downY = 0
+    let dragging = false
+    let suppressClick = false
+    let pressedAllowed = false
+    let hovering = false
+    let pressing = false
+    let interaction = 0
+    const link = stage.querySelector<HTMLAnchorElement>('.faces__display-link')
+    const viewport = section.closest<HTMLElement>('.panels__viewport')
+    const panelsSection = section.closest<HTMLElement>('.panels')
     const target = () => scrollOffset + dragOffset
 
     let stageWidth = 1
@@ -147,12 +162,12 @@ export default function useFacesInteraction({
      * FACES pin 중에는 고정이지만, 그 전에는 stage가 아래에서 올라오므로 canvas 기준 위치가 바뀐다.
      */
     const watchEl = document.querySelector<HTMLElement>('.watch--stage')
-    const frontWheel = watchEl?.querySelector<HTMLElement>('.watch__crown-front-wheel') ?? null
+    const frontWheel = watchEl?.querySelector<HTMLElement>('.watch__crown-drag-rotation') ?? null
     const watchGeometry = (): FacesWatchGeometry | null => {
       if (!watchEl) return null
       const w = watchEl.getBoundingClientRect()
       if (w.width === 0) return null
-      const c = canvas.getBoundingClientRect()
+      const c = stage.getBoundingClientRect()
       const unit = w.width / 600
       const box = (b: typeof CASE): FacesBox => ({
         cx: w.left - c.left + ((b.x0 + b.x1) / 2) * unit,
@@ -170,8 +185,8 @@ export default function useFacesInteraction({
      * About -> FACES 동안 About의 ambient도 화면 가운데에 머물러서, 두 section이 맞닿는 선에서 빛이 같다.
      */
     const ambientState = () => {
-      const c = canvas.getBoundingClientRect()
-      return { level: sharedAmbient.level, cx: c.width / 2, cy: window.innerHeight / 2 - c.top }
+      const c = stage.getBoundingClientRect()
+      return { level: sharedAmbient.level, ice: sharedAmbient.ice, cx: c.width / 2, cy: window.innerHeight / 2 - c.top }
     }
 
     let active = -1
@@ -188,6 +203,26 @@ export default function useFacesInteraction({
     }
 
     /* ---------- 영상 재생: 화면 근처에 있는 것만 ---------- */
+
+    const canActivate = () => Boolean(
+      trigger?.isActive && window.scrollY <= trigger.start + panelTiming.facesDistance &&
+      panelTiming.handoff < 0.001 && active >= 0 && !dragging &&
+      scene.focus(active, current) >= 0.92 && Math.abs(target() - current) / stageWidth < 0.002 &&
+      Math.abs(trigger.getVelocity()) < 420 && Math.abs(scene.displaySlot - Math.round(scene.displaySlot)) < 0.015
+    )
+    let lastReady: boolean | undefined
+    const updateLink = () => {
+      const ready = canActivate()
+      if (link && lastReady !== ready) {
+        link.setAttribute('aria-disabled', String(!ready))
+        link.tabIndex = ready ? 0 : -1
+        lastReady = ready
+      }
+      if (link && active >= 0 && link.href !== FACE_PROJECTS[active].liveUrl) link.href = FACE_PROJECTS[active].liveUrl
+      if (import.meta.env.DEV) {
+        section.dataset.gallery = JSON.stringify({ current, dragOffset, active, focus: active < 0 ? 0 : scene.focus(active, current), slot: scene.displaySlot, ready, running })
+      }
+    }
 
     let running = false
     const updatePlayback = () => {
@@ -235,6 +270,9 @@ export default function useFacesInteraction({
       lastTime = now
 
       const t = target()
+      dragCurrent += (dragOffset - dragCurrent) * (1 - (1 - EASE) ** frames)
+      const interactionTarget = canActivate() ? (pressing ? -1 : hovering ? 1 : 0) : 0
+      interaction += (interactionTarget - interaction) * (1 - 0.55 ** frames)
       current += (t - current) * (1 - (1 - EASE) ** frames)
       if (Math.abs(t - current) < 0.05) current = t
 
@@ -244,19 +282,28 @@ export default function useFacesInteraction({
       const bend = clamp(velocity * BEND_STRENGTH, -BEND_MAX, BEND_MAX)
       const watch = watchGeometry()
 
+      if (watch && link) {
+        const d = watch.display
+        link.style.left = (d.cx - d.hx) + 'px'
+        link.style.top = (d.cy - d.hy) + 'px'
+        link.style.width = (d.hx * 2) + 'px'
+        link.style.height = (d.hy * 2) + 'px'
+        link.style.setProperty('--display-radius', d.r + 'px')
+      }
       const ambient = ambientState()
-      const key = `${current.toFixed(2)} ${ambient.level.toFixed(4)} ${ambient.cy.toFixed(1)} ${
+      const key = `${current.toFixed(2)} ${interaction.toFixed(3)} ${ambient.ice.toFixed(3)} ${ambient.level.toFixed(4)} ${ambient.cy.toFixed(1)} ${
         watch ? `${watch.outer.cx.toFixed(1)} ${watch.outer.cy.toFixed(1)} ${watch.unit.toFixed(4)}` : ''
       }`
       if (key !== lastKey || videoDirty || !canWatchFrames) {
-        scene.render({ position: current, bend, velocity, speed, watch, ambient })
+        scene.render({ position: current, bend, velocity, speed, watch, ambient, interaction })
         lastKey = key
         videoDirty = false
       }
       detectActive(current)
+      updateLink()
 
-      // FACES Crown(정면)의 wheel은 slider 위치를 따라 돈다. 한 바퀴(project 전체) = 360°.
-      const wheel = `${((current / loopWidth) * 360).toFixed(2)}deg`
+      // Drag offset만 담당한다. 페이지 scroll 회전은 useCrownWheel의 별도 layer다.
+      const wheel = `${((dragCurrent / loopWidth) * 360).toFixed(2)}deg`
       if (frontWheel && wheel !== lastWheel) {
         frontWheel.style.rotate = wheel
         lastWheel = wheel
@@ -278,19 +325,22 @@ export default function useFacesInteraction({
       cancelAnimationFrame(rafId)
       rafId = 0
       updatePlayback()
+      updateLink()
     }
 
     /* ---------- 세로 scroll = page 진행(정확히 한 바퀴) ---------- */
 
     const ctx = gsap.context(() => {
       trigger = ScrollTrigger.create({
-        trigger: section,
+        id: PANEL_TRIGGER_ID,
+        trigger: panelsSection ?? section,
         start: 'top top',
         end: () => {
           measure()
-          return `+=${Math.max(window.innerHeight * MIN_PIN_VIEWPORTS, loopWidth / RAIL_SPEED)}`
+          panelTiming.facesDistance = Math.max(window.innerHeight * MIN_PIN_VIEWPORTS, loopWidth / RAIL_SPEED)
+          return `+=${panelTiming.facesDistance + window.innerHeight * (HANDOFF_VIEWPORTS + JOURNEY_VIEWPORTS)}`
         },
-        pin: stage,
+        pin: viewport ?? stage,
         pinSpacing: true, // pin-spacer는 높이만 담당한다. 따로 스타일링하지 않는다.
         anticipatePin: 1,
         invalidateOnRefresh: true,
@@ -298,20 +348,23 @@ export default function useFacesInteraction({
         refreshPriority: -1,
         // progress 0 -> 1이 정확히 0 -> LOOP_WIDTH. drag와 상관없이 page scroll에는 시작과 끝이 있다.
         onUpdate: (self) => {
-          scrollOffset = self.progress * loopWidth
+          scrollOffset = clamp((self.scroll() - self.start) / panelTiming.facesDistance, 0, 1) * loopWidth
+          updateLink()
         },
         onRefresh: (self) => {
-          scrollOffset = self.progress * loopWidth
-          current = target()
+          scrollOffset = clamp((self.scroll() - self.start) / panelTiming.facesDistance, 0, 1) * loopWidth
+          if (!running) current = target()
+          if (import.meta.env.DEV) section.dataset.timing = JSON.stringify({ start: self.start, facesEnd: self.start + panelTiming.facesDistance, handoffEnd: self.start + panelTiming.facesDistance + innerHeight * HANDOFF_VIEWPORTS, end: self.end, loopWidth, centers: scene.centers })
         },
       })
 
       // FACES가 화면에 들어오기 직전부터 나갈 때까지만 그리고, 영상도 그 동안만 재생한다.
       ScrollTrigger.create({
         trigger: section,
-        start: 'top bottom',
-        end: 'bottom top',
-        refreshPriority: -1,
+        id: 'faces-playback',
+        start: () => (trigger?.start ?? 0) - window.innerHeight,
+        end: () => (trigger?.start ?? 0) + panelTiming.facesDistance + window.innerHeight * HANDOFF_VIEWPORTS * 0.88,
+        refreshPriority: -2,
         onToggle: (self) => (self.isActive ? start() : stop()),
         onRefresh: (self) => (self.isActive ? start() : stop()),
       })
@@ -322,20 +375,21 @@ export default function useFacesInteraction({
 
     /* ---------- drag = 자유 탐색(무한) ---------- */
 
-    let pointerId = -1
-    let lastX = 0
-    let downX = 0
-    let dragging = false
 
     const onPointerDown = (event: PointerEvent) => {
       // pin 중에만. 한 바퀴를 몇 번 돌아도 document scroll은 그대로다.
-      if (!event.isPrimary || event.button !== 0 || !trigger?.isActive) return
+      if (!event.isPrimary || event.button !== 0 || !trigger?.isActive || panelTiming.handoff > 0) return
       pointerId = event.pointerId
       downX = lastX = event.clientX
+      downY = event.clientY
+      suppressClick = false
+      pressedAllowed = canActivate()
+      pressing = pressedAllowed
     }
 
     const onPointerMove = (event: PointerEvent) => {
       if (event.pointerId !== pointerId) return
+      if (Math.hypot(event.clientX - downX, event.clientY - downY) >= DRAG_THRESHOLD) suppressClick = true
       if (!dragging) {
         if (Math.abs(event.clientX - downX) < DRAG_THRESHOLD) return
         dragging = true
@@ -350,6 +404,8 @@ export default function useFacesInteraction({
     const endDrag = (event: PointerEvent) => {
       if (event.pointerId !== pointerId) return
       pointerId = -1
+      pressing = false
+      if (event.type === 'pointercancel') suppressClick = true
       if (!dragging) return
       // 놓으면 target은 그 자리에 머물고, current가 짧게 따라잡으며 선다. 관성은 없다.
       dragging = false
@@ -360,6 +416,17 @@ export default function useFacesInteraction({
     // 영상 / 텍스트의 기본 drag가 pointer drag를 가로채지 않게 한다.
     const onDragStart = (event: DragEvent) => event.preventDefault()
 
+    const onClick = (event: MouseEvent) => {
+      const pointerClickBlocked = event.detail > 0 && (suppressClick || !pressedAllowed)
+      if (!canActivate() || pointerClickBlocked) event.preventDefault()
+    }
+    const onEnter = () => { hovering = true }
+    const onLeave = () => { hovering = false; pressing = false }
+    link?.addEventListener('click', onClick)
+    link?.addEventListener('pointerenter', onEnter)
+    link?.addEventListener('pointerleave', onLeave)
+    link?.addEventListener('focus', onEnter)
+    link?.addEventListener('blur', onLeave)
     stage.addEventListener('pointerdown', onPointerDown)
     stage.addEventListener('pointermove', onPointerMove)
     stage.addEventListener('pointerup', endDrag)
@@ -395,7 +462,10 @@ export default function useFacesInteraction({
           display: watch ? { w: watch.display.hx * 2, h: watch.display.hy * 2 } : null,
           playing: scene.videos.map((v) => !v.paused),
           pinStart: trigger?.start ?? 0,
-          pinEnd: trigger?.end ?? 0,
+          pinEnd: (trigger?.start ?? 0) + panelTiming.facesDistance,
+          panelsEnd: trigger?.end ?? 0,
+          handoff: panelTiming.handoff,
+          ready: canActivate(),
           progress: trigger?.progress ?? 0,
           active,
         }
@@ -406,6 +476,12 @@ export default function useFacesInteraction({
       if (import.meta.env.DEV) delete debug.__faces
       cancelAnimationFrame(refreshId)
       stop()
+      link?.removeEventListener('click', onClick)
+      link?.removeEventListener('pointerenter', onEnter)
+      link?.removeEventListener('pointerleave', onLeave)
+      link?.removeEventListener('focus', onEnter)
+      link?.removeEventListener('blur', onLeave)
+      if (pointerId >= 0 && stage.hasPointerCapture(pointerId)) stage.releasePointerCapture(pointerId)
       stage.removeEventListener('pointerdown', onPointerDown)
       stage.removeEventListener('pointermove', onPointerMove)
       stage.removeEventListener('pointerup', endDrag)

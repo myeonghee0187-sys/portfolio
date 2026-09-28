@@ -112,16 +112,17 @@ const KNURL_CLIP = (() => {
  *   watch__crown-front-fx         hover / press의 scale·translateY (CSS)
  *   watch__crown-front-mount      고정된 dark titanium 받침(housing). 움직이지 않는다.
  *   watch__crown-front-spin       hover / one-time cue의 dial 회전 (CSS). scroll 회전과 다른 element다.
- *   watch__crown-front-wheel      knurl 톱니와 동심원 brushed cap. FACES slider 위치를 따라 rotateZ만 한다
- *                                 (useFacesInteraction). 이 layer 하나만 scroll에 반응한다.
+ *   watch__crown-global-rotation  페이지 전체 scroll 회전(useCrownWheel).
+ *   watch__crown-drag-rotation    Faces drag 누적 회전(useFacesInteraction).
+ *   watch__crown-front-wheel      knurl 톱니와 brushed cap 재질.
  *   watch__crown-front-highlight  광원이 고정된 반사(frost specular, ice 반사, electric ice edge). 돌지 않는다.
  *
- * 회전이 두 층으로 갈라져 있어서, scroll 중에 hover해도 dial이 튀거나 되돌아가지 않는다.
+ * 회전 원인이 각각 다른 층에 있어 Journey 진입이나 hover가 기존 회전을 덮어쓰지 않는다.
  */
 type DigitalCrownProps = {
   /**
    * 정면 controller를 눌렀을 때. FACES 전체 project view를 여는 자리다.
-   * 아직 그 view가 없으면 App이 아무것도 하지 않는 handler를 넘긴다.
+   * App에서 열림 상태와 현재 프로젝트 데이터를 준비한다. 최종 화면은 추후 연결한다.
    */
   onOpenAllFaces?: () => void
 }
@@ -133,7 +134,7 @@ export default function DigitalCrown({ onOpenAllFaces }: DigitalCrownProps) {
   useCrownWheel(trackRef, KNURL_PITCH_WU, !prefersReducedMotion)
 
   return (
-    <div className="watch__crown">
+    <div ref={trackRef} className="watch__crown">
       <div className="watch__crown-side" aria-hidden="true">
         <div className="watch__crown-orientation">
           <div className="watch__crown-box">
@@ -141,7 +142,7 @@ export default function DigitalCrown({ onOpenAllFaces }: DigitalCrownProps) {
               <img className="watch__crown-shell" src={digitalCrownSrc} alt="" />
 
               <div className="watch__crown-wheel-mask" style={{ clipPath: KNURL_CLIP }}>
-                <div ref={trackRef} className="watch__crown-wheel-track">
+                <div className="watch__crown-wheel-track">
                   {SLICES.map((style, i) => (
                     <div key={i} className="watch__crown-wheel-slice" style={style}>
                       <img
@@ -174,13 +175,19 @@ export default function DigitalCrown({ onOpenAllFaces }: DigitalCrownProps) {
         type="button"
         className="watch__crown-front-button"
         aria-label="모든 프로젝트 보기"
+        tabIndex={-1}
+        aria-disabled="true"
         onClick={onOpenAllFaces}
       >
         <span className="watch__crown-front">
           <span className="watch__crown-front-fx">
             <span className="watch__crown-front-mount" />
             <span className="watch__crown-front-spin">
-              <span className="watch__crown-front-wheel" />
+              <span className="watch__crown-global-rotation">
+                <span className="watch__crown-drag-rotation">
+                  <span className="watch__crown-front-wheel" />
+                </span>
+              </span>
             </span>
             <span className="watch__crown-front-highlight" />
           </span>

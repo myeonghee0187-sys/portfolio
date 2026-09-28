@@ -109,8 +109,18 @@ export default function Faces({ interactive, ready }: FacesProps) {
     >
       <div ref={stageRef} className="faces__stage">
         {interactive ? (
-          <>
+          <div className="faces__scene">
             <canvas ref={canvasRef} className="faces__canvas" aria-hidden="true" />
+            <a
+              className="faces__display-link"
+              href={FACE_PROJECTS[active].liveUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${FACE_PROJECTS[active].title} 완성 웹사이트 보기`}
+              aria-disabled="true"
+              tabIndex={-1}
+              draggable={false}
+            />
 
             {/* 화면에는 WebGL plane만 보인다. 프로젝트 목록 자체는 DOM에 그대로 있다. */}
             <ol className="faces__sr">
@@ -133,7 +143,7 @@ export default function Faces({ interactive, ready }: FacesProps) {
               <FacesMeta active={active} />
               <div className="faces__crown-slot" aria-hidden="true" />
             </div>
-          </>
+          </div>
         ) : (
           <FacesRail />
         )}

@@ -9,9 +9,13 @@ import WatchStage from './components/Watch/WatchStage'
 import SplashCursor from './components/SplashCursor/SplashCursor'
 import useMediaQuery from './hooks/useMediaQuery'
 import useScrollScene from './hooks/useScrollScene'
+import { FACE_PROJECTS } from './components/Faces/facesData'
+import Contact from './components/Contact'
 
 export default function App() {
   const [isIntroDone, setIsIntroDone] = useState(false)
+  // Reserved for the forthcoming ALL FACES design; no temporary screen or fake route.
+  const [allFaces, setAllFaces] = useState({ open: false, projects: FACE_PROJECTS })
   const isFinePointer = useMediaQuery('(hover: hover) and (pointer: fine)')
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const isWideEnough = useMediaQuery('(min-width: 901px)')
@@ -26,7 +30,7 @@ export default function App() {
    * view가 생기면 이 함수 안에서 열면 된다.
    */
   const handleOpenAllFaces = useCallback(() => {
-    // TODO: ALL FACES project view가 구현되면 여기서 연다.
+    setAllFaces({ open: true, projects: FACE_PROJECTS })
   }, [])
 
   /*
@@ -88,15 +92,19 @@ export default function App() {
         />
       )}
 
-      <div className="site">
+      <div className="site" data-all-faces-open={allFaces.open} data-all-faces-count={allFaces.projects.length}>
         <Header />
         <main>
           <Hero inlineWatch={!scrollSceneEnabled} />
           <About inlineWatch={!scrollSceneEnabled} />
           {/* 가로 트랙 연출도 About과 같은 조건에서만 켠다. 아니면 native 가로 scroll 목록이다. */}
-          <Faces interactive={scrollSceneEnabled} ready={isIntroDone} />
-          {/* FACES 다음. 같은 조건에서만 카메라 연출을 켜고, 아니면 세로 타임라인이 된다. */}
-          <Journey interactive={scrollSceneEnabled} ready={isIntroDone} />
+          <div className={scrollSceneEnabled ? 'panels panels--interactive' : 'panels'}>
+            <div className="panels__viewport">
+              <Faces interactive={scrollSceneEnabled} ready={isIntroDone} />
+              <Journey interactive={scrollSceneEnabled} ready={isIntroDone} />
+            </div>
+          </div>
+          <Contact />
         </main>
 
         {/*

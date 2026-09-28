@@ -73,8 +73,8 @@
   margin: 0;
   font-family: 'Anton', sans-serif;
   font-weight: 400;
-  font-size: calc(160 * var(--site-u));
-  line-height: 1.4;
+  font-size: calc(150 * var(--site-u));
+  line-height: 1.38;
   color: #f3f4f4;
   /* Figma 텍스트 실폭(742)이 프레임(723)보다 넓다. 줄바꿈 없이 넘치는 것이 원본. */
   white-space: nowrap;

@@ -43,6 +43,34 @@
   height: 100%;
 }
 
+.faces__scene {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+}
+
+/* The hit shape is exactly the display opening; the case and rim remain inert. */
+.faces__display-link {
+  position: absolute;
+  z-index: 1;
+  display: block;
+  clip-path: inset(0 round var(--display-radius, 90px));
+  border-radius: var(--display-radius, 90px);
+  cursor: pointer;
+  transition: box-shadow 140ms ease;
+  -webkit-user-drag: none;
+}
+.faces__display-link[aria-disabled='true'] { cursor: grab; }
+.faces__display-link[aria-disabled='false']:hover {
+  box-shadow: inset 0 0 0 1px rgb(245 246 246 / 0.38), inset 0 0 16px rgb(212 229 239 / 0.06);
+}
+.faces__display-link:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgb(212 229 239 / 0.85);
+}
+.faces__display-link:active { box-shadow: inset 0 0 0 1px rgb(212 229 239 / 0.2); }
+
 /* 스크린리더용 프로젝트 목록. 화면에는 plane과 아래 metadata로만 보인다. */
 .faces__sr {
   position: absolute;

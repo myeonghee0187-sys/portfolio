@@ -37,10 +37,11 @@ export default function FacesRail() {
     <ol ref={listRef} className="faces__rail">
       {FACE_PROJECTS.map((project) => (
         <li key={project.id} className="faces__slide" style={{ '--aspect': project.aspect } as CSSProperties}>
+          <a href={project.liveUrl} target="_blank" rel="noopener noreferrer" aria-label={`${project.title} 완성 웹사이트 보기`}>
           <video
             className="faces__visual"
             // #t: 재생 전에도 첫 화면이 보이게 한다(Safari는 preload만으로는 첫 프레임을 그리지 않는다).
-            src={`${project.video}#t=0.001`}
+            src={`${project.media}#t=0.001`}
             muted
             loop
             playsInline
@@ -48,6 +49,7 @@ export default function FacesRail() {
             aria-hidden="true"
             draggable={false}
           />
+          </a>
           <div className="faces__slide-meta">
             <p className="faces__meta-index">{project.index}</p>
             <h3 className="faces__meta-title">{project.title}</h3>

@@ -97,6 +97,21 @@
 }
 
 /* ---------------- 카드 (157:148 / 152 / 156 / 160) ---------------- */
+.about__ice {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 0;
+  width: calc(1920 * var(--about-u));
+  height: calc(1080 * var(--about-u));
+  transform: translate(-50%, -50%);
+  background: radial-gradient(ellipse calc(960 * var(--about-u)) calc(540 * var(--about-u)) at 50% 55%,
+    rgb(245 246 246 / 0.15) 0%, rgb(212 229 239 / 0.10) 20%,
+    rgb(24 109 229 / 0.035) 44%, transparent 72%);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
 
 /*
  * Black glass 패널. Watch의 glossy glass / titanium 반사를 더 얇고 투명한 재질로 이어받는다.
@@ -130,7 +145,7 @@
   height: calc(312 * var(--about-u));
   padding: calc(40 * var(--about-u));
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / calc(0.12 * var(--material)));
+  border: 1px solid color-mix(in srgb, rgb(255 255 255 / 0.09), rgb(24 109 229 / 0.55) calc(var(--focus) * 100%));
   border-radius: calc(24 * var(--about-u));
   background:
     linear-gradient(

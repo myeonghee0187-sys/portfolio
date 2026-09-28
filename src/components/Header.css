@@ -78,6 +78,12 @@
 }
 
 .site-header__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  font-size: max(11.375px, calc(21 * var(--site-u)));
   text-decoration: none;
 }
 

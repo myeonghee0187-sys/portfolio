@@ -23,7 +23,7 @@ const SETTLE_EPSILON = 0.001
  * 페이지 안의 Crown은 전부 같은 page scroll을 따른다(scroll scene이 꺼지면 Hero / About에 하나씩 있다).
  * 그래서 listener와 rAF는 Crown 개수와 상관없이 하나만 돌고, 등록된 Crown이 없으면 아무것도 돌지 않는다.
  */
-const surfaces = new Set<{ targets: HTMLElement[]; pitch: number }>()
+const surfaces = new Set<{ targets: HTMLElement[]; pitch: number; front: HTMLElement | null }>()
 let target = 0
 let current = 0
 let rafId = 0
@@ -43,7 +43,11 @@ const write = (targets: HTMLElement[], value: string | null) => {
 }
 
 const paint = () => {
-  for (const s of surfaces) write(s.targets, turnOf(current, s.pitch).toFixed(4))
+  for (const s of surfaces) {
+    write(s.targets, turnOf(current, s.pitch).toFixed(4))
+    // Absolute page position is the integral of signed scroll deltas, including reverse.
+    if (s.front) s.front.style.rotate = `${(current / CROWN_WHEEL_FACTOR * 0.12).toFixed(3)}deg`
+  }
 }
 
 const tick = (now: number) => {
@@ -89,7 +93,10 @@ export default function useCrownWheel(
     const root = ref.current
     if (!enabled || !root) return
 
-    const surface = { targets: [...root.querySelectorAll<HTMLElement>('[data-crown-wheel]')], pitch }
+    const surface = {
+      targets: [...root.querySelectorAll<HTMLElement>('[data-crown-wheel]')], pitch,
+      front: root.querySelector<HTMLElement>('.watch__crown-global-rotation'),
+    }
     if (surfaces.size === 0) {
       // 중간에서 새로고침해도 0에서부터 굴러오지 않고 현재 scroll 위치의 표면으로 바로 시작한다.
       target = current = window.scrollY * CROWN_WHEEL_FACTOR
@@ -97,10 +104,12 @@ export default function useCrownWheel(
     }
     surfaces.add(surface)
     write(surface.targets, turnOf(current, pitch).toFixed(4))
+    paint()
 
     return () => {
       surfaces.delete(surface)
       write(surface.targets, null)
+      surface.front?.style.removeProperty('rotate')
       if (surfaces.size === 0) {
         window.removeEventListener('scroll', onScroll)
         cancelAnimationFrame(rafId)

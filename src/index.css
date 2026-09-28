@@ -95,3 +95,18 @@ html.intro-scroll-lock body {
 .site section[id] {
   scroll-margin-top: var(--header-total);
 }
+
+/* One viewport, one pin. The actual Journey stage covers the complete Faces scene. */
+.panels--interactive .panels__viewport {
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--color-carbon-black);
+}
+
+.panels--interactive .journey {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  transform: translateY(100%);
+}

@@ -369,6 +369,8 @@ uniform float uContact;       // case 바깥 접촉 그림자의 세기. WebGL W
 // SHARED ICE AMBIENT: About의 .about__ambient와 같은 빛(About.css와 같은 gradient, 같은 opacity).
 uniform vec2 uAmbientCenter;  // 빛의 중심(canvas CSS px) = 화면 가운데 = Watch 중심
 uniform float uAmbientUnit;   // About 좌표계 1단위의 px(About.css의 --about-u)
+uniform float uHandoffIce;
+uniform float uDisplayInteraction;
 uniform float uAmbient;       // 세기 = .about__ambient의 opacity(sharedAmbient.level)
 
 // Apple Watch Portfolio material. project가 무엇이든 이 색만 쓴다.
@@ -453,7 +455,15 @@ vec3 ambientGlow(vec2 p) {
    */
   float noise = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) - 0.5;
   float amount = clamp(uAmbient * alpha * 255.0, 0.0, 1.0);
-  return uAmbient * (light - CARBON * alpha) + noise / 255.0 * amount;
+  float r = length((d - vec2(0.0, 54.0)) / vec2(960.0, 540.0));
+  vec4 a = vec4(vec3(245.0, 246.0, 246.0) / 255.0 * 0.15, 0.15);
+  vec4 b = vec4(AMBIENT_ICE * 0.10, 0.10);
+  vec4 c = vec4(vec3(24.0, 109.0, 229.0) / 255.0 * 0.035, 0.035);
+  vec4 iceLight = r < 0.20 ? mix(a, b, r / 0.20)
+    : r < 0.44 ? mix(b, c, (r - 0.20) / 0.24)
+    : mix(c, vec4(0.0), clamp((r - 0.44) / 0.28, 0.0, 1.0));
+  return uAmbient * (light - CARBON * alpha) + noise / 255.0 * amount
+    + uHandoffIce * (iceLight.rgb - CARBON * iceLight.a);
 }
 
 /*
@@ -465,8 +475,9 @@ vec3 outsideAt(vec4 s, vec2 p) {
 }
 
 vec3 sampleVideo(int index, vec2 uv) {
-${FACE_PROJECTS.map((_, i) => `  if (index == ${i}) return texture2D(uVideo${i}, uv).rgb;`).join('\n')}
-  return CARBON;
+  vec3 result = CARBON;
+${FACE_PROJECTS.map((_, i) => `  if (index == ${i}) result = texture2D(uVideo${i}, uv).rgb;`).join('\n')}
+  return result;
 }
 
 /* 영상 UV(왼쪽 위 0 ~ 오른쪽 아래 1)의 한 점. VideoTexture는 flipY라 세로를 뒤집어 읽는다. */
@@ -516,7 +527,8 @@ vec3 displayMedia(vec2 p) {
 
 /* ---------- D. DISPLAY : display rect 기준 cover로 꽉 채워 선명하게 ---------- */
 vec3 displayColor(vec2 p, float dDisp) {
-  vec3 c = displayMedia(p);
+  float zoom = uDisplayInteraction < 0.0 ? 0.99 : 1.0 + uDisplayInteraction * 0.008;
+  vec3 c = displayMedia(uDisplay.xy + (p - uDisplay.xy) / zoom);
   // 영상 색은 그대로, 대비·밝기만 조금 올린다. 바깥 gallery보다 항상 선명하다.
   c = clamp((c - 0.5) * 1.06 + 0.5, 0.0, 1.0) * 1.04;
   // 화면 가장자리는 유리 아래 검은 테두리 쪽으로 아주 조금 가라앉는다(검은 여백은 없다).
@@ -526,6 +538,7 @@ vec3 displayColor(vec2 p, float dDisp) {
   vec2 local = (p - uDisplay.xy) / uDisplay.zw;
   float band = smoothstep(0.32, 0.0, abs(local.x + local.y + 1.05));
   c += mix(ICE, FROST, 0.5) * 0.022 * band;
+  c *= 1.0 + uDisplayInteraction * 0.04;
   return c;
 }
 
@@ -727,7 +740,8 @@ export type FacesRenderState = {
   /** 풀지 않은(unwrapped) 논리 위치(px). 커질수록 plane이 왼쪽으로 간다. */
   position: number
   /** SHARED ICE AMBIENT의 세기(= About .about__ambient의 opacity)와 중심(canvas CSS px). */
-  ambient: { level: number; cx: number; cy: number }
+  ambient: { level: number; ice: number; cx: number; cy: number }
+  interaction?: number
   /** project plane 자체의 휨(px). */
   bend: number
   /** 부호 있는 속도(stage 폭 기준)와 0~1 세기. */
@@ -821,7 +835,7 @@ export default class FacesScene {
 
     FACE_PROJECTS.forEach((project, i) => {
       const video = document.createElement('video')
-      video.src = project.video
+      video.src = project.media
       video.muted = true
       video.defaultMuted = true
       video.loop = true
@@ -919,6 +933,8 @@ export default class FacesScene {
         uAmbientCenter: { value: new THREE.Vector2() },
         uAmbientUnit: { value: 1 },
         uAmbient: { value: 0 },
+        uHandoffIce: { value: 0 },
+        uDisplayInteraction: { value: 0 },
       },
     })
     const quad = new THREE.Mesh(this.compositeGeometry, this.composite)
@@ -1101,6 +1117,8 @@ export default class FacesScene {
     u.uVelocity.value = state.velocity
     u.uSpeed.value = state.speed
     u.uAmbient.value = state.ambient.level
+    u.uHandoffIce.value = state.ambient.ice
+    u.uDisplayInteraction.value = state.interaction ?? 0
     u.uAmbientCenter.value.set(state.ambient.cx, state.ambient.cy)
     this.renderer.render(this.compositeScene, this.camera)
   }

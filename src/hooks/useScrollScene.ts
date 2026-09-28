@@ -94,6 +94,7 @@ const AMBIENT_REST = 0.9
  * 0으로 꺼지지 않는다 — FACES 빈 바탕에 같은 Ice 빛이 아주 낮게 남아 있고, 그 위로 project 빛이 주인공이 된다.
  */
 const AMBIENT_FACES_RATIO = 1 / 3
+let crownCuePlayed = false
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
@@ -271,6 +272,7 @@ export default function useScrollScene(enabled: boolean) {
       }
 
       const ambient = inner.querySelector<HTMLElement>('.about__ambient')
+      const ice = inner.querySelector<HTMLElement>('.about__ice')
       const setAmbientOpacity = ambient
         ? (gsap.quickSetter(ambient, 'opacity') as (v: number) => void)
         : () => {}
@@ -282,10 +284,13 @@ export default function useScrollScene(enabled: boolean) {
        */
       let ambientCards = AMBIENT_REST
       const ambientFade = { value: 1 }
+      const boundaryLight = { value: 0 }
       const writeAmbient = () => {
         const level = ambientCards * ambientFade.value
         setAmbientOpacity(level)
         sharedAmbient.level = level
+        sharedAmbient.ice = boundaryLight.value
+        if (ice) ice.style.opacity = String(boundaryLight.value)
       }
 
       /** 좌표를 다시 잰다. 매 프레임이 아니라 refresh 때만 부른다. */
@@ -471,6 +476,7 @@ export default function useScrollScene(enabled: boolean) {
 
       const crownSide = crown?.querySelector<HTMLElement>('.watch__crown-side')
       const crownFront = crown?.querySelector<HTMLElement>('.watch__crown-front')
+      const clearCue = () => crown?.classList.remove('watch__crown--cue')
 
       if (faces && face && screen && crown && crownSide && crownFront && watchLayer) {
         /** About 크기의 Watch를 FACES 크기(뷰포트 높이의 70%)로 키우는 레이어 배율. */
@@ -512,9 +518,15 @@ export default function useScrollScene(enabled: boolean) {
          */
         let isController = false
         const setController = (next: boolean) => {
-          if (next === isController) return
+          if (next === isController && crown.querySelector('button')?.getAttribute('aria-disabled') === String(!next)) return
           isController = next
           crown.classList.toggle('watch__crown--controller', next)
+          const button = crown.querySelector<HTMLButtonElement>('button')
+          if (button) {
+            button.disabled = !next
+            button.tabIndex = next ? 0 : -1
+            button.setAttribute('aria-disabled', String(!next))
+          }
         }
 
         const facesTl = gsap.timeline({
@@ -525,6 +537,7 @@ export default function useScrollScene(enabled: boolean) {
             scrub: true, // scroll과 1:1. 되감으면 About 상태로 정확히 돌아간다.
             invalidateOnRefresh: true,
             onUpdate: (self) => setController(self.progress > 0.55),
+            onRefresh: (self) => setController(self.progress > 0.55),
           },
         })
 
@@ -590,6 +603,10 @@ export default function useScrollScene(enabled: boolean) {
           gsap.set(ambient, { xPercent: -50, yPercent: -50, x: 0, y: 0 })
           facesTl.fromTo(ambient, { y: 0 }, { y: () => window.innerHeight, ease: 'none', duration: 1 }, 0)
         }
+        if (ice) {
+          gsap.set(ice, { xPercent: -50, yPercent: -50, x: 0, y: 0 })
+          facesTl.fromTo(ice, { y: 0 }, { y: () => window.innerHeight, ease: 'none', duration: 1 }, 0)
+        }
         facesTl.fromTo(
           ambientFade,
           { value: 1 },
@@ -599,6 +616,9 @@ export default function useScrollScene(enabled: boolean) {
 
         // timeline 길이를 scroll 구간 전체(1)에 맞춘다. 위 시간이 곧 구간 안의 비율이 된다.
         facesTl.set({}, {}, 1)
+        facesTl.to(boundaryLight, { value: 0.35, duration: 0.2, ease: 'none', onUpdate: writeAmbient }, 0)
+        facesTl.to(boundaryLight, { value: 1, duration: 0.35, ease: 'power1.inOut', onUpdate: writeAmbient }, 0.2)
+        facesTl.to(boundaryLight, { value: 0.32, duration: 0.45, ease: 'power1.inOut', onUpdate: writeAmbient }, 0.55)
 
         /*
          * Crown이 정면 controller가 된 직후 딱 한 번 도는 cue.
@@ -610,10 +630,12 @@ export default function useScrollScene(enabled: boolean) {
           start: 'top top',
           once: true,
           onEnter: () => {
+            if (crownCuePlayed) return
+            crownCuePlayed = true
             crown.classList.add('watch__crown--cue')
             crown.addEventListener(
               'animationend',
-              () => crown.classList.remove('watch__crown--cue'),
+              clearCue,
               { once: true },
             )
           },
@@ -634,6 +656,17 @@ export default function useScrollScene(enabled: boolean) {
         ambient?.style.removeProperty('opacity')
         ambient?.style.removeProperty('transform')
         sharedAmbient.level = 0
+        sharedAmbient.ice = 0
+        ice?.style.removeProperty('opacity')
+        ice?.style.removeProperty('transform')
+        crown?.removeEventListener('animationend', clearCue)
+        crown?.classList.remove('watch__crown--controller', 'watch__crown--cue')
+        const button = crown?.querySelector<HTMLButtonElement>('button')
+        if (button) {
+          button.disabled = true
+          button.tabIndex = -1
+          button.setAttribute('aria-disabled', 'true')
+        }
       }
 
       // context가 revert될 때 GSAP이 함께 불러준다.
@@ -646,12 +679,20 @@ export default function useScrollScene(enabled: boolean) {
      * 등장까지 반영한 최종 레이아웃을 아직 확정하지 않았을 수 있다. 그 상태로 굳으면
      * trigger의 start/end가 어긋난 채로 남는다.
      */
+    const diagnostics = () => {
+      if (import.meta.env.DEV) document.documentElement.dataset.scrollTriggers = JSON.stringify(ScrollTrigger.getAll().map(t => ({ id: t.vars.id, start: t.start, end: t.end, pin: Boolean(t.pin) })))
+    }
+    ScrollTrigger.addEventListener('refresh', diagnostics)
     const refreshId = requestAnimationFrame(() => ScrollTrigger.refresh())
 
     // 폰트가 늦게 뜨면 Watch 앵커와 카드 위치가 조금씩 달라진다. 뜬 뒤 한 번 더 잰다.
-    document.fonts?.ready.then(() => ScrollTrigger.refresh())
+    let live = true
+    document.fonts?.ready.then(() => { if (live) ScrollTrigger.refresh() })
 
     return () => {
+      live = false
+      ScrollTrigger.removeEventListener('refresh', diagnostics)
+      delete document.documentElement.dataset.scrollTriggers
       cancelAnimationFrame(refreshId)
       ctx.revert()
     }

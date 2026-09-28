@@ -7,4 +7,4 @@
  *
  * level = .about__ambient의 opacity. About에서 0.9 ~ 1, About -> FACES 동안 0.3까지 가라앉는다.
  */
-export const sharedAmbient = { level: 0 }
+export const sharedAmbient = { level: 0, ice: 0 }

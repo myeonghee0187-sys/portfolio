@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, type MouseEvent } from 'react'
 import useMediaQuery from '../hooks/useMediaQuery'
 import './Header.css'
 
@@ -19,17 +19,23 @@ export default function Header() {
     window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' })
   }, [prefersReducedMotion])
 
+  const handleContactClick = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
+    const contact = document.getElementById('contact')
+    if (!contact || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    event.preventDefault()
+    const header = document.querySelector('.site-header')?.getBoundingClientRect().height ?? 0
+    history.replaceState(null, '', '#contact')
+    window.scrollTo({ top: window.scrollY + contact.getBoundingClientRect().top - header, behavior: prefersReducedMotion ? 'auto' : 'smooth' })
+  }, [prefersReducedMotion])
+
   return (
     <header className="site-header">
       <div className="site-header__inner">
         <button type="button" className="site-header__brand" onClick={handleBrandClick}>
           SONG MYEONG HEE
         </button>
-        {/*
-          본문 Contact 섹션은 아직 없다. anchor는 그대로 두고, 섹션이 생기면
-          index.css의 scroll-margin-top 덕분에 Header에 가리지 않고 멈춘다.
-        */}
-        <a className="site-header__link" href="#contact">
+        {/* 실제 문서 흐름의 Contact 좌표를 사용해 pin 구간에서도 정확히 이동한다. */}
+        <a className="site-header__link" href="#contact" onClick={handleContactClick}>
           CONTACT
         </a>
       </div>
