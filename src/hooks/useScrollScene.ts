@@ -505,6 +505,18 @@ export default function useScrollScene(enabled: boolean) {
           return { x: (targetX - attachedX) / s, y: (targetY - attachedY) / s }
         }
 
+        /*
+         * Crown이 "Watch의 부품"에서 "누를 수 있는 global controller"로 바뀌는 지점.
+         * 정면이 충분히 돌아선 뒤(전환 55%)부터 열고, 되감으면 다시 닫힌다.
+         * class 하나만 토글하므로 React state도, 매 프레임 스타일 쓰기도 없다.
+         */
+        let isController = false
+        const setController = (next: boolean) => {
+          if (next === isController) return
+          isController = next
+          crown.classList.toggle('watch__crown--controller', next)
+        }
+
         const facesTl = gsap.timeline({
           scrollTrigger: {
             trigger: faces,
@@ -512,6 +524,7 @@ export default function useScrollScene(enabled: boolean) {
             end: 'top top', // FACES pin 시작
             scrub: true, // scroll과 1:1. 되감으면 About 상태로 정확히 돌아간다.
             invalidateOnRefresh: true,
+            onUpdate: (self) => setController(self.progress > 0.55),
           },
         })
 
@@ -586,6 +599,25 @@ export default function useScrollScene(enabled: boolean) {
 
         // timeline 길이를 scroll 구간 전체(1)에 맞춘다. 위 시간이 곧 구간 안의 비율이 된다.
         facesTl.set({}, {}, 1)
+
+        /*
+         * Crown이 정면 controller가 된 직후 딱 한 번 도는 cue.
+         * 글자 없이 "돌릴 수 있는 하드웨어"라는 것만 알린다. once라 이 세션에서 다시 돌지 않는다.
+         * CSS animation이라 GSAP의 inline transform이 남지 않고, 끝나면 hover가 그대로 동작한다.
+         */
+        ScrollTrigger.create({
+          trigger: faces,
+          start: 'top top',
+          once: true,
+          onEnter: () => {
+            crown.classList.add('watch__crown--cue')
+            crown.addEventListener(
+              'animationend',
+              () => crown.classList.remove('watch__crown--cue'),
+              { once: true },
+            )
+          },
+        })
       }
 
       /*

@@ -100,23 +100,41 @@ const KNURL_CLIP = (() => {
  *
  * 스스로 page scroll을 따라가므로 Watch에서 떼어 다른 곳에 두어도 그대로 동작한다.
  *
+ * FACES부터는 같은 Crown이 화면 오른쪽 아래의 global controller가 된다. Journey / Contact까지
+ * 같은 DOM, 같은 뷰포트 좌표에 그대로 남는다(.watch-stage가 fixed라 section과 함께 올라가지 않는다).
+ * 정면 상태에서는 클릭으로 ALL FACES를 여는 실제 button이고, 눈에 보이는 label은 두지 않는다.
+ *
  * FACES에서는 같은 Crown이 화면 오른쪽 끝의 controller가 되면서 정면을 향한다(useScrollScene).
  * 옆모습(asset)을 rotateY로 억지로 돌리지 않고, 옆모습이 빠지는 자리에 정면 Crown이 3/4 각도에서
  * 펴지며 들어온다. 정면 Crown은 CSS로만 그린다.
+ *   watch__crown-front-button     실제 button. hit area와 focus ring만 담당하고 transform은 쓰지 않는다.
+ *   watch__crown-front            옆모습 -> 정면 전환 transform (useScrollScene의 GSAP)
+ *   watch__crown-front-fx         hover / press의 scale·translateY (CSS)
  *   watch__crown-front-mount      고정된 dark titanium 받침(housing). 움직이지 않는다.
+ *   watch__crown-front-spin       hover / one-time cue의 dial 회전 (CSS). scroll 회전과 다른 element다.
  *   watch__crown-front-wheel      knurl 톱니와 동심원 brushed cap. FACES slider 위치를 따라 rotateZ만 한다
- *                                 (useFacesInteraction). 이 layer 하나만 돈다.
+ *                                 (useFacesInteraction). 이 layer 하나만 scroll에 반응한다.
  *   watch__crown-front-highlight  광원이 고정된 반사(frost specular, ice 반사, electric ice edge). 돌지 않는다.
+ *
+ * 회전이 두 층으로 갈라져 있어서, scroll 중에 hover해도 dial이 튀거나 되돌아가지 않는다.
  */
-export default function DigitalCrown() {
+type DigitalCrownProps = {
+  /**
+   * 정면 controller를 눌렀을 때. FACES 전체 project view를 여는 자리다.
+   * 아직 그 view가 없으면 App이 아무것도 하지 않는 handler를 넘긴다.
+   */
+  onOpenAllFaces?: () => void
+}
+
+export default function DigitalCrown({ onOpenAllFaces }: DigitalCrownProps) {
   const trackRef = useRef<HTMLDivElement>(null)
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
   useCrownWheel(trackRef, KNURL_PITCH_WU, !prefersReducedMotion)
 
   return (
-    <div className="watch__crown" aria-hidden="true">
-      <div className="watch__crown-side">
+    <div className="watch__crown">
+      <div className="watch__crown-side" aria-hidden="true">
         <div className="watch__crown-orientation">
           <div className="watch__crown-box">
             <div className="watch__crown-frame">
@@ -147,11 +165,27 @@ export default function DigitalCrown() {
         </div>
       </div>
 
-      <div className="watch__crown-front">
-        <div className="watch__crown-front-mount" />
-        <div className="watch__crown-front-wheel" />
-        <div className="watch__crown-front-highlight" />
-      </div>
+      {/*
+        보이는 background / border 없이 Crown 자체가 button이다.
+        Hero / About에서는 Watch의 부품이라 눌리지 않는다 — useScrollScene이 정면으로 다 돌아선 뒤에만
+        .watch__crown에 is-controller를 붙여 pointer-events와 tabindex를 연다.
+      */}
+      <button
+        type="button"
+        className="watch__crown-front-button"
+        aria-label="모든 프로젝트 보기"
+        onClick={onOpenAllFaces}
+      >
+        <span className="watch__crown-front">
+          <span className="watch__crown-front-fx">
+            <span className="watch__crown-front-mount" />
+            <span className="watch__crown-front-spin">
+              <span className="watch__crown-front-wheel" />
+            </span>
+            <span className="watch__crown-front-highlight" />
+          </span>
+        </span>
+      </button>
     </div>
   )
 }

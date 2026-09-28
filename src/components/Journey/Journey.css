@@ -1,0 +1,694 @@
+/*
+ * JOURNEY — 하나로 이어진 세로 경로.
+ *
+ * FACES와 같은 Carbon Black 세계다. 배경이 바뀌지 않고, 경계선도 두지 않는다.
+ * 달라지는 것은 path 주변에 아주 낮게 도는 빛뿐이다.
+ *
+ * Card는 About의 두꺼운 black glass가 아니라, 어두운 공간에 떠 있는 얇은 기록 표면이다.
+ */
+
+.journey {
+  position: relative;
+  background: var(--color-carbon-black);
+  color: #f3f4f4;
+}
+
+/* ---------------- Stage (pin 되는 단위) ---------------- */
+
+.journey__stage {
+  /*
+   * world 좌표(1920 기준)를 실제 px로 바꾸는 단위.
+   * cqw는 stage의 실제 콘텐츠 폭이라 세로 스크롤바가 이미 빠져 있다.
+   */
+  container-type: size;
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  /* pin 중(position: fixed)에도 stage가 스스로 같은 바탕을 들고 있다. */
+  background: var(--color-carbon-black);
+}
+
+/*
+ * world 좌표 1단위당 실제 px.
+ * container 자신은 자기 cq 단위를 쓸 수 없어서 stage가 아니라 자식에 둔다.
+ */
+.journey__stage > * {
+  --ju: calc(100cqw / 1920);
+}
+
+/*
+ * path 주변에만 도는 차가운 빛. 화면을 채우는 gradient가 아니라
+ * 경로가 지나가는 세로 띠 하나와 중앙의 낮은 확산이다.
+ */
+.journey__ambient {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      60cqw 46cqh at 50% 52%,
+      rgb(212 229 239 / 0.055) 0%,
+      rgb(212 229 239 / 0.028) 42%,
+      rgb(212 229 239 / 0.008) 74%,
+      transparent 100%
+    ),
+    radial-gradient(
+      26cqw 70cqh at 50% 50%,
+      rgb(24 109 229 / 0.05) 0%,
+      rgb(24 109 229 / 0.018) 48%,
+      transparent 100%
+    );
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+}
+
+/* ---------------- Path ---------------- */
+
+/* world 안에 있어서 카메라가 움직이면 경로도 그대로 따라 움직인다. */
+.journey__path {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(1920 * var(--ju));
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.journey__path path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-width: calc(2 * var(--ju));
+  vector-effect: non-scaling-stroke;
+}
+
+/* 아직 지나지 않은 길 */
+.journey__path-base {
+  stroke: rgb(119 125 130 / 0.18);
+}
+
+/* 지나온 길 */
+.journey__path-drawn {
+  stroke: rgb(212 229 239 / 0.28);
+}
+
+/* 지금 그려지는 머리 끝. 짧게만 얹혀서 neon line처럼 보이지 않는다. */
+.journey__path-accent {
+  stroke: rgb(24 109 229 / 0.62);
+  stroke-width: calc(2.4 * var(--ju));
+}
+
+/* ---------------- World (카메라가 움직이는 대상) ---------------- */
+
+.journey__world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(1920 * var(--ju));
+  height: calc(var(--world-h) * var(--ju));
+  will-change: transform;
+}
+
+/*
+ * node는 크기가 없는 "경로 위의 한 점"이다.
+ * card / 위성 / AI stack이 전부 이 점을 기준으로 놓인다.
+ */
+.journey__node {
+  --node-in: 0;
+  --node-out: 0;
+  position: absolute;
+  top: calc(var(--node-y) * var(--ju));
+  left: calc(var(--node-x) * var(--ju));
+  width: 0;
+  height: 0;
+}
+
+/* 경로와 node가 만나는 점. 활성일 때만 Ice가 맺힌다. */
+.journey__point {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(11 * var(--ju));
+  height: calc(11 * var(--ju));
+  transform: translate(-50%, -50%) scale(calc(0.7 + 0.3 * var(--node-in)));
+  border-radius: 50%;
+  background: rgb(212 229 239 / calc(0.25 + 0.6 * var(--node-in) - 0.35 * var(--node-out)));
+  box-shadow: 0 0 calc(14 * var(--ju)) rgb(24 109 229 / calc(0.5 * var(--node-in) * (1 - var(--node-out))));
+}
+
+/* ---------------- Card ---------------- */
+
+/*
+ * 얇은 기록 표면. dashboard card가 아니다.
+ *   upcoming   물러나 있고 흐릿하다
+ *   active     선명하고 앞에 있으며 Ice edge가 켜진다
+ *   completed  headline은 아직 읽히지만 설명은 가라앉는다
+ * 세 상태 모두 --node-in / --node-out 두 값에서만 나온다.
+ */
+.journey__card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(var(--card-w, 560) * var(--ju));
+  padding: calc(40 * var(--ju)) calc(44 * var(--ju));
+  /*
+   * 카드는 경로 위의 점에서 --card-dx / --card-dy만큼 비켜 앉는다.
+   * 경로는 화면 바깥쪽으로 흐르고 카드는 안쪽에 있어서, 선이 본문을 가로지르지 않는다.
+   */
+  transform: translate(
+      calc(-50% + var(--card-dx, 0) * var(--ju)),
+      calc(-50% + var(--card-dy, 0) * var(--ju))
+    )
+    scale(calc(0.9 + 0.1 * var(--node-in) - 0.05 * var(--node-out)));
+  border: 1px solid rgb(212 229 239 / calc(0.1 + 0.08 * var(--node-in) - 0.05 * var(--node-out)));
+  border-radius: calc(24 * var(--ju));
+  background: rgb(255 255 255 / calc(0.025 + 0.02 * var(--node-in) - 0.012 * var(--node-out)));
+  opacity: calc(0.3 + 0.7 * var(--node-in) - 0.38 * var(--node-out));
+  filter: blur(calc(2.4px * (1 - var(--node-in)) + 1.1px * var(--node-out)));
+  will-change: transform, opacity, filter;
+}
+
+/* 활성일 때만 한쪽 edge에 얇은 Ice가 맺힌다. */
+.journey__card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: calc(36 * var(--ju));
+  width: 34%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgb(212 229 239 / 0),
+    rgb(212 229 239 / 0.5),
+    rgb(212 229 239 / 0)
+  );
+  opacity: calc(var(--node-in) * (1 - var(--node-out)));
+  pointer-events: none;
+}
+
+.journey__card-head {
+  display: flex;
+  flex-direction: column;
+  gap: calc(16 * var(--ju));
+}
+
+/* Index / Label — 물러나 있어도 끝까지 식별된다. */
+.journey__index {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: calc(17 * var(--ju));
+  letter-spacing: calc(2.4 * var(--ju));
+  line-height: 1;
+  color: rgb(212 229 239 / 0.72);
+}
+
+/* Headline — 물러나 있어도 끝까지 식별된다. */
+.journey__headline {
+  margin: 0;
+  font-family: 'Anton', sans-serif;
+  font-weight: 400;
+  font-size: calc(var(--headline-size, 64) * var(--ju));
+  line-height: 1.02;
+  letter-spacing: calc(0.5 * var(--ju));
+  color: #f3f4f4;
+}
+
+.journey__headline span {
+  display: block;
+}
+
+/*
+ * 활성일 때만 선명해지는 정보. DOM에서 지우지 않고 보이는 정도만 조절한다.
+ * 한 화면에 긴 설명이 둘 이상 같은 세기로 보이지 않게 하는 지점이다.
+ */
+.journey__card-body {
+  display: flex;
+  flex-direction: column;
+  gap: calc(22 * var(--ju));
+  margin-top: calc(28 * var(--ju));
+  opacity: calc(var(--node-in) * (1 - 0.82 * var(--node-out)));
+  transform: translateY(calc((1 - var(--node-in)) * 10 * var(--ju)));
+}
+
+.journey__desc {
+  margin: 0;
+  font-family: 'SUIT', sans-serif;
+  font-weight: 500;
+  font-size: calc(21 * var(--ju));
+  line-height: 1.55;
+  word-break: keep-all;
+  color: rgb(243 244 244 / 0.8);
+}
+
+.journey__desc span {
+  display: block;
+}
+
+/* Intro의 과정 정보. 2열 metadata. */
+.journey__meta {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: calc(14 * var(--ju)) calc(40 * var(--ju));
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+.journey__meta dt {
+  margin-bottom: calc(6 * var(--ju));
+  font-size: calc(12 * var(--ju));
+  font-weight: 600;
+  letter-spacing: calc(1.6 * var(--ju));
+  color: rgb(119 125 130 / 0.95);
+}
+
+.journey__meta dd {
+  margin: 0;
+  font-family: 'SUIT', sans-serif;
+  font-weight: 500;
+  font-size: calc(16 * var(--ju));
+  line-height: 1.45;
+  color: rgb(243 244 244 / 0.85);
+}
+
+.journey__meta dd span {
+  display: block;
+}
+
+/* Tools — 굵은 영문 한 줄. pill이 아니다. */
+.journey__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(8 * var(--ju)) calc(20 * var(--ju));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: calc(18 * var(--ju));
+  letter-spacing: calc(1 * var(--ju));
+  color: rgb(243 244 244 / 0.92);
+}
+
+/* Keywords — 가운뎃점으로 끊는 작은 metadata row. */
+.journey__keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(6 * var(--ju)) 0;
+  margin: 0;
+  padding-top: calc(16 * var(--ju));
+  border-top: 1px solid rgb(212 229 239 / 0.1);
+  list-style: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: calc(12.5 * var(--ju));
+  letter-spacing: calc(1.5 * var(--ju));
+  color: rgb(119 125 130 / 1);
+}
+
+.journey__keywords li + li::before {
+  content: '·';
+  margin: 0 calc(10 * var(--ju));
+  color: rgb(119 125 130 / 0.6);
+}
+
+/* ---------------- Node 종류별 위계 ---------------- */
+
+.journey__node--intro .journey__card,
+.journey__node--now .journey__card {
+  --card-w: 620;
+  --headline-size: 86;
+  text-align: center;
+}
+
+.journey__node--intro .journey__card-head,
+.journey__node--now .journey__card-head {
+  align-items: center;
+}
+
+.journey__node--intro .journey__meta {
+  justify-content: center;
+  text-align: left;
+}
+
+.journey__node--intro .journey__keywords,
+.journey__node--now .journey__keywords {
+  justify-content: center;
+}
+
+.journey__node--main .journey__card {
+  --card-w: 580;
+  --headline-size: 66;
+}
+
+/*
+ * VISUAL TOOLS는 01에 딸린 보조 도구다.
+ * 폭·글자·여백이 모두 한 단계 작아서 main node와 같은 비중으로 읽히지 않는다.
+ */
+.journey__node--satellite .journey__card {
+  --card-w: 392;
+  --headline-size: 34;
+  padding: calc(26 * var(--ju)) calc(28 * var(--ju));
+  border-radius: calc(16 * var(--ju));
+  background: rgb(255 255 255 / calc(0.018 + 0.014 * var(--node-in)));
+}
+
+.journey__node--satellite .journey__index {
+  font-size: calc(12 * var(--ju));
+  color: rgb(119 125 130 / 0.9);
+}
+
+.journey__node--satellite .journey__desc {
+  font-size: calc(15.5 * var(--ju));
+}
+
+.journey__node--satellite .journey__point {
+  width: calc(7 * var(--ju));
+  height: calc(7 * var(--ju));
+}
+
+.journey__node--ai .journey__card {
+  --card-w: 520;
+  --headline-size: 54;
+}
+
+/* NOW — 경로가 마지막으로 모이는 점. 큰 카드보다 점과 고리가 주인공이다. */
+.journey__node--now .journey__card {
+  border-color: rgb(212 229 239 / calc(0.14 + 0.1 * var(--node-in)));
+  background: rgb(255 255 255 / calc(0.02 + 0.022 * var(--node-in)));
+}
+
+.journey__node--now .journey__point {
+  width: calc(18 * var(--ju));
+  height: calc(18 * var(--ju));
+}
+
+/* 얇은 동심원. watch complication처럼 점 주위로 두 겹만 둔다. */
+.journey__node--now .journey__point::before,
+.journey__node--now .journey__point::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border: 1px solid rgb(212 229 239 / calc(0.22 * var(--node-in)));
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.journey__node--now .journey__point::before {
+  width: calc(64 * var(--ju));
+  height: calc(64 * var(--ju));
+}
+
+.journey__node--now .journey__point::after {
+  width: calc(120 * var(--ju));
+  height: calc(120 * var(--ju));
+  border-color: rgb(212 229 239 / calc(0.12 * var(--node-in)));
+}
+
+/* NOW 카드는 --card-dy로 점 아래에 내려 앉는다. 경로의 끝(점과 고리)이 그 위에 드러난다. */
+
+/* ---------------- AI Layered Stack ---------------- */
+
+/*
+ * 04 안에서 한 장씩 앞으로 나오는 기록 layer.
+ * arrow도 dot도 snap도 없다. 공간에 쌓여 있던 판이 차례로 드러난다.
+ */
+.journey__ai-stack {
+  position: absolute;
+  top: calc((var(--stack-y) - var(--node-y)) * var(--ju));
+  left: calc((var(--stack-x) - var(--node-x)) * var(--ju));
+  width: calc(680 * var(--ju));
+  height: calc(300 * var(--ju));
+  transform: translate(-50%, -50%);
+  perspective: calc(1400 * var(--ju));
+  transform-style: preserve-3d;
+}
+
+/*
+ * upcoming  오른쪽 뒤에 겹쳐 있다. --panel-depth가 클수록 더 뒤에 있다.
+ * active    정면. 기울기 0, 크기 1.
+ * completed 왼쪽 뒤로 물러난다. 제목은 아직 읽힌다.
+ */
+.journey__ai-panel {
+  --panel-in: 0;
+  --panel-out: 0;
+  /* upcoming일 때만 depth가 의미를 갖는다. 앞으로 나오면 0에 수렴한다. */
+  --back: calc((1 - var(--panel-in)) * (1 + var(--panel-depth)));
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: calc(32 * var(--ju)) calc(36 * var(--ju));
+  /*
+   * 뒤에 있는 판은 오른쪽 뒤로, 지나간 판은 왼쪽 뒤로 충분히 비켜서
+   * 활성 판의 제목 위에 다른 제목이 겹쳐 읽히지 않는다.
+   * backdrop-filter는 쓰지 않는다 — 다섯 장이 겹치면 blur가 누적돼 전부 탁해진다.
+   */
+  transform: translate3d(
+      calc((var(--back) * 30 - var(--panel-out) * 190) * var(--ju)),
+      /*
+       * 세로로도 어긋나게 둔다. 가로로만 밀면 판이 넓어서 제목줄이 서로 겹쳐 읽힌다.
+       * 다음 장은 위로, 지나간 장은 아래로 비켜서 활성 제목 앞뒤가 비어 있다.
+       */
+      calc((var(--back) * -26 + var(--panel-out) * 76) * var(--ju)),
+      calc((var(--back) * -96 - var(--panel-out) * 160) * var(--ju))
+    )
+    rotateY(calc(var(--back) * -6deg + var(--panel-out) * 8deg))
+    scale(calc(1 - var(--back) * 0.045 - var(--panel-out) * 0.07));
+  border: 1px solid rgb(212 229 239 / calc(0.08 + 0.1 * var(--panel-in) - 0.05 * var(--panel-out)));
+  border-radius: calc(20 * var(--ju));
+  background: rgb(8 9 10 / calc(0.55 + 0.25 * var(--panel-in)));
+  opacity: calc(0.2 + 0.8 * var(--panel-in) - 0.58 * var(--panel-out));
+  will-change: transform, opacity;
+}
+
+/* 활성 판에만 얇은 유리 반사가 얹힌다. */
+.journey__ai-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.055) 0%,
+    rgb(255 255 255 / 0.012) 46%,
+    rgb(212 229 239 / 0.03) 100%
+  );
+  opacity: calc(var(--panel-in) * (1 - var(--panel-out)));
+  pointer-events: none;
+}
+
+.journey__ai-panel > * {
+  position: relative;
+}
+
+.journey__ai-panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: calc(16 * var(--ju));
+}
+
+.journey__ai-panel-no {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: calc(13 * var(--ju));
+  letter-spacing: calc(1.6 * var(--ju));
+  color: rgb(24 109 229 / calc(0.5 + 0.45 * var(--panel-in)));
+}
+
+.journey__ai-panel-title {
+  margin: 0;
+  font-family: 'Anton', sans-serif;
+  font-weight: 400;
+  font-size: calc(38 * var(--ju));
+  line-height: 1.05;
+  letter-spacing: calc(0.5 * var(--ju));
+  color: #f3f4f4;
+}
+
+/* panel 안의 Tools / Keywords는 활성일 때만 선명해진다. */
+.journey__tools--panel {
+  font-size: calc(17 * var(--ju));
+  opacity: calc(0.35 + 0.65 * var(--panel-in) * (1 - var(--panel-out)));
+}
+
+.journey__ai-panel .journey__keywords {
+  opacity: calc(0.3 + 0.7 * var(--panel-in) * (1 - var(--panel-out)));
+}
+
+/* ---------------- 좁은 화면 / 연출 꺼짐: 일반 문서 흐름 ---------------- */
+
+/*
+ * Desktop의 공간 연출을 축소해서 보여주지 않는다.
+ * 위에서 아래로 읽히는 하나의 세로 타임라인이 되고, 모든 단계가 그냥 펼쳐진다.
+ */
+.journey--static .journey__stage {
+  container-type: normal;
+  height: auto;
+  overflow: visible;
+}
+
+.journey--static .journey__stage > * {
+  --ju: 1px;
+}
+
+.journey--static .journey__path,
+.journey--static .journey__point {
+  display: none;
+}
+
+.journey--static .journey__ambient {
+  position: fixed;
+  opacity: 0.6;
+}
+
+.journey--static .journey__world {
+  position: relative;
+  transform: none;
+  display: flex;
+  flex-direction: column;
+  gap: 72px;
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  margin: 0 auto;
+  padding: 120px 20px 140px;
+  /* 단계들이 하나의 세로 선으로 이어진다. */
+  background: linear-gradient(
+      180deg,
+      transparent 0 96px,
+      rgb(212 229 239 / 0.16) 96px calc(100% - 116px),
+      transparent calc(100% - 116px)
+    )
+    no-repeat 20px 0 / 1px 100%;
+}
+
+.journey--static .journey__node {
+  position: relative;
+  top: auto;
+  left: auto;
+  width: 100%;
+  height: auto;
+}
+
+.journey--static .journey__card {
+  position: relative;
+  top: auto;
+  left: auto;
+  width: 100%;
+  max-width: none;
+  padding: 28px 24px;
+  transform: none;
+  border-radius: 18px;
+  opacity: 1;
+  filter: none;
+}
+
+.journey--static .journey__card-body {
+  opacity: 1;
+  transform: none;
+}
+
+.journey--static .journey__card::after {
+  opacity: 1;
+}
+
+.journey--static .journey__headline {
+  font-size: clamp(34px, 9vw, 54px);
+}
+
+.journey--static .journey__node--satellite .journey__headline {
+  font-size: clamp(22px, 5.5vw, 30px);
+}
+
+.journey--static .journey__node--intro .journey__card,
+.journey--static .journey__node--now .journey__card,
+.journey--static .journey__node--intro .journey__card-head,
+.journey--static .journey__node--now .journey__card-head {
+  text-align: left;
+  align-items: flex-start;
+}
+
+.journey--static .journey__node--intro .journey__keywords,
+.journey--static .journey__node--now .journey__keywords,
+.journey--static .journey__node--intro .journey__meta {
+  justify-content: flex-start;
+}
+
+.journey--static .journey__desc,
+.journey--static .journey__tools,
+.journey--static .journey__keywords,
+.journey--static .journey__meta dd,
+.journey--static .journey__meta dt,
+.journey--static .journey__index,
+.journey--static .journey__ai-panel-title,
+.journey--static .journey__ai-panel-no {
+  font-size: unset;
+}
+
+.journey--static .journey__desc {
+  font-size: 15px;
+}
+
+.journey--static .journey__index {
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+
+.journey--static .journey__tools {
+  font-size: 14px;
+}
+
+.journey--static .journey__keywords {
+  font-size: 11px;
+  letter-spacing: 1.2px;
+}
+
+.journey--static .journey__meta dt {
+  font-size: 10px;
+}
+
+.journey--static .journey__meta dd {
+  font-size: 14px;
+}
+
+/* AI panel은 겹치지 않고 세로로 쌓인다. */
+.journey--static .journey__ai-stack {
+  position: relative;
+  top: auto;
+  left: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  height: auto;
+  margin-top: 24px;
+  transform: none;
+  perspective: none;
+}
+
+.journey--static .journey__ai-panel {
+  position: relative;
+  inset: auto;
+  padding: 22px 20px;
+  transform: none;
+  border-radius: 16px;
+  opacity: 1;
+}
+
+.journey--static .journey__ai-panel-title {
+  font-size: 22px;
+}
+
+.journey--static .journey__ai-panel-no {
+  font-size: 11px;
+}
+
+.journey--static .journey__tools--panel,
+.journey--static .journey__ai-panel .journey__keywords {
+  opacity: 1;
+}

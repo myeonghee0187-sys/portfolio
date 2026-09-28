@@ -68,7 +68,30 @@ html.intro-scroll-lock body {
   --site-u: min(1px, 100vw / 1920, 100dvh / 1104);
   /* Header와 Hero가 같은 값을 참조해야 둘의 합이 정확히 한 화면이 된다. */
   --site-header-h: max(64px, calc(104 * var(--site-u)));
+  /*
+   * Header 높이 토큰. 값은 --site-header-h 그대로이고 이름만 전역 관점의 것이다.
+   * Hero / Watch의 첫 화면 계산은 계속 --site-header-h를 쓰고,
+   * "Header가 가리는 높이"를 피해야 하는 쪽(main 여백, Journey 상단 safe area,
+   * anchor scroll-margin)은 --header-height / --header-total을 쓴다.
+   */
+  --header-height: var(--site-header-h);
+  /* 노치가 있는 기기에서 Header가 실제로 차지하는 높이. 데스크톱에서는 --header-height와 같다. */
+  --header-total: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--color-carbon-black);
+}
+
+/*
+ * Header가 fixed라 문서 흐름에서 빠졌다. 그만큼을 main 앞에 되돌려
+ * Hero의 시작 위치와 100dvh 구성이 Header 고정 전과 정확히 같게 유지한다.
+ * Hero의 높이 계산(100dvh - --site-header-h)은 건드리지 않는다.
+ */
+.site > main {
+  padding-top: var(--header-total);
+}
+
+/* anchor 이동이 고정 Header 뒤에서 멈추지 않게 한다. */
+.site section[id] {
+  scroll-margin-top: var(--header-total);
 }

@@ -113,7 +113,12 @@
  * 재질: dark titanium 받침, 동심원 brushed cap, ice 반사, frost specular, 아주 얇은 electric ice edge.
  * 배경 버튼 / neon glow는 없다.
  */
-.watch__crown-front {
+/*
+ * 정면 controller의 button.
+ * Crown 자리 한가운데에 놓이는 투명한 껍데기다. 보이는 background / border는 없고,
+ * hit area와 focus ring만 담당한다. transform은 쓰지 않는다 — 안쪽 layer들이 나눠 갖는다.
+ */
+.watch__crown-front-button {
   --crown-d: calc(100 * var(--wu));
   position: absolute;
   top: 50%;
@@ -121,14 +126,59 @@
   width: var(--crown-d);
   height: var(--crown-d);
   margin: calc(var(--crown-d) / -2) 0 0 calc(var(--crown-d) / -2);
-  visibility: hidden;
-  opacity: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  /* Hero / About에서는 Watch의 부품이라 눌리지 않는다. is-controller가 붙으면 열린다. */
   pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-.watch__crown-front > * {
+/*
+ * 보이는 크기와 무관하게 집을 수 있는 영역을 확보한다(데스크톱 64px / 터치 44px).
+ * Crown이 그보다 크면 0이라 아무것도 넓히지 않는다. 배경은 없다.
+ */
+.watch__crown-front-button::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((100% - 64px) / 2));
+  border-radius: 50%;
+}
+
+.watch__crown--controller .watch__crown-front-button {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.watch__crown-front {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* hover / press가 얹히는 layer. 전환(GSAP)과 상호작용(CSS)이 서로를 덮어쓰지 않는다. */
+.watch__crown-front-fx {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  transition:
+    transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    filter 260ms ease;
+}
+
+.watch__crown-front-fx > * {
   position: absolute;
   border-radius: 50%;
+}
+
+/* scroll 회전(.watch__crown-front-wheel)과 분리된 상호작용 전용 회전 layer. */
+.watch__crown-front-spin {
+  inset: 0;
+  transition: transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 /* 고정 받침. wheel보다 조금 크고, 아래로 짧은 접지 그림자가 진다. */
@@ -146,7 +196,9 @@
  * mask가 cap과 톱니 링 사이에 좁은 홈을 파서, 그 사이로 받침(mount)의 어두운 색이 보인다.
  */
 .watch__crown-front-wheel {
+  position: absolute;
   inset: 0;
+  border-radius: 50%;
   /* 톱니 하나 = 빛을 받는 면 / 그늘 면 / 홈. 대비를 낮게 두어 돌 때 반짝이지 않는다. */
   background: repeating-conic-gradient(
     from 0deg,
@@ -219,4 +271,88 @@
     inset calc(1 * var(--wu)) calc(1 * var(--wu)) 0 rgb(243 244 244 / 0.12);
   -webkit-mask: radial-gradient(circle closest-side, #000 0 98.6%, transparent 99.4%);
   mask: radial-gradient(circle closest-side, #000 0 98.6%, transparent 99.4%);
+}
+
+
+/* ---------------- 정면 Controller의 상호작용 ---------------- */
+
+/*
+ * 눈에 보이는 label은 두지 않는다. 누를 수 있다는 것은 재질과 움직임으로만 전한다.
+ *   hover  살짝 떠오르며 커지고, dial이 조금 더 돌고, ice edge가 밝아진다
+ *   press  가라앉으며 작아진다(하드웨어 버튼을 누른 느낌). bounce 없음
+ *   focus  Crown 바깥의 얇은 Ice Reflection ring
+ */
+.watch__crown--controller .watch__crown-front-button:hover .watch__crown-front-fx {
+  transform: translateY(-1.5px) scale(1.04);
+  filter: brightness(1.08);
+}
+
+.watch__crown--controller .watch__crown-front-button:hover .watch__crown-front-spin {
+  transform: rotate(15deg);
+}
+
+.watch__crown--controller .watch__crown-front-button:active .watch__crown-front-fx {
+  transform: translateY(1px) scale(0.98);
+  filter: brightness(0.96);
+  transition-duration: 90ms;
+}
+
+.watch__crown-front-button:focus-visible {
+  outline: none;
+}
+
+.watch__crown-front-button:focus-visible::after {
+  box-shadow:
+    0 0 0 1px rgb(212 229 239 / 0.75),
+    0 0 calc(10 * var(--wu)) rgb(24 109 229 / 0.35);
+}
+
+/*
+ * FACES에서 정면으로 다 돌아선 뒤 딱 한 번 도는 cue.
+ * 반복 pulse가 아니라 "이건 돌릴 수 있는 것"이라고 한 번 알려주고 끝난다.
+ * class를 붙였다 떼는 방식이라 GSAP inline transform이 남지 않는다 — cue가 끝나면 hover가 그대로 동작한다.
+ */
+.watch__crown--cue .watch__crown-front-spin {
+  animation: crown-cue-dial 760ms cubic-bezier(0.34, 0.8, 0.3, 1);
+}
+
+.watch__crown--cue .watch__crown-front-fx {
+  animation: crown-cue-lift 760ms cubic-bezier(0.34, 0.8, 0.3, 1);
+}
+
+@keyframes crown-cue-dial {
+  0% { transform: rotate(0deg); }
+  42% { transform: rotate(10deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes crown-cue-lift {
+  0% { transform: scale(1); filter: brightness(1); }
+  42% { transform: scale(1.035); filter: brightness(1.12); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 도는 cue는 빼고 밝기만 한 번 오르내린다. press / focus는 그대로 둔다. */
+  .watch__crown--cue .watch__crown-front-spin {
+    animation: none;
+  }
+
+  .watch__crown--cue .watch__crown-front-fx {
+    animation: crown-cue-fade 760ms ease;
+  }
+
+  .watch__crown--controller .watch__crown-front-button:hover .watch__crown-front-fx {
+    transform: none;
+    filter: brightness(1.06);
+  }
+
+  .watch__crown--controller .watch__crown-front-button:hover .watch__crown-front-spin {
+    transform: none;
+  }
+
+  @keyframes crown-cue-fade {
+    0%, 100% { filter: brightness(1); }
+    42% { filter: brightness(1.14); }
+  }
 }

@@ -16,6 +16,8 @@ export type WatchVariant = 'hero' | 'about' | 'stage'
 
 type WatchAssemblyProps = {
   variant: WatchVariant
+  /** stage variant에서만 의미가 있다. 정면 Crown controller의 click handler. */
+  onOpenAllFaces?: () => void
 }
 
 /**
@@ -29,7 +31,7 @@ type WatchAssemblyProps = {
  * 내부 좌표계는 Figma Hero 기준인 600 x 760이다.
  * About(480 x 608)은 --wu에 0.8을 곱해 같은 좌표계를 그대로 쓴다.
  */
-export default function WatchAssembly({ variant }: WatchAssemblyProps) {
+export default function WatchAssembly({ variant, onOpenAllFaces }: WatchAssemblyProps) {
   // Hero / About이 같은 source를 쓴다. 값이 새로 만들어지지 않고 그대로 이어진다.
   const currentTime = useCurrentTime()
 
@@ -93,7 +95,7 @@ export default function WatchAssembly({ variant }: WatchAssemblyProps) {
         page scroll에는 측면 knurl 홈만 굴러가며 반응한다(DigitalCrown).
         Watch 전환 / Crown 위치 / wheel 움직임은 전부 서로 다른 element에서 일어난다.
       */}
-      <DigitalCrown />
+      <DigitalCrown onOpenAllFaces={onOpenAllFaces} />
     </div>
   )
 }

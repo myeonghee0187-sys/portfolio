@@ -1,15 +1,51 @@
-/* Figma 111:439 — header 1920 x 104 (상하 40px + 텍스트 24px) */
+/*
+ * Figma 111:439 — header 1920 x 104 (상하 40px + 텍스트 24px)
+ *
+ * Intro 종료 후 Hero부터 Contact까지 화면 맨 위에 고정된다.
+ * 배경 bar를 만들지 않는다 — 바탕은 투명하고, 아래로 아주 얕게 떨어지는 fade만 둔다.
+ * 그래서 FACES 영상이나 Journey card가 뒤로 지나가도 글자는 읽히고,
+ * 별도의 navbar가 얹힌 것처럼 보이지는 않는다.
+ */
 .site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 5;
   display: flex;
   align-items: center;
   width: 100%;
-  height: var(--site-header-h);
-  /* 좁은 화면에서 텍스트가 가장자리에 붙지 않도록 하는 최소 여백. */
-  padding: 0 20px;
-  background: #08090a;
+  /* 노치 영역만큼 내려 앉힌다. 데스크톱에서는 env()가 0이라 --header-height와 같다. */
+  height: var(--header-total);
+  padding: env(safe-area-inset-top, 0px) 20px 0;
+  /*
+   * 투명한 영역이 아래 콘텐츠(FACES drag, Crown 등)의 포인터를 막지 않게 한다.
+   * 실제 링크만 다시 auto로 되돌린다.
+   */
+  pointer-events: none;
+}
+
+/*
+ * 글자 뒤 가독성 확보용 top fade. Header 높이보다 조금 더 내려가며 사라진다.
+ * bar처럼 보이지 않도록 경계가 없는 gradient 하나만 쓴다.
+ */
+.site-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: calc(var(--header-total) * 1.35);
+  background: linear-gradient(
+    180deg,
+    rgb(8 9 10 / 0.72) 0%,
+    rgb(8 9 10 / 0.28) 55%,
+    transparent 100%
+  );
+  pointer-events: none;
 }
 
 .site-header__inner {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -25,14 +61,33 @@
 .site-header__brand,
 .site-header__link {
   margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: max(13px, calc(24 * var(--site-u)));
   line-height: 1;
+  /* Frost White 고정. blend mode를 쓰면 영상/WebGL 위에서 색이 예측 불가능해진다. */
   color: #f3f4f4;
   white-space: nowrap;
+  /* Header wrapper는 pointer-events: none이라 실제 조작 대상만 되돌린다. */
+  pointer-events: auto;
+  cursor: pointer;
+  transition: opacity 200ms ease;
 }
 
 .site-header__link {
   text-decoration: none;
+}
+
+.site-header__brand:hover,
+.site-header__link:hover {
+  opacity: 0.68;
+}
+
+.site-header__brand:focus-visible,
+.site-header__link:focus-visible {
+  outline: 1px solid rgb(212 229 239 / 0.7);
+  outline-offset: calc(6 * var(--site-u));
 }

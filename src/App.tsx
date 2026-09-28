@@ -4,6 +4,7 @@ import Header from './components/Header'
 import Hero from './components/Hero'
 import About from './components/About'
 import Faces from './components/Faces/Faces'
+import Journey from './components/Journey/Journey'
 import WatchStage from './components/Watch/WatchStage'
 import SplashCursor from './components/SplashCursor/SplashCursor'
 import useMediaQuery from './hooks/useMediaQuery'
@@ -16,6 +17,17 @@ export default function App() {
   const isWideEnough = useMediaQuery('(min-width: 901px)')
 
   const handleIntroFinish = useCallback(() => setIsIntroDone(true), [])
+
+  /*
+   * FACES 이후 고정되는 정면 Digital Crown의 click handler.
+   *
+   * 원래 자리는 "ALL FACES(전체 project view)"를 여는 것인데, 그 view는 아직 없다.
+   * 다른 기능을 임의로 붙이지 않고 연결 지점만 만들어 둔다 —
+   * view가 생기면 이 함수 안에서 열면 된다.
+   */
+  const handleOpenAllFaces = useCallback(() => {
+    // TODO: ALL FACES project view가 구현되면 여기서 연다.
+  }, [])
 
   /*
    * Splash Cursor는 커서가 있는 데스크톱 전용이고, 순수 장식이라 reduced motion에서는 끈다.
@@ -83,13 +95,15 @@ export default function App() {
           <About inlineWatch={!scrollSceneEnabled} />
           {/* 가로 트랙 연출도 About과 같은 조건에서만 켠다. 아니면 native 가로 scroll 목록이다. */}
           <Faces interactive={scrollSceneEnabled} ready={isIntroDone} />
+          {/* FACES 다음. 같은 조건에서만 카메라 연출을 켜고, 아니면 세로 타임라인이 된다. */}
+          <Journey interactive={scrollSceneEnabled} ready={isIntroDone} />
         </main>
 
         {/*
           Hero와 About이 공유하는 Watch. 연출이 켜져 있을 때만 이 레이어가 들고 있고,
           Hero/About은 각자 앵커만 남겨둔다. 그래서 화면의 Watch는 언제나 하나다.
         */}
-        {scrollSceneEnabled && <WatchStage />}
+        {scrollSceneEnabled && <WatchStage onOpenAllFaces={handleOpenAllFaces} />}
       </div>
     </>
   )
