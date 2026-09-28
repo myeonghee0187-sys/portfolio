@@ -4,6 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
 import { ABOUT_CARDS } from '../components/About'
 import { sharedAmbient } from './sharedAmbient'
+import { crownLink } from './crownLink'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -588,6 +589,41 @@ export default function useScrollScene(enabled: boolean) {
           }
         }
 
+        /*
+         * 38~76%: 옆모습 -> 정면. 가는 도중에 Crown이 화면 쪽으로 돌아서는 것처럼 보이게 한다.
+         * 옆모습은 가로로 눌리고 살짝 기울며 빠지고, 정면은 가로로 눌린 타원(3/4 각도)에서 원으로 펴지며
+         * 기울기가 풀린다. 둘 다 2D transform + opacity라 asset을 rotateY로 비틀지 않는다.
+         *
+         * Contact에서 같은 Crown이 다시 Watch에 결합하며 이 전환을 거꾸로 지나간다(useContactScene).
+         * 두 scroll 구간이 같은 element를 따로 tween하지 않도록, 방향은 applyCrown 하나가
+         * "FACES 진행률"과 "Contact 결합 정도" 중 앞쪽 상태를 골라 그린다(crownLink.ts).
+         * 아래 구간 값은 FACES 진행률 기준이다.
+         */
+        let facesProgress = 0
+        let lastTurn = -1
+        const segment = (t: number, from: number, to: number) => gsap.utils.clamp(0, 1, (t - from) / (to - from))
+        const sideEase = gsap.parseEase('power1.in')
+        const frontEase = gsap.parseEase('power2.out')
+        const applyCrown = () => {
+          // 결합이 끝나면(attach 1) 38%(옆모습) 상태로, 풀리면 FACES 진행률 그대로.
+          const turn = Math.min(facesProgress, 0.76 - 0.38 * crownLink.attach)
+          if (turn !== lastTurn) {
+            lastTurn = turn
+            const side = sideEase(segment(turn, 0.38, 0.68))
+            gsap.set(crownSide, { scaleX: 1 - 0.45 * side, rotate: -10 * side, autoAlpha: 1 - segment(turn, 0.44, 0.66) })
+            const front = frontEase(segment(turn, 0.4, 0.76))
+            gsap.set(crownFront, {
+              scaleX: 0.42 + 0.58 * front,
+              scaleY: 0.9 + 0.1 * front,
+              rotate: 14 * (1 - front),
+              autoAlpha: segment(turn, 0.46, 0.68),
+            })
+          }
+          // Watch에 다시 결합한 Crown은 부품이다. 눌리지 않는다.
+          setController(facesProgress > 0.55 && crownLink.attach < 0.5)
+        }
+        crownLink.refresh = applyCrown
+
         const facesTl = gsap.timeline({
           scrollTrigger: {
             trigger: faces,
@@ -595,8 +631,14 @@ export default function useScrollScene(enabled: boolean) {
             end: 'top top', // FACES pin 시작
             scrub: true, // scroll과 1:1. 되감으면 About 상태로 정확히 돌아간다.
             invalidateOnRefresh: true,
-            onUpdate: (self) => setController(self.progress > 0.55),
-            onRefresh: (self) => setController(self.progress > 0.55),
+            onUpdate: (self) => {
+              facesProgress = self.progress
+              applyCrown()
+            },
+            onRefresh: (self) => {
+              facesProgress = self.progress
+              applyCrown()
+            },
           },
         })
 
@@ -627,29 +669,6 @@ export default function useScrollScene(enabled: boolean) {
           0.2,
         )
 
-        /*
-         * 38~76%: 옆모습 -> 정면. 가는 도중에 Crown이 화면 쪽으로 돌아서는 것처럼 보이게 한다.
-         * 옆모습은 가로로 눌리고 살짝 기울며 빠지고, 정면은 가로로 눌린 타원(3/4 각도)에서 원으로 펴지며
-         * 기울기가 풀린다. 둘 다 2D transform + opacity라 asset을 rotateY로 비틀지 않는다.
-         */
-        facesTl.to(
-          crownSide,
-          { scaleX: 0.55, rotate: -10, ease: 'power1.in', duration: 0.3 },
-          0.38,
-        )
-        facesTl.to(crownSide, { autoAlpha: 0, ease: 'none', duration: 0.22 }, 0.44)
-        facesTl.fromTo(
-          crownFront,
-          { scaleX: 0.42, scaleY: 0.9, rotate: 14 },
-          { scaleX: 1, scaleY: 1, rotate: 0, ease: 'power2.out', duration: 0.36, immediateRender: false },
-          0.4,
-        )
-        facesTl.fromTo(
-          crownFront,
-          { autoAlpha: 0 },
-          { autoAlpha: 1, ease: 'none', duration: 0.22, immediateRender: false },
-          0.46,
-        )
 
         /*
          * ABOUT AMBIENT -> SHARED ICE AMBIENT -> FACES.
@@ -743,6 +762,9 @@ export default function useScrollScene(enabled: boolean) {
         light?.style.removeProperty('transform')
         crown?.removeEventListener('animationend', clearCue)
         crown?.classList.remove('watch__crown--controller', 'watch__crown--cue')
+        // 방향은 tween이 아니라 applyCrown이 직접 쓴 값이라 여기서 지운다.
+        crownLink.refresh = () => {}
+        if (crownSide && crownFront) gsap.set([crownSide, crownFront], { clearProps: 'transform,opacity,visibility' })
         const button = crown?.querySelector<HTMLButtonElement>('button')
         if (button) {
           button.disabled = true

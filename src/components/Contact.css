@@ -1,35 +1,223 @@
+/*
+ * Contact = Portfolio의 마지막 장면(ending scene + footer).
+ *
+ * 한 화면 안에 세 가지만 놓는다.
+ *   왼쪽 위       작은 status -> 큰 문장 -> 한 줄 -> 링크 두 개
+ *   오른쪽 아래   Apple Watch (마지막 visual, 문장보다 한 단계 아래)
+ *   바닥          SONG MYEONG HEE / © 2026
+ * 가로 grid는 Header / Hero와 같다(1680 기준 폭, 가운데 정렬).
+ */
 .contact {
+  --contact-watch-w: clamp(420px, 31vw, 620px);
+  --contact-titanium: #a0a7ac;
+  --contact-meta: #8d9499;
   position: relative;
-  display: grid;
-  place-items: center;
-  min-height: calc(100dvh - var(--header-total));
-  padding: 80px 24px 150px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  /* Watch가 아래에서 올라오는 동안 section 밖으로 비치지 않는다. */
+  overflow: hidden;
   background: var(--color-carbon-black);
+  color: #f3f4f4;
   scroll-margin-top: var(--header-total);
 }
 
-.contact > div {
+.contact__inner {
+  position: relative;
+  width: min(100%, calc(1680 * var(--site-u)));
+  min-height: inherit;
+  margin: 0 auto;
+}
+
+/* 문장의 윗변이 화면 높이의 약 21% 지점에 온다. */
+.contact__copy {
+  position: relative;
+  z-index: 1;
+  padding-top: calc(21dvh - 55px);
+}
+
+.contact__status {
+  margin: 0 0 40px;
+  font: 500 15px/1 'Inter', sans-serif;
+  letter-spacing: 0.1em;
+  color: var(--contact-titanium);
+}
+
+/* 효과 없이 크기와 여백만으로 화면을 잡는다(gradient / glow / shadow 없음). */
+.contact__title {
+  margin: 0;
+  font-family: 'Anton', sans-serif;
+  font-weight: 400;
+  font-size: clamp(92px, 7.3vw, 140px);
+  line-height: 0.9;
+  letter-spacing: -0.005em;
+  color: #f3f4f4;
+}
+
+.contact__title span {
+  display: block;
+  white-space: nowrap;
+}
+
+.contact__note {
+  margin: 36px 0 0;
+  font: 500 20px/1.5 'SUIT', sans-serif;
+  color: var(--contact-titanium);
+  word-break: keep-all;
+}
+
+.contact__links {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 20px;
+  gap: 4px;
+  margin: 44px 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.contact h2 {
-  margin: 0 0 20px;
-  font: 400 clamp(32px, 3vw, 48px)/1 'Anton', sans-serif;
-}
-
-.contact a {
+/* 버튼이 아니라 글자 링크. 아주 얇은 밑줄 하나, hover에 Frost White로 조금 밝아진다. */
+.contact__link {
   display: inline-flex;
   align-items: center;
+  gap: 10px;
   min-height: 44px;
-  color: #d4e5ef;
-  font: 500 clamp(16px, 1.2vw, 20px)/1.4 'SUIT', sans-serif;
-  text-underline-offset: 5px;
+  font: 600 20px/1 'Inter', sans-serif;
+  letter-spacing: 0.1em;
+  color: var(--contact-titanium);
+  text-decoration: none;
+  transition:
+    color 220ms ease,
+    transform 220ms ease;
 }
 
-.contact a:focus-visible {
-  outline: 1px solid #d4e5ef;
-  outline-offset: 5px;
+/* 밑줄은 글자에만. 화살표까지 이어 그으면 사이가 끊겨 두 줄로 보인다. */
+.contact__link-label {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 8px;
+  text-decoration-color: rgb(212 229 239 / 0.22);
+  transition: text-decoration-color 220ms ease;
+}
+
+.contact__link:hover {
+  color: #f3f4f4;
+  transform: translateY(-1px);
+}
+
+.contact__link:hover .contact__link-label {
+  text-decoration-color: rgb(212 229 239 / 0.55);
+}
+
+.contact__link:focus-visible {
+  outline: 1px solid rgb(212 229 239 / 0.7);
+  outline-offset: 6px;
+}
+
+/*
+ * Watch: grid 오른쪽 끝에 맞춘다. Crown은 Watch 박스 밖으로 36 단위 나오므로
+ * 화면 오른쪽 끝과 Crown 사이는 약 90px이다. 아래는 footer 위로 여백을 둔다.
+ */
+.contact__watch {
+  position: absolute;
+  right: 0;
+  bottom: clamp(80px, 9.26dvh, 120px);
+  width: var(--contact-watch-w);
+}
+
+/* 완전한 정면보다 Crown 쪽이 조금 앞으로 나온 3/4 각도. Crown이 몸체에 붙는 면이 보인다. */
+.contact__watch-tilt {
+  transform: perspective(2400px) rotateY(-12deg);
+}
+
+.contact__footer {
+  position: absolute;
+  right: 0;
+  bottom: 40px;
+  left: 0;
+  display: flex;
+  justify-content: space-between;
+  font: 500 13px/1 'Inter', sans-serif;
+  letter-spacing: 0.1em;
+  color: var(--contact-meta);
+}
+
+/*
+ * Tablet: 좌우 여백을 줄이고, Watch를 한 단계 작게 둔다.
+ * 문장은 최소 92px이라 1024에서도 약 500px 폭이다. Watch가 38vw면 문장과 30px까지 붙어서
+ * 여백이 사라지므로 34vw(1024에서 약 70px 간격)로 둔다.
+ */
+@media (max-width: 1024px) {
+  .contact {
+    --contact-watch-w: 34vw;
+  }
+
+  .contact__inner {
+    width: calc(100% - 96px);
+  }
+
+  .contact__watch {
+    bottom: 72px;
+  }
+
+  .contact__footer {
+    bottom: 32px;
+  }
+}
+
+/* Mobile: 가로 배치를 줄이지 않고 세로로 쌓는다. status -> 문장 -> 링크 -> Watch -> footer. */
+@media (max-width: 760px) {
+  .contact {
+    --contact-watch-w: min(85vw, 420px);
+  }
+
+  .contact__inner {
+    display: flex;
+    flex-direction: column;
+    width: auto;
+    padding: calc(var(--header-total) + 40px) 24px 28px;
+  }
+
+  .contact__copy {
+    padding-top: 0;
+  }
+
+  .contact__status {
+    margin-bottom: 24px;
+    font-size: 12px;
+  }
+
+  .contact__title {
+    font-size: clamp(56px, 16vw, 78px);
+  }
+
+  .contact__note {
+    margin-top: 24px;
+    font-size: 16px;
+  }
+
+  .contact__links {
+    margin-top: 28px;
+  }
+
+  .contact__link {
+    font-size: 17px;
+  }
+
+  .contact__watch {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    align-self: center;
+    margin: 56px 0 0;
+  }
+
+  .contact__watch-tilt {
+    transform: perspective(1600px) rotateY(-10deg);
+  }
+
+  .contact__footer {
+    position: static;
+    margin-top: 56px;
+    font-size: 12px;
+  }
 }

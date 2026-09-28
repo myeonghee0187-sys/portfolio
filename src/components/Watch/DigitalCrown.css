@@ -93,6 +93,18 @@
   opacity: var(--crown-wheel-phase);
 }
 
+/*
+ * Contact에서 Watch로 돌아가는 위치 / 크기 layer. Crown 박스(.watch__crown)를 그대로 채워서
+ * 안쪽의 옆모습(flex 가운데)과 정면 button(50% / 50%)이 이 layer가 없을 때와 같은 자리에 놓인다.
+ */
+.watch__crown-attach {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ---------------- 옆모습 / 정면 ---------------- */
 
 /*

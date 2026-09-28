@@ -92,6 +92,7 @@ const KNURL_CLIP = (() => {
  * page scroll에 따라 측면 knurl 홈만 원통을 따라 굴러간다.
  *
  *   watch__crown              Watch 기준 위치 (WatchAssembly.css)
+ *   watch__crown-attach       Contact에서 다시 Watch에 결합할 때의 위치 / 크기 (useContactScene)
  *   watch__crown-orientation  asset을 세우는 고정 방향 보정(-90° + 상하 반전). scroll과 무관하다.
  *   watch__crown-shell        Crown 전체 asset. 정지해 있는 몸체. top cap과 bevel의 광택 반사도
  *                             여기에 있고 mask 밖이라 표면이 굴러도 제자리에 있다(광원 고정).
@@ -135,64 +136,71 @@ export default function DigitalCrown({ onOpenAllFaces }: DigitalCrownProps) {
 
   return (
     <div ref={trackRef} className="watch__crown">
-      <div className="watch__crown-side" aria-hidden="true">
-        <div className="watch__crown-orientation">
-          <div className="watch__crown-box">
-            <div className="watch__crown-frame">
-              <img className="watch__crown-shell" src={digitalCrownSrc} alt="" />
+      {/*
+        Contact에서 Crown이 Watch로 돌아가는 위치 / 크기만 맡는 layer(useContactScene).
+        GSAP이 transform을 다루지 않는 element라 FACES의 transform(.watch__crown)과 섞이지 않는다.
+        Crown 박스를 그대로 채우므로 없을 때와 배치가 같다.
+      */}
+      <div className="watch__crown-attach">
+        <div className="watch__crown-side" aria-hidden="true">
+          <div className="watch__crown-orientation">
+            <div className="watch__crown-box">
+              <div className="watch__crown-frame">
+                <img className="watch__crown-shell" src={digitalCrownSrc} alt="" />
 
-              <div className="watch__crown-wheel-mask" style={{ clipPath: KNURL_CLIP }}>
-                <div className="watch__crown-wheel-track">
-                  {SLICES.map((style, i) => (
-                    <div key={i} className="watch__crown-wheel-slice" style={style}>
-                      <img
-                        className="watch__crown-wheel-surface"
-                        src={digitalCrownSrc}
-                        alt=""
-                        data-crown-wheel=""
-                      />
-                      <img
-                        className="watch__crown-wheel-surface watch__crown-wheel-surface--next"
-                        src={digitalCrownSrc}
-                        alt=""
-                        data-crown-wheel=""
-                      />
-                    </div>
-                  ))}
+                <div className="watch__crown-wheel-mask" style={{ clipPath: KNURL_CLIP }}>
+                  <div className="watch__crown-wheel-track">
+                    {SLICES.map((style, i) => (
+                      <div key={i} className="watch__crown-wheel-slice" style={style}>
+                        <img
+                          className="watch__crown-wheel-surface"
+                          src={digitalCrownSrc}
+                          alt=""
+                          data-crown-wheel=""
+                        />
+                        <img
+                          className="watch__crown-wheel-surface watch__crown-wheel-surface--next"
+                          src={digitalCrownSrc}
+                          alt=""
+                          data-crown-wheel=""
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/*
-        보이는 background / border 없이 Crown 자체가 button이다.
-        Hero / About에서는 Watch의 부품이라 눌리지 않는다 — useScrollScene이 정면으로 다 돌아선 뒤에만
-        .watch__crown에 is-controller를 붙여 pointer-events와 tabindex를 연다.
-      */}
-      <button
-        type="button"
-        className="watch__crown-front-button"
-        aria-label="모든 프로젝트 보기"
-        tabIndex={-1}
-        aria-disabled="true"
-        onClick={onOpenAllFaces}
-      >
-        <span className="watch__crown-front">
-          <span className="watch__crown-front-fx">
-            <span className="watch__crown-front-mount" />
-            <span className="watch__crown-front-spin">
-              <span className="watch__crown-global-rotation">
-                <span className="watch__crown-drag-rotation">
-                  <span className="watch__crown-front-wheel" />
+        {/*
+          보이는 background / border 없이 Crown 자체가 button이다.
+          Hero / About에서는 Watch의 부품이라 눌리지 않는다 — useScrollScene이 정면으로 다 돌아선 뒤에만
+          .watch__crown에 is-controller를 붙여 pointer-events와 tabindex를 연다.
+        */}
+        <button
+          type="button"
+          className="watch__crown-front-button"
+          aria-label="모든 프로젝트 보기"
+          tabIndex={-1}
+          aria-disabled="true"
+          onClick={onOpenAllFaces}
+        >
+          <span className="watch__crown-front">
+            <span className="watch__crown-front-fx">
+              <span className="watch__crown-front-mount" />
+              <span className="watch__crown-front-spin">
+                <span className="watch__crown-global-rotation">
+                  <span className="watch__crown-drag-rotation">
+                    <span className="watch__crown-front-wheel" />
+                  </span>
                 </span>
               </span>
+              <span className="watch__crown-front-highlight" />
             </span>
-            <span className="watch__crown-front-highlight" />
           </span>
-        </span>
-      </button>
+        </button>
+      </div>
     </div>
   )
 }

@@ -47,6 +47,15 @@
   transform: translate(-50%, -50%);
 }
 
+/*
+ * Contact 마지막 장면의 Watch. 크기는 Contact가 --contact-watch-w로 정한다(Watch 폭 = 600 단위).
+ * scroll 연출과 무관하게 section 안에 그대로 놓인다. 등장 / 결합 motion은 useContactScene이 얹는다.
+ */
+.watch--contact {
+  --wu: calc(var(--contact-watch-w, 600px) / 600);
+  position: relative;
+}
+
 /* ---------------- Watch case ---------------- */
 
 .watch__case {
@@ -280,4 +289,65 @@
   justify-content: center;
   width: calc(54 * var(--wu));
   height: calc(80 * var(--wu));
+}
+
+/* ---------------- Contact ---------------- */
+
+/*
+ * Contact display. 두 단어만 둔다. Hero watch face와 같은 Inter + Frost White.
+ * display(검은 영역, y 58 ~ 716)의 가운데에 놓인다.
+ */
+.watch__next {
+  position: relative;
+  top: calc(7 * var(--wu));
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: calc(64 * var(--wu));
+  line-height: 1.08;
+  letter-spacing: 0.03em;
+  text-align: center;
+  color: #f3f4f4;
+}
+
+.watch__next span {
+  display: block;
+}
+
+/* Crown이 다시 끼워지는 자리. Hero의 .watch__crown 박스와 같은 좌표·크기다. 보이지 않는다. */
+.watch__crown-socket {
+  position: absolute;
+  top: calc(200 * var(--wu));
+  left: calc(582 * var(--wu));
+  width: calc(54 * var(--wu));
+  height: calc(80 * var(--wu));
+  pointer-events: none;
+}
+
+/*
+ * Crown이 결합하는 순간 한 번 지나가는 Ice 반사. steel 테두리에만 보인다:
+ *   watch_face.png의 실루엣(case가 있는 곳) ∩ display 바깥(stage의 구멍 mask와 같은 모양).
+ * 평소에는 opacity 0. 최대 0.22까지만 오르고, glass(display) 위에는 올라가지 않는다.
+ */
+.watch__reflection {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(
+      112deg,
+      transparent 40%,
+      rgb(212 229 239 / 0.95) 48%,
+      rgb(24 109 229 / 0.45) 52%,
+      transparent 60%
+    )
+    var(--reflection-x, 120%) 0 / 320% 100% no-repeat;
+  -webkit-mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 760' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M0 0H600V760H0ZM154 64H446A96 96 0 0 1 542 160V614A96 96 0 0 1 446 710H154A96 96 0 0 1 58 614V160A96 96 0 0 1 154 64Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat,
+    url('../../../assets/img/watch_face.png') calc(-188.34 * var(--wu)) calc(-103.28 * var(--wu)) / calc(975.9 * var(--wu)) calc(966.57 * var(--wu)) no-repeat;
+  -webkit-mask-composite: source-in;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 760' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M0 0H600V760H0ZM154 64H446A96 96 0 0 1 542 160V614A96 96 0 0 1 446 710H154A96 96 0 0 1 58 614V160A96 96 0 0 1 154 64Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat,
+    url('../../../assets/img/watch_face.png') calc(-188.34 * var(--wu)) calc(-103.28 * var(--wu)) / calc(975.9 * var(--wu)) calc(966.57 * var(--wu)) no-repeat;
+  mask-composite: intersect;
 }

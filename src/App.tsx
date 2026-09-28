@@ -104,7 +104,7 @@ export default function App() {
               <Journey interactive={scrollSceneEnabled} ready={isIntroDone} />
             </div>
           </div>
-          <Contact />
+          <Contact interactive={scrollSceneEnabled} ready={isIntroDone} />
         </main>
 
         {/*
