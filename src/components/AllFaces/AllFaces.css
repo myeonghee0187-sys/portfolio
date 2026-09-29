@@ -69,8 +69,8 @@
 }
 
 /*
- * 바깥 arc ring — 그룹을 두르는 원의 세 조각(arc)과 그 바깥의 잔눈금, 12시 자리의 점 하나.
- * 이 층만 60초에 한 바퀴 돈다(그룹 전체의 아주 작은 생동감). dial / 글자 / orbit path는 움직이지 않는다.
+ * 바깥 arc ring — 그룹을 두르는 원의 세 조각(arc)과 그 바깥의 잔눈금. 특정 자리에 찍힌 점(dot / marker)은 없다.
+ * 이 층만 64초에 한 바퀴 돈다(선과 눈금의 아주 작은 움직임). dial / 글자 / orbit path는 움직이지 않는다.
  */
 .all-faces__orbit-ring {
   width: calc(var(--ring) * 2);
@@ -92,35 +92,20 @@
   mask: radial-gradient(closest-side, transparent calc(100% - 7px), #000 calc(100% - 7px));
 }
 
-.all-faces__orbit-dot {
-  position: absolute;
-  top: -2.5px;
-  left: calc(50% - 2px);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgb(212 229 239 / 0.45);
-}
-
 @keyframes all-faces-orbit {
   to {
     rotate: 360deg;
   }
 }
 
-/* 그룹의 기준점. 세 dial 가운데의 작은 두 줄(03 / PROJECT FACES) — 가운데 빈자리에 들어가는 폭이다. */
+/* 그룹의 title이자 기준점. 세 dial 가운데의 작은 ALL FACES 한 줄 — 가운데 빈자리에 들어가는 폭이다. */
 .all-faces__group-label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
   font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
   font-weight: 500;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1;
-  letter-spacing: 0.1em;
-  text-indent: 0.1em;
+  letter-spacing: 0.12em;
+  text-indent: 0.12em;
   white-space: nowrap;
   color: rgb(212 229 239 / 0.42);
 }
@@ -190,7 +175,7 @@
 }
 
 /*
- * 눈금 rim(dial 바깥 띠). 60개 잔눈금 + 30°마다 조금 긴 시 눈금 + 12시 자리의 점 하나.
+ * 눈금 rim(dial 바깥 띠). 60개 잔눈금 + 30°마다 조금 긴 시 눈금. 점(dot)은 두지 않는다.
  * 돌지 않는다 — 세 dial이 각자 다른 속도로 돌면 그룹이 흩어져 보인다. 움직임은 그룹의 바깥 arc ring 하나만 맡는다.
  */
 .all-faces__rim {
@@ -199,7 +184,6 @@
   border-radius: 50%;
   color: var(--rim-color);
   background:
-    radial-gradient(circle at 50% 2.2%, rgb(212 229 239 / 0.6) 0 1.6px, transparent 2.2px),
     repeating-conic-gradient(from -0.6deg, currentColor 0 1.2deg, transparent 1.2deg 30deg),
     repeating-conic-gradient(from -0.25deg, rgb(164 169 173 / 0.2) 0 0.5deg, transparent 0.5deg 6deg);
   -webkit-mask: radial-gradient(circle closest-side, transparent 0 88%, #000 88.5% 100%);
@@ -249,7 +233,7 @@
   color: #a0a7ac;
 }
 
-/* 위쪽 utility bar. 원들 위에 떠 있고, 빈 곳은 pointer를 막지 않는다. */
+/* 위쪽 bar(CLOSE만, 오른쪽). 원들 위에 떠 있고, 빈 곳은 pointer를 막지 않는다. */
 .all-faces__bar {
   position: absolute;
   top: 0;
@@ -258,27 +242,9 @@
   z-index: 3;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: 36px clamp(24px, 6.25vw, 120px) 0;
   pointer-events: none;
-}
-
-.all-faces__label {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  font: 600 13px/1 'Inter', sans-serif;
-  letter-spacing: 0.2em;
-}
-
-.all-faces__count {
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  color: #777d82;
 }
 
 .all-faces__close {
@@ -314,7 +280,7 @@
 }
 
 @media (max-width: 760px) {
-  /* 모바일은 작은 삼각 cluster. 가운데가 좁아 03 PROJECT FACES는 그룹 아래(ring 바로 밑)에 둔다. */
+  /* 모바일은 작은 삼각 cluster. 가운데가 좁아 ALL FACES는 그룹 아래(ring 바로 밑)에 둔다. */
   .all-faces__stage {
     --d: clamp(130px, 38vw, 170px);
     --gy: calc(50% + 8px);
@@ -323,8 +289,6 @@
 
   .all-faces__group-label {
     top: calc(var(--ring) + 22px);
-    flex-direction: row;
-    gap: 0.5em;
   }
 
   .all-faces__rim {

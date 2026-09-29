@@ -130,7 +130,8 @@ export default function Faces({ interactive, ready }: FacesProps) {
                 tabIndex={-1}
                 draggable={false}
               >
-                LIVE SITE <span aria-hidden="true">&#8599;</span>
+                <span>LIVE SITE</span>
+                <span className="faces__cta-arrow" aria-hidden="true">&#8599;</span>
               </a>
               {FACE_PROJECTS.some((p) => p.caseStudyPath) && (
                 <a
@@ -142,7 +143,8 @@ export default function Faces({ interactive, ready }: FacesProps) {
                   draggable={false}
                   hidden={!FACE_PROJECTS[0].caseStudyPath}
                 >
-                  CASE STUDY <span aria-hidden="true">&#8599;</span>
+                  <span>CASE STUDY</span>
+                  <span className="faces__cta-arrow" aria-hidden="true">&#8599;</span>
                 </a>
               )}
             </div>
