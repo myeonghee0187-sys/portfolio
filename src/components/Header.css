@@ -65,8 +65,10 @@
   border: 0;
   background: none;
   font-family: 'Inter', sans-serif;
-  font-weight: 700;
-  font-size: max(13px, calc(24 * var(--site-u)));
+  /* 이름: Light 20 (1920 기준, 좁은 화면에서는 다른 Header 수치와 같은 비율로 줄어든다). */
+  font-weight: 300;
+  font-size: max(13px, calc(20 * var(--site-u)));
+  letter-spacing: 0.015em;
   line-height: 1;
   /* Frost White 고정. blend mode를 쓰면 영상/WebGL 위에서 색이 예측 불가능해진다. */
   color: #f3f4f4;
@@ -83,7 +85,10 @@
   justify-content: center;
   min-width: 44px;
   min-height: 44px;
-  font-size: max(11.375px, calc(21 * var(--site-u)));
+  /* CONTACT: SemiBold 20. 자간은 이름보다 넓히지 않는다. */
+  font-weight: 600;
+  font-size: max(11.375px, calc(20 * var(--site-u)));
+  letter-spacing: 0.02em;
   text-decoration: none;
 }
 

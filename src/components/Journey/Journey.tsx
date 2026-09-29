@@ -1,5 +1,5 @@
 import { useRef, type CSSProperties } from 'react'
-import { JOURNEY_NODES, JOURNEY_WORLD_HEIGHT } from './journeyData'
+import { JOURNEY_NODES, JOURNEY_TIMES, JOURNEY_WORLD_HEIGHT } from './journeyData'
 import useJourneyInteraction from './useJourneyInteraction'
 import './Journey.css'
 
@@ -26,6 +26,27 @@ export default function Journey({ interactive, ready }: JourneyProps) {
             d는 card의 실제 크기를 재서, card 변에 들어오고 나가는 점으로 만든다(useJourneyInteraction).
             card 안쪽 구간은 불투명한 surface 아래로 지나간다.
           */}
+          {/*
+            하루의 시간(14 : 10 -> 17 : 00). line 옆 여백의 배경 글자다 — 빛이 그 구간에 다가오면 아주 옅게 나타나
+            지나간 흔적처럼 남는다(--time-o, useJourneyInteraction). 보조기술에는 읽히지 않는다.
+          */}
+          {JOURNEY_TIMES.map((t) => (
+            <div
+              key={t.time}
+              className={`journey__time journey__time--${t.style} journey__time--${t.side}`}
+              style={{ '--node-x': t.x, '--node-y': t.y } as CSSProperties}
+              aria-hidden="true"
+            >
+              {t.style === 'arc' && (
+                <svg className="journey__time-arc" viewBox="0 0 200 200" focusable="false">
+                  <circle cx="100" cy="100" r="96" pathLength="360" />
+                </svg>
+              )}
+              {t.style === 'ticks' && <span className="journey__time-ticks" />}
+              <span className="journey__time-value">{t.time}</span>
+              {t.style === 'timecode' && <span className="journey__time-ruler" />}
+            </div>
+          ))}
           <svg className="journey__path" viewBox={`0 0 1920 ${JOURNEY_WORLD_HEIGHT}`} preserveAspectRatio="xMidYMin meet" aria-hidden="true" focusable="false">
             <path className="journey__path-base" />
             <path className="journey__path-active" />

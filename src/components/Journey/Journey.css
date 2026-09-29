@@ -2,15 +2,17 @@
 .journey {
   /*
    * Card 공통 크기 시스템. 7장이 모두 같은 크기와 여백을 쓴다(card별 override 없음).
-   *   1920 x 1080       560 x 400, padding 40
-   *   더 작은 데스크톱   폭 460 ~ 560 / 높이 340 ~ 400 사이에서 뷰포트를 따라간다. padding은 40 그대로.
-   * 글자는 card 폭을 따라 함께 줄어든다(--card-u = card 폭 / 560, 1920에서 정확히 1px = Figma 값).
+   *   1920 x 1080       620 x 440, padding 40 (이전 560 x 400에서 약 10% 넓다)
+   *   더 작은 데스크톱   폭 460 ~ 620 / 높이 340 ~ 440 사이에서 뷰포트를 따라간다. padding은 40 그대로.
+   *                     (최소값은 전과 같다 — 1024에서 card끼리 겹치지 않고 line이 card 사이에 보인다)
+   * 글자는 card 폭을 따라 함께 줄어든다(--card-u = card 폭 / 620). 1920에서 글자 크기는 전과 같은 Figma 값이고,
+   * card만 커져서 안쪽 여백이 넓어진다.
    */
-  --journey-card-width: clamp(460px, 29.1667vw, 560px);
-  --journey-card-height: clamp(340px, 37.037vh, 400px);
+  --journey-card-width: clamp(460px, 32.2917vw, 620px);
+  --journey-card-height: clamp(340px, 40.7407vh, 440px);
   --journey-card-padding: 40px;
   --journey-card-radius: 20px;
-  --card-u: calc(var(--journey-card-width) / 560);
+  --card-u: calc(var(--journey-card-width) / 620);
   position: relative;
   background: var(--color-carbon-black);
   color: #f3f4f4;
@@ -139,11 +141,11 @@
 }
 
 .journey__card {
-  /* 제목 + 본문 묶음은 위, meta / keyword 묶음은 아래 끝에 붙는다. 두 묶음 사이는 최소 20px. */
+  /* 제목 + 본문 묶음은 위, meta / keyword 묶음은 아래 끝에 붙는다. 두 묶음 사이는 최소 26px. */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 20px;
+  gap: calc(26 * var(--card-u));
   padding: var(--journey-card-padding);
   /* UI border는 Electric Ice(#186DE5) 하나. 대기 중인 card는 옅게, 빛이 닿은 card는 불투명하게 두른다. */
   border: 1px solid color-mix(in srgb, rgb(24 109 229 / 0.3), #186de5 calc(var(--node-in) * (1 - var(--node-out)) * 100%));
@@ -186,10 +188,11 @@
 }
 
 /* 제목 + 본문. 제목과 본문 사이 32. */
+/* 제목 -> 본문 30. */
 .journey-card__main {
   display: flex;
   flex-direction: column;
-  gap: calc(32 * var(--card-u));
+  gap: calc(30 * var(--card-u));
 }
 
 /*
@@ -238,10 +241,11 @@
 }
 
 /* label 열 폭을 모든 row가 함께 쓴다(row div는 display: contents). */
+/* meta row 사이 11. */
 .journey__meta {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: calc(12 * var(--card-u));
+  gap: calc(11 * var(--card-u)) calc(12 * var(--card-u));
 }
 
 .journey__meta > div {
@@ -253,8 +257,9 @@
 }
 
 .journey__date {
-  font-family: 'IBM Plex Sans', sans-serif;
+  font-family: var(--font-numeric);
   font-weight: 400;
+  font-variant-numeric: tabular-nums;
 }
 
 .journey__keywords {
@@ -280,6 +285,7 @@
   --ju: 1px;
 }
 
+.journey--static .journey__time,
 .journey--static .journey__path,
 .journey--static .journey__surface,
 .journey--static .journey__handoff {
@@ -349,4 +355,91 @@
   .journey__surface {
     will-change: auto;
   }
+}
+
+/*
+ * 하루의 시간(14 : 10 / 15 : 00 / 16 : 20 / 17 : 00). line 옆 여백의 배경 글자.
+ * 같은 Geist 시간 언어를 쓰고 보조 graphic만 다르다(ghost / arc / timecode / ticks). 색은 Frost 하나이고
+ * 전체 opacity(--time-o)는 빛의 진행으로만 정해진다 — 0 -> .08(구간에 다가옴) -> .11(지나감).
+ * world 좌표의 한 점(--node-x / --node-y)이 글자의 중심이다. card / line 뒤에 깔린다.
+ */
+.journey__time {
+  position: absolute;
+  left: calc(var(--node-x) * var(--ju));
+  top: calc(var(--node-y) * var(--ju));
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  color: #d4e5ef;
+  opacity: var(--time-o, 0);
+  pointer-events: none;
+  user-select: none;
+  will-change: opacity;
+}
+
+.journey__time > * {
+  grid-area: 1 / 1;
+}
+
+.journey__time-value {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-weight: 300;
+  font-size: calc(120 * var(--ju));
+  line-height: 1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+/* 14 : 10 — 큰 ghost time. */
+.journey__time--ghost .journey__time-value {
+  font-weight: 200;
+  font-size: calc(210 * var(--ju));
+  letter-spacing: -0.04em;
+}
+
+/* 15 : 00 — 아주 얇은 dial arc(원의 3/4)가 글자를 두른다. */
+.journey__time-arc {
+  width: calc(300 * var(--ju));
+  height: calc(300 * var(--ju));
+  overflow: visible;
+}
+
+.journey__time-arc circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 270 90;
+  transform: rotate(-45deg);
+  transform-origin: 50% 50%;
+}
+
+/* 16 : 20 — timecode. 글자 아래 짧은 눈금자. */
+.journey__time--timecode {
+  grid-template-rows: auto auto;
+  row-gap: calc(18 * var(--ju));
+}
+
+.journey__time--timecode > * {
+  grid-area: auto;
+}
+
+.journey__time-ruler {
+  width: calc(260 * var(--ju));
+  height: calc(14 * var(--ju));
+  background:
+    linear-gradient(currentColor, currentColor) 0 100% / 100% 1px no-repeat,
+    repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px calc(20 * var(--ju))) 0 100% / 100% 60% no-repeat,
+    repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px calc(100 * var(--ju))) 0 0 / 100% 100% no-repeat;
+}
+
+/* 17 : 00 — 최소한의 눈금(12개)이 글자를 두른다. */
+.journey__time-ticks {
+  width: calc(300 * var(--ju));
+  height: calc(300 * var(--ju));
+  border-radius: 50%;
+  background: repeating-conic-gradient(from -1deg, currentColor 0 2deg, transparent 2deg 30deg);
+  -webkit-mask: radial-gradient(circle closest-side, transparent 0 91%, #000 91.5% 100%);
+  mask: radial-gradient(circle closest-side, transparent 0 91%, #000 91.5% 100%);
 }

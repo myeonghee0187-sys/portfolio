@@ -357,7 +357,7 @@ uniform float uUnit;          // Watch 좌표계 1단위의 px
 
 // display: project마다 display 폭 하나씩의 자리를 차지하는 띠.
 uniform float uSlotW;         // display 폭(px) = 자리 하나
-uniform float uStripPos;      // display 가운데에 오는 띠 위의 위치(0 = F45 자리 가운데)
+uniform float uStripPos;      // display 가운데에 오는 띠 위의 위치(0 = 첫 project 자리 가운데)
 uniform float uMediaAspect[PROJECT_COUNT];
 uniform vec2 uFocusUv[PROJECT_COUNT];  // cover 창의 중심(영상 UV)
 
@@ -844,13 +844,13 @@ export default class FacesScene {
   /** 원본 비율(가로 / 세로). loadedmetadata에서 실제 값으로 바뀐다. */
   readonly aspects = FACE_PROJECTS.map((p) => p.aspect)
 
-  /** plane 공통 높이, 사이 간격, project별 폭과 중심(F45 중심 = 0), 한 바퀴 거리. */
+  /** plane 공통 높이, 사이 간격, project별 폭과 중심(첫 project 중심 = 0), 한 바퀴 거리. */
   planeHeight = 1
   gap = 0
   widths: number[] = []
   centers: number[] = []
   loopWidth = 1
-  /** 마지막으로 그린 display 띠 위치(자리 단위, 0 = F45, 1 = TCHAIKIM ...). QA용. */
+  /** 마지막으로 그린 display 띠 위치(자리 단위, 0 = TCHAIKIM, 1 = JADUYA, 2 = F45). QA용. */
   displaySlot = 0
 
   /** scene 안의 실제 개수(QA용). project마다 plane 2장(wrap된 자리 + 한 바퀴 옆자리), bridge 2장. */

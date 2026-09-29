@@ -1,7 +1,9 @@
+import { STORY_TIME } from '../../story/storyTime'
+
 /**
  * Journey copy와 card 배치. 좌표는 1920 기준 world 좌표다.
  *
- * card 크기는 여기서 정하지 않는다 — 7장 모두 Journey.css의 공통 크기(1920에서 560 x 400)를 쓴다.
+ * card 크기는 여기서 정하지 않는다 — 7장 모두 Journey.css의 공통 크기(1920에서 620 x 440)를 쓴다.
  * 경로도 여기 좌표로 그리지 않는다. 각 card의 실제 크기를 재서, anchor 쪽 변 안쪽의 점을 부드러운 곡선으로 잇는다(useJourneyInteraction).
  */
 export type JourneyAnchor = 'top' | 'bottom' | 'left' | 'right'
@@ -128,3 +130,34 @@ export const JOURNEY_NODES: JourneyNode[] = [
 ]
 
 export const JOURNEY_WORLD_HEIGHT = 5300
+
+/**
+ * Journey의 시간(story/storyTime.ts). Watch가 없는 Journey에서 line 옆 여백에 "하루 동안 작업 시간이 흘러간다"는
+ * 흔적을 배경처럼 남긴다. 콘텐츠보다 먼저 보이지 않도록 아주 옅다(opacity 최대 .11).
+ *   from / to   이 시간이 놓이는 line 구간(JOURNEY_NODES index). 빛이 from card를 떠나면 나타나기 시작한다
+ *   side        line의 어느 쪽 여백인지
+ *   x / y       world 좌표(1920 기준, card와 line에 닿지 않는 빈 자리)
+ *   style       같은 Geist 시간 언어 위에 보조 graphic만 다르다
+ */
+export type JourneyTimeStyle = 'ghost' | 'arc' | 'timecode' | 'ticks'
+
+export type JourneyTime = {
+  time: string
+  from: number
+  to: number
+  side: 'left' | 'right'
+  x: number
+  y: number
+  style: JourneyTimeStyle
+}
+
+export const JOURNEY_TIMES: JourneyTime[] = [
+  // FROM FIGMA TO WEB -> FIGMA DESIGN, line 오른쪽
+  { time: STORY_TIME.journey[0], from: 0, to: 1, side: 'right', x: 1370, y: 560, style: 'ghost' },
+  // FIGMA DESIGN -> FRONT - END, line 왼쪽
+  { time: STORY_TIME.journey[1], from: 1, to: 3, side: 'left', x: 470, y: 1850, style: 'arc' },
+  // FRONT - END -> WORKING WITH AI, line 오른쪽
+  { time: STORY_TIME.journey[2], from: 3, to: 5, side: 'right', x: 1450, y: 2880, style: 'timecode' },
+  // WORKING WITH AI -> STILL UPDATING, line 왼쪽
+  { time: STORY_TIME.journey[3], from: 5, to: 6, side: 'left', x: 470, y: 4150, style: 'ticks' },
+]

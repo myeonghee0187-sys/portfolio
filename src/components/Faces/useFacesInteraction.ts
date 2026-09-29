@@ -25,10 +25,10 @@ const RAIL_SPEED = 0.76
 const MIN_PIN_VIEWPORTS = 2
 
 /**
- * FACES pin이 시작된 뒤 rail이 움직이기 전에 F45(01)가 display 가운데에 머무는 scroll 길이(뷰포트 높이 비율).
- * F45 영상은 display보다 좁아 머무는 구간(HOLD)이 없어서, 이것이 없으면 pin에 들어서자마자 display가
+ * FACES pin이 시작된 뒤 rail이 움직이기 전에 첫 project(01 TCHAIKIM)가 display 가운데에 머무는 scroll 길이(뷰포트 높이 비율).
+ * 첫 영상(4:5)은 display보다 좁아 머무는 구간(HOLD)이 없어서, 이것이 없으면 pin에 들어서자마자 display가
  * TCHAIKIM 쪽으로 넘어가기 시작했다(첫 project가 TCHAIKIM처럼 읽혔다). About -> FACES가 끝나고
- * 첫 화면은 반드시 F45다. rail이 한 바퀴 도는 거리(= 속도)는 그대로다.
+ * 첫 화면은 반드시 TCHAIKIM(FACE_PROJECTS[0])이다. rail이 한 바퀴 도는 거리(= 속도)는 그대로다.
  */
 const ENTRY_HOLD_VIEWPORTS = 0.45
 
@@ -100,7 +100,7 @@ type FacesInteractionOptions = {
  * FACES slider.
  *
  * 세로 scroll과 drag의 역할이 다르다.
- *   세로 scroll  = page 진행. pin 초반(ENTRY_HOLD) F45에 머문 뒤 project 전체(FACE_PROJECTS)를
+ *   세로 scroll  = page 진행. pin 초반(ENTRY_HOLD) 첫 project에 머문 뒤 project 전체(FACE_PROJECTS)를
  *                  정확히 한 바퀴(LOOP_WIDTH) 돌고 Journey로 넘어간다.
  *   drag         = 자유 탐색. 제한 없이 몇 바퀴든 돈다. document scroll은 건드리지 않는다.
  *
@@ -142,7 +142,10 @@ export default function useFacesInteraction({
     let hovering = false
     let pressing = false
     let interaction = 0
-    const link = stage.querySelector<HTMLAnchorElement>('.faces__display-link')
+    /* Watch display 위쪽의 text CTA(LIVE SITE / CASE STUDY). 영상 자체는 눌리지 않는다. */
+    const ctaBar = stage.querySelector<HTMLElement>('.faces__display-cta')
+    const link = stage.querySelector<HTMLAnchorElement>('.faces__cta--live')
+    const caseLink = stage.querySelector<HTMLAnchorElement>('.faces__cta--case')
     const viewport = section.closest<HTMLElement>('.panels__viewport')
     const panelsSection = section.closest<HTMLElement>('.panels')
     const target = () => scrollOffset + dragOffset
@@ -242,14 +245,27 @@ export default function useFacesInteraction({
     const updateLink = () => {
       const ready = canActivate()
       if (link && lastReady !== ready) {
-        link.setAttribute('aria-disabled', String(!ready))
-        link.tabIndex = ready ? 0 : -1
+        for (const a of [link, caseLink]) {
+          if (!a) continue
+          a.setAttribute('aria-disabled', String(!ready))
+          a.tabIndex = ready ? 0 : -1
+        }
+        ctaBar?.setAttribute('data-ready', String(ready))
         lastReady = ready
       }
       const shown = shownProject()
       if (link && shown !== lastShown) {
         link.href = FACE_PROJECTS[shown].liveUrl
-        link.setAttribute('aria-label', `${FACE_PROJECTS[shown].title} 완성 웹사이트 보기`)
+        link.setAttribute('aria-label', `${FACE_PROJECTS[shown].title} 완성 웹사이트 보기(새 탭)`)
+        if (caseLink) {
+          // Case Study 경로가 있는 project에서만 보인다. 없는 project에 가짜 링크를 두지 않는다.
+          const path = FACE_PROJECTS[shown].caseStudyPath
+          caseLink.hidden = !path
+          if (path) {
+            caseLink.href = path
+            caseLink.setAttribute('aria-label', `${FACE_PROJECTS[shown].title} Case Study 보기`)
+          }
+        }
         lastShown = shown
       }
       if (import.meta.env.DEV) {
@@ -313,13 +329,14 @@ export default function useFacesInteraction({
       const bend = clamp(velocity * BEND_STRENGTH, -BEND_MAX, BEND_MAX)
       const watch = watchGeometry()
 
-      if (watch && link) {
+      if (watch && ctaBar) {
+        // CTA 막대는 display의 위쪽 가장자리에 붙는다(폭 = display 폭, 높이 = display 높이 비율, CSS).
         const d = watch.display
-        link.style.left = (d.cx - d.hx) + 'px'
-        link.style.top = (d.cy - d.hy) + 'px'
-        link.style.width = (d.hx * 2) + 'px'
-        link.style.height = (d.hy * 2) + 'px'
-        link.style.setProperty('--display-radius', d.r + 'px')
+        ctaBar.style.left = (d.cx - d.hx) + 'px'
+        ctaBar.style.top = (d.cy - d.hy) + 'px'
+        ctaBar.style.width = (d.hx * 2) + 'px'
+        ctaBar.style.setProperty('--display-h', (d.hy * 2) + 'px')
+        ctaBar.style.setProperty('--display-radius', d.r + 'px')
       }
       const ambient = ambientState()
       // loop 경계에서 두 element를 섞는 동안에는 매 frame 다시 그린다.
@@ -362,7 +379,7 @@ export default function useFacesInteraction({
       updateLink()
     }
 
-    /* ---------- 세로 scroll = page 진행(F45에 잠깐 머문 뒤 정확히 한 바퀴) ---------- */
+    /* ---------- 세로 scroll = page 진행(첫 project에 잠깐 머문 뒤 정확히 한 바퀴) ---------- */
 
     /** pin 시작 뒤 rail이 움직이기 전까지의 scroll(px). refresh 때 정한다. */
     let entryHold = 0
@@ -387,7 +404,7 @@ export default function useFacesInteraction({
         invalidateOnRefresh: true,
         // About의 pin spacer가 먼저 자리를 잡은 뒤에 계산되어야 한다.
         refreshPriority: -1,
-        // F45에 머무는 구간 뒤 progress가 정확히 0 -> LOOP_WIDTH. drag와 상관없이 page scroll에는 시작과 끝이 있다.
+        // 첫 project에 머무는 구간 뒤 progress가 정확히 0 -> LOOP_WIDTH. drag와 상관없이 page scroll에는 시작과 끝이 있다.
         onUpdate: (self) => {
           scrollOffset = scrollOffsetAt(self.scroll(), self.start)
           updateLink()
@@ -410,7 +427,7 @@ export default function useFacesInteraction({
         onRefresh: (self) => (self.isActive ? start() : stop()),
         /*
          * About 쪽으로 완전히 되돌아가 FACES가 화면 밖으로 나가면 drag로 옮겨 둔 위치를 지운다.
-         * 다시 내려왔을 때 첫 화면은 언제나 F45다. 보이지 않는 동안에 바꾸므로 rail이 움직여 보이지 않는다.
+         * 다시 내려왔을 때 첫 화면은 언제나 첫 project(TCHAIKIM)다. 보이지 않는 동안에 바꾸므로 rail이 움직여 보이지 않는다.
          */
         onLeaveBack: () => {
           dragOffset = 0
@@ -441,7 +458,8 @@ export default function useFacesInteraction({
       downY = event.clientY
       suppressClick = false
       pressedAllowed = canActivate()
-      pressing = pressedAllowed
+      // display가 눌려 가라앉는 반응은 CTA를 누를 때만(영상 자체는 눌리는 대상이 아니다).
+      pressing = pressedAllowed && Boolean(ctaBar?.contains(event.target as Node))
     }
 
     const onPointerMove = (event: PointerEvent) => {
@@ -479,11 +497,14 @@ export default function useFacesInteraction({
     }
     const onEnter = () => { hovering = true }
     const onLeave = () => { hovering = false; pressing = false }
-    link?.addEventListener('click', onClick)
-    link?.addEventListener('pointerenter', onEnter)
-    link?.addEventListener('pointerleave', onLeave)
-    link?.addEventListener('focus', onEnter)
-    link?.addEventListener('blur', onLeave)
+    const ctaLinks = [link, caseLink].filter(Boolean) as HTMLAnchorElement[]
+    for (const a of ctaLinks) {
+      a.addEventListener('click', onClick)
+      a.addEventListener('pointerenter', onEnter)
+      a.addEventListener('pointerleave', onLeave)
+      a.addEventListener('focus', onEnter)
+      a.addEventListener('blur', onLeave)
+    }
     stage.addEventListener('pointerdown', onPointerDown)
     stage.addEventListener('pointermove', onPointerMove)
     stage.addEventListener('pointerup', endDrag)
@@ -537,11 +558,13 @@ export default function useFacesInteraction({
       cancelAnimationFrame(refreshId)
       unsubscribe()
       stop()
-      link?.removeEventListener('click', onClick)
-      link?.removeEventListener('pointerenter', onEnter)
-      link?.removeEventListener('pointerleave', onLeave)
-      link?.removeEventListener('focus', onEnter)
-      link?.removeEventListener('blur', onLeave)
+      for (const a of ctaLinks) {
+        a.removeEventListener('click', onClick)
+        a.removeEventListener('pointerenter', onEnter)
+        a.removeEventListener('pointerleave', onLeave)
+        a.removeEventListener('focus', onEnter)
+        a.removeEventListener('blur', onLeave)
+      }
       if (pointerId >= 0 && stage.hasPointerCapture(pointerId)) stage.releasePointerCapture(pointerId)
       stage.removeEventListener('pointerdown', onPointerDown)
       stage.removeEventListener('pointermove', onPointerMove)

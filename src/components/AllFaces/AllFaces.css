@@ -1,7 +1,7 @@
 /*
  * ALL FACES — Crown을 누르면 page 위에 여는 전체 project 화면(FLAT PROJECT WORLD).
  * Header / page / Watch / Crown보다 위, Intro(100) / 문의 modal(200)보다 아래.
- * 바탕은 Carbon Black 하나이고 Watch는 보이지 않는다. project는 원형 object(꽉 찬 배경 이미지 + 가운데 logo)이고 영상은 없다.
+ * 바탕은 Carbon Black 하나이고 Watch는 보이지 않는다. project는 글자 + 눈금 rim의 "project dial"이고 이미지 / 영상은 없다.
  *
  * overlay는 언제나 정확히 한 화면이다. overlay 자체는 늘어나지 않고(overflow hidden),
  * 문서에 세로 scroll을 더하지 않는다. 모바일은 브라우저 UI 높이를 따라가도록 100dvh(없으면 100vh).
@@ -24,20 +24,19 @@
   opacity: 0;
 }
 
-/* 세 원이 놓이는 면(화면 전체). 이 면은 움직이지 않는다 — drag / 관성 / camera pan 없음. 원만 자기 자리 근처에서 떠 있다. */
+/* 세 dial이 놓이는 면(화면 전체). 이 면도 dial의 자리도 움직이지 않는다 — drag / 관성 / floating 없음. */
 .all-faces__stage {
   position: absolute;
   inset: 0;
 }
 
 /*
- * project 하나(원 하나). base 자리는 열 때 한 번 뽑은 원 중심(--cx / --cy, 화면 비율, allFacesLayout.ts)이다.
- * 층: figure(base 자리 + 열릴 때 motion) -> drift-x(가로로 떠 있음) -> drift-y(세로 + 회전 + 숨쉬기) -> circle(hover 크기).
- * 서로 다른 element라 floating과 hover가 같은 transform을 덮어쓰지 않는다.
- * 네모난 box의 모서리는 hover / click 대상이 아니다 — pointer는 원(__circle)만 받는다.
+ * project 하나(dial 하나). 자리는 열 때 고른 구도의 dial 중심(--cx / --cy, 화면 비율, allFacesPresets.ts)이다.
+ * 열릴 때의 motion만 이 element에 잠깐 걸린다(끝나면 지운다). hover 크기는 안쪽 __dial이 맡는다.
+ * 네모난 box의 모서리는 hover / click 대상이 아니다 — pointer는 원(__dial)만 받는다.
  */
 .all-faces__project {
-  --size: clamp(240px, 20vw, 360px);
+  --size: clamp(280px, 19vw, 360px);
   position: absolute;
   top: calc(var(--cy) * 100% - var(--size) / 2);
   left: calc(var(--cx) * 100% - var(--size) / 2);
@@ -46,143 +45,123 @@
   margin: 0;
   outline: none;
   pointer-events: none;
-  transition: opacity 280ms ease;
+  opacity: 0.78;
+  transition: opacity 300ms cubic-bezier(0.33, 1, 0.68, 1);
 }
 
 .all-faces__project.is-hovered {
   z-index: 2;
+  opacity: 1;
 }
 
-/* 한 project에 올라가 있으면 나머지는 한 걸음 물러난다. */
+/* 한 dial에 올라가 있으면 나머지는 한 걸음 물러난다. */
 .all-faces__stage[data-hovered] .all-faces__project:not(.is-hovered) {
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 /*
- * idle floating. base 자리를 중심으로 양쪽 끝을 부드럽게(sine) 오가며 멈추지 않는다.
- * x / y 주기가 달라서 원은 한 선을 오가지 않고 작은 타원을 그리듯 떠 있다. 진폭 / 주기 / 위상은 원마다 다르다.
+ * dial 몸체. Carbon / Titanium dark 원판 위에 고정된 아주 옅은 외곽선 하나.
+ * hover: 1.04배, 몸체가 아주 조금 밝아지고 외곽선이 선명해진다(300ms power2.out).
  */
-.all-faces__drift-x,
-.all-faces__drift-y {
-  width: 100%;
-  height: 100%;
-  will-change: transform;
-}
-
-.all-faces__drift-x {
-  animation: all-faces-drift-x var(--dx) ease-in-out var(--px) infinite alternate;
-}
-
-.all-faces__drift-y {
-  animation: all-faces-drift-y var(--dy) ease-in-out var(--py) infinite alternate;
-}
-
-@keyframes all-faces-drift-x {
-  from {
-    transform: translate3d(calc(var(--ax) * -1), 0, 0);
-  }
-  to {
-    transform: translate3d(var(--ax), 0, 0);
-  }
-}
-
-@keyframes all-faces-drift-y {
-  from {
-    transform: translate3d(0, calc(var(--ay) * -1), 0) rotate(calc(var(--rot) * -1)) scale(1);
-  }
-  to {
-    transform: translate3d(0, var(--ay), 0) rotate(var(--rot)) scale(var(--breath));
-  }
-}
-
-/*
- * 원형 object. 원을 꽉 채운 배경 이미지(cover, 빈 여백 없음) 위 정중앙에 logo.
- * 테두리는 Electric Ice의 옅은 선 하나 — neon orb가 아니다.
- */
-.all-faces__circle {
+.all-faces__dial {
+  --rim-color: rgb(164 169 173 / 0.5);
   position: relative;
-  display: grid;
-  place-items: center;
   box-sizing: border-box;
   width: 100%;
   height: 100%;
-  overflow: hidden;
-  border: 1px solid rgb(24 109 229 / 0.55);
+  border: 1px solid rgb(212 229 239 / 0.12);
   border-radius: 50%;
-  background: rgb(14 16 18 / 0.82);
-  box-shadow: 0 18px 48px rgb(0 0 0 / 0.35);
-  /* overflow + border-radius가 Safari에서도 transform 중에 잘리도록 */
-  isolation: isolate;
+  background: radial-gradient(circle at 50% 38%, #16191d 0%, #0d0f11 62%, #08090a 100%);
+  box-shadow: inset 0 1px 0 rgb(243 244 244 / 0.04), 0 24px 60px rgb(0 0 0 / 0.45);
   cursor: pointer;
   pointer-events: auto;
   transition:
-    transform 280ms cubic-bezier(0.33, 1, 0.68, 1),
-    border-color 280ms ease,
-    box-shadow 280ms ease,
-    background-color 280ms ease;
+    transform 300ms cubic-bezier(0.33, 1, 0.68, 1),
+    border-color 300ms ease,
+    background-color 300ms ease,
+    box-shadow 300ms ease;
 }
 
-/* 배경 이미지: 원 전체를 cover로 채운다. 가장자리 여백이 보이지 않도록 아주 조금 키운다. */
-.all-faces__bg {
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.all-faces__project.is-hovered .all-faces__dial {
+  --rim-color: #186de5;
   transform: scale(1.04);
-  pointer-events: none;
-  user-select: none;
+  border-color: rgb(24 109 229 / 0.55);
+  background: radial-gradient(circle at 50% 38%, #1b1f24 0%, #111417 62%, #0a0b0d 100%);
+  box-shadow: inset 0 1px 0 rgb(243 244 244 / 0.06), 0 24px 60px rgb(0 0 0 / 0.45), 0 0 26px rgb(24 109 229 / 0.12);
 }
 
-/* 이미지 위에 아주 약한 막 — 가장자리를 조금 가라앉혀 원이 Carbon 바탕 위에 한 덩어리로 보이게 한다. logo는 가리지 않는다. */
-.all-faces__circle[data-visual='image']::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  background: radial-gradient(circle at 50% 50%, transparent 52%, rgb(8 9 10 / 0.28) 100%);
-  pointer-events: none;
-}
-
-.all-faces__project.is-hovered .all-faces__circle {
-  transform: scale(1.03);
-  border-color: rgb(24 109 229 / 0.85);
-  box-shadow:
-    0 18px 48px rgb(0 0 0 / 0.35),
-    0 0 22px rgb(24 109 229 / 0.16);
-  background-color: rgb(20 23 26 / 0.88);
-}
-
-.all-faces__project:focus-visible .all-faces__circle {
+.all-faces__project:focus-visible .all-faces__dial {
   outline: 2px solid #186de5;
   outline-offset: 6px;
 }
 
 /*
- * 가운데 logo. 폭은 project마다 원 지름의 38~58%(--logo-w, AllFaces.tsx의 LOGO_WIDTH)이고 높이는 36%를 넘지 않는다.
- * 배경 위에서 읽히도록 아주 옅은 그림자만 둔다(카드 / pill UI 없음).
+ * 도는 눈금 rim(dial 바깥 띠). 60개 잔눈금 + 30°마다 조금 긴 시 눈금 + 12시 자리의 Ice 점 하나.
+ * 단색 테두리만 돌면 회전이 보이지 않으므로 눈금과 한 점으로 "가만히 보면 아주 조금 살아 있다" 정도만 보이게 한다.
+ * 30~45초에 한 바퀴, linear, 끝없이. 글자는 이 layer 밖이라 돌지 않는다.
  */
-.all-faces__logo {
-  display: block;
-  width: var(--logo-w, 50%);
-  max-height: 36%;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 10px rgb(0 0 0 / 0.18));
+.all-faces__rim {
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  color: var(--rim-color);
+  background:
+    radial-gradient(circle at 50% 2.2%, #d4e5ef 0 1.6px, transparent 2.2px),
+    repeating-conic-gradient(from -0.6deg, currentColor 0 1.2deg, transparent 1.2deg 30deg),
+    repeating-conic-gradient(from -0.25deg, rgb(164 169 173 / 0.35) 0 0.5deg, transparent 0.5deg 6deg);
+  -webkit-mask: radial-gradient(circle closest-side, transparent 0 88%, #000 88.5% 100%);
+  mask: radial-gradient(circle closest-side, transparent 0 88%, #000 88.5% 100%);
+  animation: all-faces-rim var(--rim-duration, 40s) linear infinite;
+  animation-direction: var(--rim-direction, normal);
+  transition: color 300ms ease;
   pointer-events: none;
-  user-select: none;
 }
 
-/* logo asset이 없을 때만 쓰는 임시 이름 표시. */
+@keyframes all-faces-rim {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 글자. 돌지 않는다. FACE 01(Geist) -> project 이름(Anton) -> 설명 두 줄. */
+.all-faces__dial-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 0.9vw, 16px);
+  text-align: center;
+  pointer-events: none;
+}
+
+.all-faces__face {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  font-size: clamp(11px, 0.68vw, 13px);
+  letter-spacing: 0.24em;
+  color: #8d9499;
+}
+
 .all-faces__name {
   font-family: 'Anton', sans-serif;
   font-weight: 400;
-  font-size: clamp(16px, 1.05vw, 20px);
+  font-size: clamp(30px, 2.1vw, 40px);
   line-height: 1;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   color: #f3f4f4;
+}
+
+.all-faces__desc {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font: 500 clamp(10px, 0.62vw, 12px) / 1.2 'Inter', sans-serif;
+  letter-spacing: 0.16em;
+  color: #a0a7ac;
 }
 
 /* 위쪽 utility bar. 원들 위에 떠 있고, 빈 곳은 pointer를 막지 않는다. */
@@ -209,6 +188,8 @@
 }
 
 .all-faces__count {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
   font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.18em;
@@ -249,7 +230,26 @@
 
 @media (max-width: 760px) {
   .all-faces__project {
-    --size: clamp(128px, 38vw, 170px);
+    --size: clamp(130px, 38vw, 170px);
+  }
+
+  .all-faces__rim {
+    inset: 3px;
+  }
+
+  .all-faces__dial-content {
+    gap: 6px;
+  }
+
+  .all-faces__face {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+  }
+
+  .all-faces__desc {
+    gap: 3px;
+    font-size: 9px;
+    letter-spacing: 0.12em;
   }
 
   .all-faces__bar {
@@ -257,18 +257,19 @@
   }
 
   .all-faces__name {
-    font-size: 15px;
+    font-size: 21px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .all-faces__circle,
-  .all-faces__project {
+  .all-faces__dial,
+  .all-faces__project,
+  .all-faces__rim {
     transition: none;
   }
 
-  .all-faces__drift-x,
-  .all-faces__drift-y {
+  /* rim도 돌지 않는다. dial은 완전히 정지해 있다. */
+  .all-faces__rim {
     animation: none;
   }
 }
