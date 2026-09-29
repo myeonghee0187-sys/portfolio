@@ -2,7 +2,7 @@
  * Journey copy와 card 배치. 좌표는 1920 기준 world 좌표다.
  *
  * card 크기는 여기서 정하지 않는다 — 7장 모두 Journey.css의 공통 크기(1920에서 560 x 400)를 쓴다.
- * 경로도 여기 좌표로 그리지 않는다. 각 card 안의 anchor element를 실제로 재서 잇는다(useJourneyInteraction).
+ * 경로도 여기 좌표로 그리지 않는다. 각 card의 실제 크기를 재서, anchor 쪽 변 안쪽의 점을 부드러운 곡선으로 잇는다(useJourneyInteraction).
  */
 export type JourneyAnchor = 'top' | 'bottom' | 'left' | 'right'
 

@@ -3,7 +3,7 @@
  * Header / page / Watch / Crown보다 위, Intro(100) / 문의 modal(200)보다 아래.
  * 바탕은 Carbon Black 하나이고 Watch는 보이지 않는다. project는 원형 object(logo + 이름)이고 영상은 없다.
  *
- * overlay는 언제나 정확히 한 화면이다. world가 아무리 커도 overlay 자체는 늘어나지 않고(overflow hidden),
+ * overlay는 언제나 정확히 한 화면이다. overlay 자체는 늘어나지 않고(overflow hidden),
  * 문서에 세로 scroll을 더하지 않는다. 모바일은 브라우저 UI 높이를 따라가도록 100dvh(없으면 100vh).
  */
 .all-faces {
@@ -24,53 +24,38 @@
   opacity: 0;
 }
 
-/* drag를 받는 면(화면 전체). 손가락 / pointer 이동은 전부 world 이동이다(page scroll 없음). */
+/* 세 원이 놓이는 면(화면 전체). 움직이지 않는다 — drag / 관성 / floating 없음. */
 .all-faces__stage {
   position: absolute;
   inset: 0;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.all-faces__stage.is-dragging {
-  cursor: grabbing;
-}
-
-/* 화면보다 넓은 평면. camera 이동은 transform 하나다(useEffect의 writeCamera). */
-.all-faces__world {
-  position: absolute;
-  top: 0;
-  left: 0;
-  will-change: transform;
 }
 
 /*
- * project 하나(원 하나). 크기 / 위치는 배치가 정한다(JS). 열릴 때의 motion은 이 element,
- * floating은 안쪽 __float, hover 크기는 그 안의 __circle — 서로 다른 layer라 덮어쓰지 않는다.
- * 네모난 box의 모서리는 hover / drag 대상이 아니다 — pointer는 원(__circle)만 받는다.
+ * project 하나(원 하나). 자리는 화면 비율(--d-* 데스크톱 / --m-* 모바일, AllFaces.tsx의 PLACEMENTS)이고 고정이다.
+ * 열릴 때의 motion만 이 element에 잠깐 걸린다(끝나면 지운다). hover 크기는 안쪽 __circle이 맡는다.
+ * 네모난 box의 모서리는 hover / click 대상이 아니다 — pointer는 원(__circle)만 받는다.
  */
 .all-faces__project {
+  --size: clamp(240px, 20vw, 360px);
   position: absolute;
+  top: var(--d-top);
+  right: var(--d-right);
+  bottom: var(--d-bottom);
+  left: var(--d-left);
+  width: var(--size);
+  height: var(--size);
   margin: 0;
   outline: none;
   pointer-events: none;
+  transition: opacity 280ms ease;
 }
 
 .all-faces__project.is-hovered {
   z-index: 2;
 }
 
-.all-faces__float {
-  width: 100%;
-  height: 100%;
-  transition: opacity 300ms ease;
-  will-change: transform;
-}
-
 /* 한 project에 올라가 있으면 나머지는 한 걸음 물러난다. */
-.all-faces__world[data-hovered] .all-faces__project:not(.is-hovered) .all-faces__float {
+.all-faces__stage[data-hovered] .all-faces__project:not(.is-hovered) {
   opacity: 0.6;
 }
 
@@ -87,15 +72,16 @@
   gap: clamp(14px, 1.2vw, 22px);
   box-sizing: border-box;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  height: 100%;
   border: 1px solid rgb(24 109 229 / 0.55);
   border-radius: 50%;
   background: rgb(14 16 18 / 0.82);
+  cursor: pointer;
   pointer-events: auto;
   transition:
-    transform 300ms cubic-bezier(0.33, 1, 0.68, 1),
-    border-color 300ms ease,
-    background-color 300ms ease;
+    transform 280ms cubic-bezier(0.33, 1, 0.68, 1),
+    border-color 280ms ease,
+    background-color 280ms ease;
 }
 
 .all-faces__project.is-hovered .all-faces__circle {
@@ -107,11 +93,6 @@
 .all-faces__project:focus-visible .all-faces__circle {
   outline: 2px solid #186de5;
   outline-offset: 6px;
-}
-
-/* Case Study가 연결돼 있을 때만 눌리는 것처럼 보인다. */
-.all-faces[data-selectable] .all-faces__circle {
-  cursor: pointer;
 }
 
 /* logo는 원을 가득 채우지 않는다(폭 48% / 높이 34% 안). 회전하지 않는다. */
@@ -134,7 +115,7 @@
   color: #f3f4f4;
 }
 
-/* 위쪽 utility bar. world 위에 떠 있고, 빈 곳은 drag를 막지 않는다. */
+/* 위쪽 utility bar. 원들 위에 떠 있고, 빈 곳은 pointer를 막지 않는다. */
 .all-faces__bar {
   position: absolute;
   top: 0;
@@ -197,6 +178,14 @@
 }
 
 @media (max-width: 760px) {
+  .all-faces__project {
+    --size: clamp(128px, 38vw, 170px);
+    top: var(--m-top);
+    right: var(--m-right);
+    bottom: var(--m-bottom);
+    left: var(--m-left);
+  }
+
   .all-faces__bar {
     padding: calc(env(safe-area-inset-top, 0px) + 24px) 20px 0;
   }
@@ -208,7 +197,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .all-faces__circle,
-  .all-faces__float {
+  .all-faces__project {
     transition: none;
   }
 }

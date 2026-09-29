@@ -1,6 +1,6 @@
 import f45Video from '../../../assets/vid/faces/f45-faces-4x5.mp4'
 import tchaikimVideo from '../../../assets/vid/faces/tchaikim-faces-4x5.mp4'
-import jaduyaVideo from '../../../assets/vid/faces/intro_vid.mp4'
+import jaduyaVideo from '../../../assets/vid/faces/jaduya-faces.mp4'
 
 /**
  * FACES에 놓이는 프로젝트. 배열 순서가 곧 rail 위의 순서다(왼쪽 -> 오른쪽).
@@ -62,6 +62,12 @@ export const FACE_PROJECTS: FaceProject[] = [
     index: '03',
     title: 'JADUYA',
     category: 'MOBILE UX/UI PLATFORM',
+    /*
+     * FACES 전용 영상(728 x 1596, H.264 High@4.0, 약 1.1Mbps). 원본 intro_vid.mp4(1664 x 3648, High@5.1, 16.5Mbps)에서
+     * 비율 / 길이 / 내용을 그대로 두고 크기만 줄여 만들었다(원본 파일은 그대로 있다).
+     * 원본은 FACES가 loop 이음매용으로 쓰는 element 두 개를 동시에 풀기에 너무 커서, 하드웨어 decoder가 받지 못하는
+     * 환경(Safari / iOS, 많은 Android 등)에서 frame이 나오지 않고 texture가 검게 남았다. F45 / TCHAIKIM도 FACES 전용 크기다.
+     */
     media: jaduyaVideo,
     aspect: 1664 / 3648,
     // 캐릭터 위로 사과가 튀어 오르는 동작까지 창 안에 남도록 조금 위를 중심으로 둔다.

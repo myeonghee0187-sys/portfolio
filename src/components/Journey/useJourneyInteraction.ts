@@ -1,7 +1,7 @@
 import { useLayoutEffect, type RefObject } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { JOURNEY_NODES, type JourneyAnchor } from './journeyData'
+import { JOURNEY_NODES } from './journeyData'
 import { HANDOFF_VIEWPORTS, JOURNEY_VIEWPORTS, PANEL_TRIGGER_ID, panelTiming } from '../../hooks/panelTiming'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -41,64 +41,49 @@ type Options = {
   worldRef: RefObject<HTMLDivElement | null>
 }
 
-/** 경로가 지나는 점. role in = card로 들어오는 점, out = card에서 나가는 점. */
-type Point = { x: number; y: number; side: JourneyAnchor; role: 'in' | 'out' }
-
-/** card 바깥을 향하는 단위 방향(경로가 닿는 변의 법선). */
-const OUTWARD: Record<JourneyAnchor, { x: number; y: number }> = {
-  top: { x: 0, y: -1 },
-  bottom: { x: 0, y: 1 },
-  left: { x: -1, y: 0 },
-  right: { x: 1, y: 0 },
-}
+type Point = { x: number; y: number }
 
 /**
- * 점들을 하나의 부드러운 경로로 잇는다(가지 없음, M 하나에 C만 이어진다). 두 점 사이는 Cubic Bézier 하나다.
- * 각 점에서 경로는 그 card 변에 수직이다 — 제어점을 anchor에서 변의 법선(OUTWARD) 방향으로 둔다.
- *   out -> in   card 사이의 보이는 선. 나갈 때도 들어올 때도 제어점이 card 바깥에 있다
- *   in -> out   card 바탕 아래로 지나는 선(보이지 않는다). 제어점이 card 안쪽에 있다
- * 그래서 옆 변(left / right)에 닿는 선도 변을 따라 미끄러지지 않고 정면으로 들어와 테두리에서 끊김 없이 이어진다
- * (세로 접선이면 선이 card 옆면에 비스듬히 스치며 테두리 직전에서 잘려 보였다).
- * k(제어점 거리)는 reach()가 정한다.
+ * 경로의 곡률(Catmull-Rom tension). 점 Pi의 접선 Ti = (P(i+1) - P(i-1)) x TENSION,
+ * 두 점 사이는 Cubic Bézier  C  Pi + Ti / 3,  P(i+1) - T(i+1) / 3,  P(i+1).
+ * 0.5가 표준 Catmull-Rom이다. 이 값에서 card 사이가 큰 S 곡선으로 이어지고, 점 사이에서 넘치거나 꺾이지 않는다.
  */
-/** 선이 card 바깥선을 지나 card 안쪽으로 더 들어가는 거리(화면 px). 선 끝이 card 바탕 아래에 숨는다. */
-const LINE_OVERLAP = 8
-/** 옆 변에서 in / out이 변 가운데에서 떨어진 거리(card 높이 비율). in이 위, out이 아래다(경로는 위에서 아래로 흐른다). */
-const ANCHOR_SPREAD = 0.22
-/** 기존 옆 변 조합을 그대로 쓰는 최소 트인 거리(화면 px). 이보다 좁으면 선이 card 아래에 묻히거나 변을 스친다. */
-const MIN_SIDE_CLEARANCE = 48
-
-/** 법선 방향으로 뒤돌아 가야 할 때 제어점 거리의 최소값(world px). 테두리에서 수직으로 잠깐 나온 뒤 바로 방향을 튼다. */
-const MIN_REACH = 36
+const TENSION = 0.5
 
 /**
- * 제어점 거리. card 사이의 선(outside)에서 상대 점이 법선 앞쪽에 있으면 거리의 0.3배와 법선 방향 거리의 절반 중 큰 값 —
- * 가까운 card 사이에서도 꺾이지 않는다. 상대 점이 법선 뒤쪽(작은 화면에서 card가 커져 옆 card의 변이 서로 엇갈릴 때)이면
- * 길게 뻗으면 선이 되돌아가며 고리를 만든다 — 그때는 MIN_REACH만큼만 수직으로 나온다.
- * card 아래의 선(inside)은 거리의 0.3배다(보이지 않는다).
+ * anchor가 card 안쪽으로 들어가 있는 정도(card 크기 비율). 경로는 card 가운데가 아니라 경로 쪽 변에 가까운 이 점을 지난다.
+ * 점이 변 위에 있으면 부드러운 곡선이 변을 따라 스치며 테두리 직전에서 잘려 보인다. 25% 안쪽이면 곡선이 card 테두리를
+ * 비스듬히가 아니라 뚜렷한 각도로 지나 불투명한 surface 아래로 들어간다 — 선은 테두리까지 빈틈없이 닿고(겹침은 수십 px),
+ * card 안쪽 구간은 보이지 않는다.
  */
-function reach(dist: number, ahead: number, outside: boolean) {
-  if (!outside) return dist * 0.3
-  if (ahead <= 0) return MIN_REACH
-  return Math.max(Math.min(dist * 0.3, ahead * 1.5), ahead / 2, MIN_REACH)
-}
+const ANCHOR_INSET = 0.25
 
+/**
+ * 점들을 하나의 부드러운 경로로 잇는다(가지 없음, M 하나에 C만 이어진다).
+ * 모든 점에서 접선이 앞뒤 점으로 정해지므로(Catmull-Rom) 곡률이 card마다 끊기지 않고 이어진다 —
+ * 세로 -> 가로 -> 세로로 꺾이는 연결이 없다. 좌우 꼭짓점에서는 접선이 세로라 경로 전체가 큰 물결(S 곡선의 연속)이 된다. 처음 / 마지막 점은 세로 접선이다(첫 card 아래로 나가고, 마지막 card 위로 들어간다).
+ */
 function buildSmoothPath(points: Point[]): string {
-  if (points.length < 2) return ''
-  let d = `M ${points[0].x} ${points[0].y}`
-  for (let i = 1; i < points.length; i += 1) {
-    const p0 = points[i - 1]
-    const p1 = points[i]
-    const dx = p1.x - p0.x
-    const dy = p1.y - p0.y
-    const dist = Math.hypot(dx, dy)
-    const n0 = OUTWARD[p0.side]
-    const n1 = OUTWARD[p1.side]
-    const k0 = reach(dist, dx * n0.x + dy * n0.y, p0.role === 'out') * (p0.role === 'out' ? 1 : -1)
-    const k1 = reach(dist, -(dx * n1.x + dy * n1.y), p1.role === 'in') * (p1.role === 'in' ? 1 : -1)
-    const c0 = { x: p0.x + n0.x * k0, y: p0.y + n0.y * k0 }
-    const c1 = { x: p1.x + n1.x * k1, y: p1.y + n1.y * k1 }
-    d += ` C ${c0.x.toFixed(2)} ${c0.y.toFixed(2)}, ${c1.x.toFixed(2)} ${c1.y.toFixed(2)}, ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`
+  const n = points.length
+  if (n < 2) return ''
+  const tangent = (i: number): Point => {
+    if (i === 0 || i === n - 1) {
+      const a = points[i === 0 ? 0 : n - 2]
+      const b = points[i === 0 ? 1 : n - 1]
+      return { x: 0, y: 2 * TENSION * Math.abs(b.y - a.y) }
+    }
+    const prev = points[i - 1], here = points[i], next = points[i + 1]
+    // 좌우로 가장 멀리 간 점(앞뒤 점이 모두 한쪽에 있는 점)은 물결의 꼭짓점이다. 여기서는 가로 접선을 0으로 둔다 —
+    // 곡선이 그 자리에서 넘쳐 바깥으로 튀지 않고, 좌우 사이가 직선 사선이 아니라 큰 S 곡선으로 이어진다.
+    const turning = (prev.x - here.x) * (next.x - here.x) > 0
+    return { x: turning ? 0 : (next.x - prev.x) * TENSION, y: (next.y - prev.y) * TENSION }
+  }
+  const f = (v: number) => v.toFixed(2)
+  let d = `M ${f(points[0].x)} ${f(points[0].y)}`
+  for (let i = 0; i < n - 1; i += 1) {
+    const p0 = points[i], p1 = points[i + 1]
+    const t0 = tangent(i), t1 = tangent(i + 1)
+    d += ` C ${f(p0.x + t0.x / 3)} ${f(p0.y + t0.y / 3)}, ${f(p1.x - t1.x / 3)} ${f(p1.y - t1.y / 3)}, ${f(p1.x)} ${f(p1.y)}`
   }
   return d
 }
@@ -169,12 +154,11 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
     const nodes = JOURNEY_NODES.map(n => world.querySelector<HTMLElement>(`[data-node="${n.id}"]`)!)
     const active = world.querySelector<SVGPathElement>('.journey__path-active')!
     const paths = world.querySelectorAll<SVGPathElement>('.journey__path path')
-    const probe = document.createElementNS('http://www.w3.org/2000/svg', 'path')
 
     /*
-     * 경로 기하. card 안의 anchor element를 실제로 재서 만든다.
+     * 경로 기하. card의 실제 크기를 재서, 경로 쪽 변 안쪽의 점(anchorOf)을 Catmull-Rom 곡선으로 잇는다.
      * length는 화면 px이다 — non-scaling-stroke에서는 dash가 화면 px로 적용되기 때문이다.
-     *   marks[i]  빛이 i번째 card의 in anchor에 닿는 journey-master 진행률. 경로 길이에 비례한다 —
+     *   marks[i]  빛이 i번째 card 테두리에 닿는 journey-master 진행률. 경로 길이에 비례한다 —
      *             그래서 빛은 한 속도로 흐르고, card는 빛이 자기 자리를 지날 때 켜진다.
      *   camera    진행률 -> world의 y. marks[i]에서 i번째 card가 화면 가운데(Header 아래)에 오고,
      *             그 사이는 멈추지 않고 이어진다(monotoneCubic).
@@ -255,77 +239,57 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       }
     }
 
-    /**
-     * 경로가 지나는 점(world 좌표, viewBox 단위). card마다 in / out 순서로 이어 붙인다.
-     * card의 실제 크기(CSS width / height)를 재서, 선이 닿는 변 위의 점을 계산한다.
-     * 점은 그 변의 바깥선보다 LINE_OVERLAP(화면 8px)만큼 card 안쪽이다 — 선이 테두리를 지나 surface 아래에 숨는다.
-     *
-     * 변 고르기: card 사이 한 구간마다 먼저 card의 변(data-anchor)끼리 잇는다(기존 경로).
-     * 두 변 앞이 MIN_SIDE_CLEARANCE보다 좁게 막혀 있을 때만(두 card가 위아래로 겹쳐 놓였거나, 작은 화면에서
-     * card가 최소 폭 460px에 걸려 서로 엇갈릴 때) {옆 변, 아래 / 위 변} 조합 중 가장 넓게 트인 조합으로 바꾼다 —
-     * 선이 card 아래에 묻히거나 변을 스치지 않는다.
-     * entry[i] = i번째 card에 빛이 들어오는 점의 index(첫 card는 경로의 시작점).
-     */
-    const measureAnchors = (scale: number) => {
-      const boxes = nodes.map((node, i) => {
+    /** card의 world 좌표 상자(viewBox 단위). card 크기는 CSS가 정한 실제 크기(scale 전)를 world 배율로 나눈 값이다. */
+    const measureBoxes = (scale: number) =>
+      nodes.map((node, i) => {
         const cs = getComputedStyle(node.querySelector<HTMLElement>('.journey__card')!)
         const { position, anchor } = JOURNEY_NODES[i]
         return { ...position, hw: parseFloat(cs.width) / 2 / scale, hh: parseFloat(cs.height) / 2 / scale, side: anchor }
       })
-      const inset = LINE_OVERLAP / scale
-      /** 변 위의 점. 옆 변은 in이 위, out이 아래(ANCHOR_SPREAD). 위 / 아래 변은 가운데. */
-      const at = (b: (typeof boxes)[number], side: JourneyAnchor, role: Point['role']): Point => {
-        const n = OUTWARD[side]
-        if (n.x !== 0) {
-          const dy = b.hh * 2 * ANCHOR_SPREAD * (role === 'in' ? -1 : 1)
-          return { x: b.x + n.x * (b.hw - inset), y: b.y + dy, side, role }
+    type Box = ReturnType<typeof measureBoxes>[number]
+
+    /** 경로가 지나는 card 안의 점. 경로 쪽 변(data-anchor)에서 card 크기의 ANCHOR_INSET만큼 안쪽, 그 변의 가운데 높이 / 폭. */
+    const anchorOf = (b: Box): Point => {
+      switch (b.side) {
+        case 'left': return { x: b.x - b.hw * (1 - 2 * ANCHOR_INSET), y: b.y }
+        case 'right': return { x: b.x + b.hw * (1 - 2 * ANCHOR_INSET), y: b.y }
+        case 'top': return { x: b.x, y: b.y - b.hh * (1 - 2 * ANCHOR_INSET) }
+        default: return { x: b.x, y: b.y + b.hh * (1 - 2 * ANCHOR_INSET) }
+      }
+    }
+
+    /**
+     * 경로 위에서 빛이 i번째 card 테두리에 처음 닿는 길이(viewBox 단위). 경로를 촘촘히 따라가며
+     * card 상자에 처음 들어가는 자리를 찾는다(이전 card를 지난 뒤부터). 첫 card는 경로의 시작(0)이다.
+     */
+    const borderHits = (boxes: Box[], total: number) => {
+      const step = 2
+      const hits = [0]
+      let s = 0
+      for (let i = 1; i < boxes.length; i++) {
+        const b = boxes[i]
+        while (s < total) {
+          const pt = active.getPointAtLength(s)
+          if (Math.abs(pt.x - b.x) <= b.hw && Math.abs(pt.y - b.y) <= b.hh) break
+          s += step
         }
-        return { x: b.x, y: b.y + n.y * (b.hh - inset), side, role }
+        hits.push(Math.min(s, total))
       }
-      /** 두 점이 서로 변 앞쪽으로 떨어진 거리 중 작은 쪽(클수록 선이 card 밖으로 넓게 보인다). */
-      const clearance = (a: Point, b: Point) => {
-        const na = OUTWARD[a.side], nb = OUTWARD[b.side]
-        return Math.min((b.x - a.x) * na.x + (b.y - a.y) * na.y, (a.x - b.x) * nb.x + (a.y - b.y) * nb.y)
-      }
-      const outSide: JourneyAnchor[] = []
-      const inSide: JourneyAnchor[] = []
-      for (let i = 0; i + 1 < boxes.length; i++) {
-        const a = boxes[i], b = boxes[i + 1]
-        const outs: JourneyAnchor[] = i === 0 ? [a.side] : [a.side, 'bottom']
-        const ins: JourneyAnchor[] = i + 1 === boxes.length - 1 ? [b.side] : [b.side, 'top']
-        let best = { score: clearance(at(a, outs[0], 'out'), at(b, ins[0], 'in')), o: outs[0], n: ins[0] }
-        if (best.score < MIN_SIDE_CLEARANCE / scale) {
-          for (const o of outs) for (const n of ins) {
-            const score = clearance(at(a, o, 'out'), at(b, n, 'in'))
-            if (score > best.score) best = { score, o, n }
-          }
-        }
-        outSide[i] = best.o
-        inSide[i + 1] = best.n
-      }
-      const points: Point[] = []
-      const entry: number[] = []
-      boxes.forEach((b, i) => {
-        entry.push(points.length)
-        if (i > 0) points.push(at(b, inSide[i], 'in'))
-        if (i < boxes.length - 1) points.push(at(b, outSide[i], 'out'))
-      })
-      return { points, entry }
+      return hits
     }
 
     const rebuildPath = () => {
       const scale = world.getBoundingClientRect().width / 1920
       if (!scale) return
-      const { points, entry } = measureAnchors(scale)
-      const d = buildSmoothPath(points)
+      const boxes = measureBoxes(scale)
+      const d = buildSmoothPath(boxes.map(anchorOf))
       paths.forEach(p => p.setAttribute('d', d))
-      const L = active.getTotalLength() * scale
+      const total = active.getTotalLength()
+      const L = total * scale
       geom.length = L
-      geom.marks = entry.map((at, i) => {
-        if (i === 0) return LINE_FROM
-        probe.setAttribute('d', buildSmoothPath(points.slice(0, at + 1)))
-        return LINE_FROM + ((probe.getTotalLength() * scale) / L) * (LINE_TO - LINE_FROM)
-      })
+      // card가 켜지는 자리 = 빛이 그 card 테두리에 닿는 순간(경로 길이에 비례).
+      geom.marks = borderHits(boxes, total).map((at, i) =>
+        i === 0 ? LINE_FROM : LINE_FROM + (at / total) * (LINE_TO - LINE_FROM))
       const header = document.querySelector('.site-header')?.getBoundingClientRect().height ?? 0
       const unit = stage.clientWidth / 1920
       const cameraAt = JOURNEY_NODES.map(n => header + (stage.clientHeight - header) / 2 - n.position.y * unit)
