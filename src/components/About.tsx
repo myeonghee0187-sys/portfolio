@@ -112,7 +112,7 @@ export default function About({ inlineWatch }: AboutProps) {
           */}
           <div className="about__watch-anchor" aria-hidden="true" />
 
-          {inlineWatch && <WatchAssembly variant="about" />}
+          {inlineWatch && <WatchAssembly variant="about" crownOpensAllFaces />}
         </div>
       </div>
     </section>

@@ -2,7 +2,11 @@ import { useRef, type CSSProperties } from 'react'
 import digitalCrownSrc from '../../../assets/img/digital_crown.png'
 import useCrownWheel from '../../hooks/useCrownWheel'
 import useMediaQuery from '../../hooks/useMediaQuery'
+import { openAllFaces } from '../AllFaces/allFacesStore'
 import './DigitalCrown.css'
+
+/** 누를 때마다 dial이 한 번 더 도는 각도(°). 하드웨어 Crown을 한 칸 돌린 정도다. */
+const PRESS_SPIN = 22
 
 /*
  * digital_crown.png(2048 x 2048) 안의 knurl 원통. 단위는 원본 이미지 px.
@@ -112,7 +116,8 @@ const KNURL_CLIP = (() => {
  *   watch__crown-front            옆모습 -> 정면 전환 transform (useScrollScene의 GSAP)
  *   watch__crown-front-fx         hover / press의 scale·translateY (CSS)
  *   watch__crown-front-mount      고정된 dark titanium 받침(housing). 움직이지 않는다.
- *   watch__crown-front-spin       hover / one-time cue의 dial 회전 (CSS). scroll 회전과 다른 element다.
+ *   watch__crown-front-spin       hover / one-time cue의 dial 회전 (CSS transform)과 누를 때의 +22° (rotate).
+ *                                 scroll 회전과 다른 element다.
  *   watch__crown-global-rotation  페이지 전체 scroll 회전(useCrownWheel).
  *   watch__crown-drag-rotation    Faces drag 누적 회전(useFacesInteraction).
  *   watch__crown-front-wheel      knurl 톱니와 brushed cap 재질.
@@ -121,21 +126,34 @@ const KNURL_CLIP = (() => {
  * 회전 원인이 각각 다른 층에 있어 Journey 진입이나 hover가 기존 회전을 덮어쓰지 않는다.
  */
 type DigitalCrownProps = {
-  /**
-   * 정면 controller를 눌렀을 때. FACES 전체 project view를 여는 자리다.
-   * App에서 열림 상태와 현재 프로젝트 데이터를 준비한다. 최종 화면은 추후 연결한다.
-   */
+  /** 정면 controller를 눌렀을 때. 없으면 ALL FACES를 바로 연다(allFacesStore). */
   onOpenAllFaces?: () => void
+  /**
+   * scroll 연출이 꺼진 화면(모바일 / 터치 / reduced motion)의 Watch 옆 Crown.
+   * 정면 controller가 없으므로 옆모습 Crown 자체가 ALL FACES를 여는 button이 된다.
+   */
+  staticOpen?: boolean
 }
 
-export default function DigitalCrown({ onOpenAllFaces }: DigitalCrownProps) {
+export default function DigitalCrown({ onOpenAllFaces, staticOpen = false }: DigitalCrownProps) {
   const trackRef = useRef<HTMLDivElement>(null)
+  const spinRef = useRef<HTMLSpanElement>(null)
+  const spinTurns = useRef(0)
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
   useCrownWheel(trackRef, KNURL_PITCH_WU, !prefersReducedMotion)
 
+  // 누르면 dial이 한 번(+22°) 돌고 ALL FACES가 열린다. 각도는 누적된다 — 되돌아 풀리지 않는다.
+  const press = () => {
+    if (!prefersReducedMotion && spinRef.current) {
+      spinTurns.current += 1
+      spinRef.current.style.rotate = `${spinTurns.current * PRESS_SPIN}deg`
+    }
+    ;(onOpenAllFaces ?? openAllFaces)()
+  }
+
   return (
-    <div ref={trackRef} className="watch__crown">
+    <div ref={trackRef} className={staticOpen ? 'watch__crown watch__crown--static-open' : 'watch__crown'}>
       {/*
         Contact에서 Crown이 Watch로 돌아가는 위치 / 크기만 맡는 layer(useContactScene).
         GSAP이 transform을 다루지 않는 element라 FACES의 transform(.watch__crown)과 섞이지 않는다.
@@ -177,19 +195,21 @@ export default function DigitalCrown({ onOpenAllFaces }: DigitalCrownProps) {
           보이는 background / border 없이 Crown 자체가 button이다.
           Hero / About에서는 Watch의 부품이라 눌리지 않는다 — useScrollScene이 정면으로 다 돌아선 뒤에만
           .watch__crown에 is-controller를 붙여 pointer-events와 tabindex를 연다.
+          연출이 꺼진 화면에서는(staticOpen) 옆모습 Crown 자리 전체가 처음부터 눌리는 button이다.
         */}
         <button
           type="button"
           className="watch__crown-front-button"
           aria-label="모든 프로젝트 보기"
-          tabIndex={-1}
-          aria-disabled="true"
-          onClick={onOpenAllFaces}
+          aria-haspopup="dialog"
+          tabIndex={staticOpen ? 0 : -1}
+          aria-disabled={staticOpen ? undefined : 'true'}
+          onClick={press}
         >
           <span className="watch__crown-front">
             <span className="watch__crown-front-fx">
               <span className="watch__crown-front-mount" />
-              <span className="watch__crown-front-spin">
+              <span ref={spinRef} className="watch__crown-front-spin">
                 <span className="watch__crown-global-rotation">
                   <span className="watch__crown-drag-rotation">
                     <span className="watch__crown-front-wheel" />

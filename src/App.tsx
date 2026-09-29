@@ -11,27 +11,35 @@ import useMediaQuery from './hooks/useMediaQuery'
 import useScrollScene from './hooks/useScrollScene'
 import { FACE_PROJECTS } from './components/Faces/facesData'
 import Contact from './components/Contact'
+import AllFaces from './components/AllFaces/AllFaces'
+import { closeAllFaces, openAllFaces, useAllFacesOpen } from './components/AllFaces/allFacesStore'
 
 export default function App() {
   const [isIntroDone, setIsIntroDone] = useState(false)
-  // Reserved for the forthcoming ALL FACES design; no temporary screen or fake route.
-  const [allFaces, setAllFaces] = useState({ open: false, projects: FACE_PROJECTS })
   const isFinePointer = useMediaQuery('(hover: hover) and (pointer: fine)')
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const isWideEnough = useMediaQuery('(min-width: 901px)')
 
+  /*
+   * ALL FACES. 열림 상태는 allFacesStore 하나에 있다(Crown / Contact 빛 / FACES WebGL이 같은 값을 읽는다).
+   * 닫기를 누르면 곧바로 store가 닫히고(가려져 멈춰 있던 page가 다시 그려진다), overlay는 닫힘 motion이
+   * 끝난 뒤에 unmount된다.
+   */
+  const allFacesOpen = useAllFacesOpen()
+  const [allFacesMounted, setAllFacesMounted] = useState(false)
+  if (allFacesOpen && !allFacesMounted) setAllFacesMounted(true)
+  const handleAllFacesClosed = useCallback(() => setAllFacesMounted(false), [])
+
   const handleIntroFinish = useCallback(() => setIsIntroDone(true), [])
 
+  /** FACES 이후 고정되는 정면 Digital Crown의 click handler. */
+  const handleOpenAllFaces = useCallback(() => openAllFaces(), [])
+
   /*
-   * FACES 이후 고정되는 정면 Digital Crown의 click handler.
-   *
-   * 원래 자리는 "ALL FACES(전체 project view)"를 여는 것인데, 그 view는 아직 없다.
-   * 다른 기능을 임의로 붙이지 않고 연결 지점만 만들어 둔다 —
-   * view가 생기면 이 함수 안에서 열면 된다.
+   * ALL FACES에서 project를 골랐을 때. Case Study 화면(route / handler)이 아직 없어서 연결하지 않는다 —
+   * 가짜 URL / modal을 만들지 않는다. 화면이 생기면 여기서 projectId로 열면 된다.
    */
-  const handleOpenAllFaces = useCallback(() => {
-    setAllFaces({ open: true, projects: FACE_PROJECTS })
-  }, [])
+  const handleProjectSelect: ((projectId: string) => void) | undefined = undefined
 
   /*
    * Splash Cursor는 커서가 있는 데스크톱 전용이고, 순수 장식이라 reduced motion에서는 끈다.
@@ -92,7 +100,7 @@ export default function App() {
         />
       )}
 
-      <div className="site" data-all-faces-open={allFaces.open} data-all-faces-count={allFaces.projects.length}>
+      <div className="site" data-all-faces-open={allFacesOpen} data-all-faces-count={FACE_PROJECTS.length}>
         <Header />
         <main>
           <Hero inlineWatch={!scrollSceneEnabled} />
@@ -113,6 +121,15 @@ export default function App() {
         */}
         {scrollSceneEnabled && <WatchStage onOpenAllFaces={handleOpenAllFaces} />}
       </div>
+
+      {allFacesMounted && (
+        <AllFaces
+          open={allFacesOpen}
+          onRequestClose={closeAllFaces}
+          onClosed={handleAllFacesClosed}
+          onProjectSelect={handleProjectSelect}
+        />
+      )}
     </>
   )
 }

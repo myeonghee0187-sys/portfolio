@@ -20,6 +20,11 @@ type WatchAssemblyProps = {
   /** stage variant에서만 의미가 있다. 정면 Crown controller의 click handler. */
   onOpenAllFaces?: () => void
   /**
+   * scroll 연출이 꺼진 화면의 정적 Watch(hero / about / contact)에서 옆 Crown이 ALL FACES를 열지.
+   * 연출이 켜져 있으면 FACES 이후의 정면 controller가 그 역할을 하므로 필요 없다.
+   */
+  crownOpensAllFaces?: boolean
+  /**
    * 자기 Crown을 그릴지. Contact Watch는 scroll 연출이 켜져 있으면 Crown을 갖지 않는다 —
    * FACES부터 따라온 global Crown(같은 DOM)이 socket 자리로 돌아와 결합한다(useContactScene).
    */
@@ -37,7 +42,12 @@ type WatchAssemblyProps = {
  * 내부 좌표계는 Figma Hero 기준인 600 x 760이다.
  * About(480 x 608)은 --wu에 0.8을 곱해 같은 좌표계를 그대로 쓴다.
  */
-export default function WatchAssembly({ variant, onOpenAllFaces, withCrown = true }: WatchAssemblyProps) {
+export default function WatchAssembly({
+  variant,
+  onOpenAllFaces,
+  withCrown = true,
+  crownOpensAllFaces = false,
+}: WatchAssemblyProps) {
   // Hero / About이 같은 source를 쓴다. 값이 새로 만들어지지 않고 그대로 이어진다.
   const currentTime = useCurrentTime()
 
@@ -78,7 +88,7 @@ export default function WatchAssembly({ variant, onOpenAllFaces, withCrown = tru
         FACES로 넘어가면서 이 묶음 전체가 한 번에 빠진다(안쪽 요소들의 Hero -> About morph와 분리).
         Contact는 About의 배치를 그대로 쓰고, 제목만 NEXT FACE다(WatchAssembly.css).
       */}
-      <div className="watch__face">
+      <div className="watch__face" aria-hidden={variant === 'contact' ? true : undefined}>
         <div className="watch__content">
           <div className="watch__top">
             {/*
@@ -115,12 +125,20 @@ export default function WatchAssembly({ variant, onOpenAllFaces, withCrown = tru
       </div>
 
       {/*
+        About -> FACES 노출이 가장 밝을 때 display 유리 위를 한 번 지나가는 반사(useScrollScene).
+        display의 둥근 사각형 안에만 있고, 화면 글자 / 영상 위에 screen으로 얹힌다 — 화면 자체를 밝히지 않는다.
+      */}
+      {variant === 'stage' && <div className="watch-display-transition-reflection" />}
+
+      {/*
         Digital Crown. Hero / About에서는 Watch에 붙어 함께 옮겨지고 커진다.
         FACES로 넘어가면서 .watch__crown 자체가 화면 오른쪽 끝 controller 자리로 옮겨간다(useScrollScene).
         page scroll에는 측면 knurl 홈만 굴러가며 반응한다(DigitalCrown).
         Watch 전환 / Crown 위치 / wheel 움직임은 전부 서로 다른 element에서 일어난다.
       */}
-      {withCrown && <DigitalCrown onOpenAllFaces={onOpenAllFaces} />}
+      {withCrown && (
+        <DigitalCrown onOpenAllFaces={onOpenAllFaces} staticOpen={variant !== 'stage' && crownOpensAllFaces} />
+      )}
     </div>
   )
 }

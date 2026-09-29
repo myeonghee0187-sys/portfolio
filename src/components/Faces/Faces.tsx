@@ -111,12 +111,17 @@ export default function Faces({ interactive, ready }: FacesProps) {
         {interactive ? (
           <div className="faces__scene">
             <canvas ref={canvasRef} className="faces__canvas" aria-hidden="true" />
+            {/*
+              Watch display 자리의 실제 DOM hit area. WebGL mesh의 pointer 판정에 기대지 않는다.
+              위치 / 크기는 매 frame display와 같게, href / 이름은 display가 채우고 있는 project로
+              useFacesInteraction이 직접 쓴다(처음 값은 F45). 짧게 누르면 click, 7px 넘게 움직이면 drag다.
+            */}
             <a
               className="faces__display-link"
-              href={FACE_PROJECTS[active].liveUrl}
+              href={FACE_PROJECTS[0].liveUrl}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={`${FACE_PROJECTS[active].title} 완성 웹사이트 보기`}
+              aria-label={`${FACE_PROJECTS[0].title} 완성 웹사이트 보기`}
               aria-disabled="true"
               tabIndex={-1}
               draggable={false}

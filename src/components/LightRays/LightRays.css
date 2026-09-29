@@ -1,0 +1,14 @@
+/* React Bits Light Rays의 container 규칙 그대로(z-index는 쓰는 곳이 정한다). */
+.light-rays-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.light-rays-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

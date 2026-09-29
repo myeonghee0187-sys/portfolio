@@ -1,10 +1,12 @@
 /*
  * Contact = Portfolio의 마지막 장면(ending scene + footer).
  *
- *   왼쪽        큰 문장 -> START A CONVERSATION -> 이메일 (화면 세로 가운데)
+ *   왼쪽        큰 문장 -> START A CONVERSATION -> 이메일(복사) (화면 세로 가운데)
  *   오른쪽 가운데 Apple Watch (마지막 visual, 문장보다 한 단계 아래)
  *   바닥        SONG MYEONG HEE / © 2026
  * 가로 grid는 Header / Hero와 같다(1680 기준 폭, 가운데 정렬).
+ *
+ * 층(아래 -> 위): 바탕 Carbon -> Light Rays(0) -> 가독성 mask(0) -> 문장(1) -> Watch(1) -> global Crown(fixed 3)
  */
 .contact {
   --contact-watch-w: clamp(420px, 31vw, 620px);
@@ -19,6 +21,32 @@
   background: var(--color-carbon-black);
   color: #f3f4f4;
   scroll-margin-top: var(--header-total);
+}
+
+/*
+ * React Bits Light Rays. 문장보다 강하게 보이지 않도록 전체를 0.5로 둔다(진입할 때 0 -> 0.5, useContactScene).
+ * 자체 이동 animation은 없다 — 빛줄기가 원본 shader 안에서 천천히 일렁일 뿐이다.
+ */
+.contact-light-rays {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 왼쪽 typography 쪽만 가라앉혀 문장 가독성을 지킨다. 오른쪽(Watch 쪽)은 빛이 거의 그대로다. */
+.contact__mask {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgb(8 9 10 / 0.62) 0%,
+    rgb(8 9 10 / 0.18) 48%,
+    rgb(8 9 10 / 0.06) 100%
+  );
 }
 
 .contact__inner {
@@ -40,13 +68,13 @@
   padding: var(--header-total) 0 96px;
 }
 
-/* 효과 없이 크기와 여백만으로 화면을 잡는다(gradient / glow / shadow 없음). 줄간격은 실제 line-height 140%. */
+/* 효과 없이 크기와 여백만으로 화면을 잡는다(gradient / glow / shadow 없음). 줄간격은 실제 line-height 135%. */
 .contact__title {
   margin: 0;
   font-family: 'Anton', sans-serif;
   font-weight: 400;
   font-size: clamp(92px, 7.3vw, 140px);
-  line-height: 1.4;
+  line-height: 1.35;
   letter-spacing: -0.005em;
   color: #f3f4f4;
 }
@@ -71,7 +99,7 @@
   gap: 12px;
   min-height: 60px;
   padding: 0 28px;
-  border: 1px solid rgb(212 229 239 / 0.32);
+  border: 1px solid #186de5;
   border-radius: 12px;
   background: none;
   color: #f3f4f4;
@@ -85,21 +113,26 @@
 }
 
 .contact__cta:hover {
-  border-color: rgb(212 229 239 / 0.62);
-  background: rgb(212 229 239 / 0.05);
+  background: rgb(24 109 229 / 0.1);
   transform: translateY(-1px);
 }
 
-/* 이메일: 글자 링크 하나. 밑줄은 주소에만(화살표까지 이으면 두 줄로 끊겨 보인다). */
+/*
+ * 이메일: 주소 + 복사 icon 한 줄이 button 하나다(메일 앱으로 가지 않는다).
+ * 밑줄은 주소에만(icon까지 이으면 두 줄로 끊겨 보인다). 복사되면 icon이 1.2초 동안 Check로 바뀐다.
+ */
 .contact__email {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
   font: 500 19px/1 'Inter', sans-serif;
   letter-spacing: 0.02em;
   color: var(--contact-titanium);
-  text-decoration: none;
+  cursor: pointer;
   transition:
     color 220ms ease,
     transform 220ms ease;
@@ -122,9 +155,59 @@
   text-decoration-color: rgb(212 229 239 / 0.55);
 }
 
+/* Copy / Check 두 icon이 같은 자리에 겹쳐 있고 opacity / scale만 180ms 동안 바뀐다. */
+.contact__email-icon {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.contact__email-icon svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition:
+    opacity 180ms ease,
+    transform 180ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.contact__email-check {
+  opacity: 0;
+  transform: scale(0.8);
+  stroke: #d4e5ef;
+}
+
+.contact__email[data-copied] .contact__email-copy {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.contact__email[data-copied] .contact__email-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* 복사 결과를 스크린리더에만 알린다. */
+.contact__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .contact__cta:focus-visible,
 .contact__email:focus-visible {
-  outline: 1px solid rgb(212 229 239 / 0.7);
+  outline: 1px solid #186de5;
   outline-offset: 6px;
 }
 
@@ -136,6 +219,7 @@
   position: absolute;
   top: 50%;
   right: clamp(72px, 6.25vw, 120px);
+  z-index: 1;
   width: var(--contact-watch-w);
   transform: translateY(-50%);
 }
