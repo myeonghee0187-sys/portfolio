@@ -27,24 +27,13 @@ export default function Journey({ interactive, ready }: JourneyProps) {
             card 안쪽 구간은 불투명한 surface 아래로 지나간다.
           */}
           {/*
-            하루의 시간(14 : 10 -> 17 : 00). line 옆 여백의 배경 글자다 — 빛이 그 구간에 다가오면 아주 옅게 나타나
-            지나간 흔적처럼 남는다(--time-o, useJourneyInteraction). 보조기술에는 읽히지 않는다.
+            하루의 시간(14 : 10 -> 17 : 00). line에 붙은 작은 time marker다 — 빛이 그 구간을 지나가며 아주 옅게 남기는
+            흔적이다(--time-o). 자리(--node-x / --node-y)는 실제 경로를 재서 정한다(useJourneyInteraction). 보조기술에는 읽히지 않는다.
           */}
           {JOURNEY_TIMES.map((t) => (
-            <div
-              key={t.time}
-              className={`journey__time journey__time--${t.style} journey__time--${t.side}`}
-              style={{ '--node-x': t.x, '--node-y': t.y } as CSSProperties}
-              aria-hidden="true"
-            >
-              {t.style === 'arc' && (
-                <svg className="journey__time-arc" viewBox="0 0 200 200" focusable="false">
-                  <circle cx="100" cy="100" r="96" pathLength="360" />
-                </svg>
-              )}
-              {t.style === 'ticks' && <span className="journey__time-ticks" />}
+            <div key={t.time} className={`journey__time journey__time--${t.side}`} aria-hidden="true">
+              <span className="journey__time-tick" />
               <span className="journey__time-value">{t.time}</span>
-              {t.style === 'timecode' && <span className="journey__time-ruler" />}
             </div>
           ))}
           <svg className="journey__path" viewBox={`0 0 1920 ${JOURNEY_WORLD_HEIGHT}`} preserveAspectRatio="xMidYMin meet" aria-hidden="true" focusable="false">

@@ -257,6 +257,8 @@ export default function useFacesInteraction({
       if (link && shown !== lastShown) {
         link.href = FACE_PROJECTS[shown].liveUrl
         link.setAttribute('aria-label', `${FACE_PROJECTS[shown].title} 완성 웹사이트 보기(새 탭)`)
+        // project별 CTA 대비 보정(JADUYA의 밝은 영상 위에서만 scrim을 조금 진하게, Faces.css).
+        if (ctaBar) ctaBar.dataset.projectId = FACE_PROJECTS[shown].id
         if (caseLink) {
           // Case Study 경로가 있는 project에서만 보인다. 없는 project에 가짜 링크를 두지 않는다.
           const path = FACE_PROJECTS[shown].caseStudyPath

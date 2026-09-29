@@ -128,6 +128,25 @@
   outline-offset: 2px;
 }
 
+/*
+ * JADUYA — 밝은 영상의 위쪽에서 CTA가 묻히지 않도록 이 project에서만 대비를 올린다(F45 / TCHAIKIM은 그대로).
+ * 층: 영상 -> 이 scrim(display 위쪽 72 ~ 100px, CTA bar의 배경) -> LIVE SITE / CASE STUDY. 영상 전체는 어둡게 하지 않는다.
+ */
+.faces__display-cta[data-project-id='jaduya'] {
+  height: clamp(72px, calc(var(--display-h, 400px) * 0.19), 100px);
+  background: linear-gradient(to bottom, rgb(8 9 10 / 0.62) 0%, rgb(8 9 10 / 0.32) 48%, transparent 100%);
+}
+
+.faces__display-cta[data-project-id='jaduya'] .faces__cta {
+  color: #f3f4f4;
+  opacity: 0.86;
+}
+
+.faces__display-cta[data-project-id='jaduya'] .faces__cta:hover,
+.faces__display-cta[data-project-id='jaduya'] .faces__cta:focus-visible {
+  opacity: 1;
+}
+
 /* 스크린리더용 프로젝트 목록. 화면에는 plane과 아래 metadata로만 보인다. */
 .faces__sr {
   position: absolute;

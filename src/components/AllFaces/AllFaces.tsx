@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { createPortal } from 'react-dom'
 import gsap from 'gsap'
 import { FACE_PROJECTS } from '../Faces/facesData'
-import { DESKTOP_PRESETS, MOBILE_PRESETS, MOBILE_QUERY } from './allFacesPresets'
+import { DESKTOP_PRESETS, MOBILE_PRESETS, MOBILE_QUERY, orbitOffset } from './allFacesPresets'
 import { getAllFacesPreset } from './allFacesStore'
 import './AllFaces.css'
 
@@ -10,11 +10,13 @@ import './AllFaces.css'
  * ALL FACES — Digital Crown을 누르면 열리는 전체 project 화면. 세 project를 고르는 "Watch face / dial" 선택 화면이다.
  *
  * 화면(overlay)은 고정된 한 장(100vh / 100dvh)이다 — world / drag / 관성 / floating이 없다.
- *   구도      미리 설계한 A / B / C 중 하나(allFacesPresets.ts). 여는 동작에서 한 번 고르고(allFacesStore),
+ *   그룹      세 dial은 흩어진 원 세 개가 아니라 하나의 face selector다. 화면 가운데의 shared orbit(얇은 원 하나)
+ *             위에 세 dial이 놓이고, 그 바깥을 눈금 arc ring이 한 번 더 두른다. 가운데에 03 PROJECT FACES.
+ *   구도      orbit 위의 자리만 다른 A / B / C(allFacesPresets.ts). 여는 동작에서 한 번 고르고(allFacesStore),
  *             열려 있는 동안은 바뀌지 않는다. 직전 구도는 다시 고르지 않는다.
- *   dial      이미지 / logo 없이 글자(FACE 01 · project 이름 · 설명 두 줄)와 Watch dial 테두리(눈금 rim)뿐이다.
- *   motion    dial 위치와 글자는 움직이지 않는다. 바깥 rim만 30~45초에 한 바퀴 아주 느리게 돈다(reduced motion에서는 멈춘다).
- *   hover     dial이 1.04배, rim이 Electric Ice로 선명해지고 나머지 dial은 옅어진다.
+ *   dial      이미지 / logo 없이 글자(FACE 01 · project 이름 · 설명 두 줄)와 옅은 눈금 rim(돌지 않는다)뿐이다.
+ *   motion    dial 위치 / 글자 / rim은 움직이지 않는다. 그룹의 바깥 arc ring만 60초에 한 바퀴 돈다(reduced motion에서는 멈춘다).
+ *   hover     dial이 1.04배, rim이 Electric Ice로 선명해지고 나머지 dial은 옅어진다. 이동(translate)은 없다.
  *   click     onProjectSelect(click / Enter). Case Study가 아직 없어서 지금은 연결돼 있지 않다(가짜 링크 없음).
  * 이 화면은 영상 / 이미지를 쓰지 않는다 — FACES section은 같은 FACE_PROJECTS의 media를 그대로 쓴다.
  */
@@ -26,14 +28,7 @@ const DIAL_LINES: Record<string, [string, string]> = {
   f45: ['RESPONSIVE WEB', 'REDESIGN'],
 }
 
-/** rim 한 바퀴 시간(s)과 방향. project마다 조금씩 다르다. */
-const RIM: Record<string, { duration: number; reverse?: boolean }> = {
-  tchaikim: { duration: 38 },
-  jaduya: { duration: 44, reverse: true },
-  f45: { duration: 34 },
-}
-
-/** 열릴 때 dial이 출발하는 거리(px, 30~50). 화면 가운데에서 바깥쪽으로 조금 밀린 자리에서 제자리로 온다. */
+/** 열릴 때 dial이 출발하는 거리(px, 30~50). 그룹 중심에서 바깥쪽으로 조금 밀린 자리에서 제자리로 온다. */
 const ENTER_DISTANCE = 40
 
 /** 뒤 page를 scroll시키는 키. button 위의 Space / Enter는 막지 않는다. */
@@ -53,13 +48,11 @@ type AllFacesProps = {
   onProjectSelect?: (projectId: string) => void
 }
 
-/** dial 중심에서 화면 가운데 반대쪽을 향한 ENTER_DISTANCE 길이의 출발 offset. */
-function enterOffset(center?: { cx: number; cy: number }) {
-  if (!center) return { x: 0, y: ENTER_DISTANCE }
-  const dx = center.cx - 0.5
-  const dy = center.cy - 0.5
-  const len = Math.hypot(dx, dy) || 1
-  return { x: (dx / len) * ENTER_DISTANCE, y: (dy / len) * ENTER_DISTANCE }
+/** 그룹 중심에서 dial 쪽(orbit 바깥쪽)을 향한 ENTER_DISTANCE 길이의 출발 offset. */
+function enterOffset(angle?: number) {
+  if (angle === undefined) return { x: 0, y: ENTER_DISTANCE }
+  const a = (angle * Math.PI) / 180
+  return { x: Math.cos(a) * ENTER_DISTANCE, y: Math.sin(a) * ENTER_DISTANCE }
 }
 
 export default function AllFaces({ open, onRequestClose, onClosed, onProjectSelect }: AllFacesProps) {
@@ -67,6 +60,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
   const rootRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
+  const orbitRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<(HTMLElement | null)[]>([])
   // 연 button(Crown). effect가 아니라 첫 render 때 잡는다 — effect는 두 번 돌 수 있고, 그때는 이미 CLOSE에 focus가 있다.
   const returnFocus = useRef<HTMLElement | null>(document.activeElement as HTMLElement | null)
@@ -78,7 +72,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
   const [scene] = useState(() => {
     const key = getAllFacesPreset()
     const mobile = window.matchMedia(MOBILE_QUERY).matches
-    return { key, centers: (mobile ? MOBILE_PRESETS : DESKTOP_PRESETS)[key] }
+    return { key, angles: (mobile ? MOBILE_PRESETS : DESKTOP_PRESETS)[key] }
   })
   const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -89,6 +83,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
     const tl = gsap.timeline()
     tl.fromTo(rootRef.current, { opacity: 0 }, { opacity: 1, duration: reduced ? 0.3 : 0.45, ease: 'power2.out' }, 0)
     tl.fromTo(barRef.current, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power1.out' }, reduced ? 0 : 0.15)
+    tl.fromTo(orbitRef.current, { opacity: 0 }, { opacity: 1, duration: reduced ? 0.3 : 0.9, ease: 'power2.out' }, 0.05)
     if (reduced) {
       tl.fromTo(items, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'none' }, 0.05)
     } else {
@@ -97,9 +92,9 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
         {
           opacity: 0,
           scale: 0.96,
-          // 화면 가운데에서 바깥쪽으로 ENTER_DISTANCE만큼 밀린 자리에서 출발해 구도의 자리에 정착한다.
-          x: (i: number) => enterOffset(scene.centers[projects[i].id]).x,
-          y: (i: number) => enterOffset(scene.centers[projects[i].id]).y,
+          // 그룹 중심에서 바깥쪽으로 ENTER_DISTANCE만큼 밀린 자리에서 출발해 orbit 위의 자리에 정착한다.
+          x: (i: number) => enterOffset(scene.angles[projects[i].id]).x,
+          y: (i: number) => enterOffset(scene.angles[projects[i].id]).y,
         },
         { opacity: 1, scale: 1, x: 0, y: 0, duration: 0.78, ease: 'power3.out', stagger: 0.07 },
         0.08,
@@ -207,7 +202,8 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
     }
   }, [projects])
 
-  const count = `${String(projects.length).padStart(2, '0')} PROJECTS`
+  const total = String(projects.length).padStart(2, '0')
+  const count = `${total} PROJECTS`
 
   return createPortal(
     <div
@@ -220,16 +216,25 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
       data-preset={scene.key}
     >
       <div className="all-faces__stage" data-hovered={hovered >= 0 ? 'true' : undefined}>
+        {/*
+          shared orbit. 세 dial을 하나로 묶는 층 — dial 중심을 지나는 얇은 원(고정)과, 그 바깥의 눈금 arc ring(60초에 한 바퀴).
+          가운데의 03 PROJECT FACES가 그룹의 기준점이다. 모두 장식이라 보조기술에는 읽히지 않는다.
+        */}
+        <div ref={orbitRef} className="all-faces__orbit" aria-hidden="true">
+          <span className="all-faces__orbit-path" />
+          <span className="all-faces__orbit-ring">
+            <span className="all-faces__orbit-ticks" />
+            <span className="all-faces__orbit-dot" />
+          </span>
+          <span className="all-faces__group-label">
+            <span>{total}</span>
+            <span>PROJECT FACES</span>
+          </span>
+        </div>
         {projects.map((project, i) => {
-          const center = scene.centers[project.id] ?? { cx: 0.5, cy: 0.5 }
-          const rim = RIM[project.id] ?? { duration: 40 }
+          const offset = orbitOffset(scene.angles[project.id] ?? 90 + i * 120)
           const [line1, line2] = DIAL_LINES[project.id] ?? [project.category, '']
-          const style = {
-            '--cx': center.cx,
-            '--cy': center.cy,
-            '--rim-duration': `${rim.duration}s`,
-            '--rim-direction': rim.reverse ? 'reverse' : 'normal',
-          } as CSSProperties
+          const style = { '--ox': offset.x, '--oy': offset.y } as CSSProperties
           return (
             <figure
               key={project.id}
@@ -247,7 +252,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
               onClick={() => onProjectSelect?.(project.id)}
             >
               {/*
-                project dial. 층: 몸체(Carbon / Titanium dark) -> 고정 외곽선 -> 도는 눈금 rim -> 글자(돌지 않는다).
+                project dial. 층: 몸체(Carbon / Titanium dark) -> 고정 외곽선 -> 옅은 눈금 rim -> 글자. 모두 돌지 않는다.
               */}
               <div className="all-faces__dial" aria-hidden="true">
                 <span className="all-faces__rim" />

@@ -2,6 +2,7 @@
  * ALL FACES — Crown을 누르면 page 위에 여는 전체 project 화면(FLAT PROJECT WORLD).
  * Header / page / Watch / Crown보다 위, Intro(100) / 문의 modal(200)보다 아래.
  * 바탕은 Carbon Black 하나이고 Watch는 보이지 않는다. project는 글자 + 눈금 rim의 "project dial"이고 이미지 / 영상은 없다.
+ * 세 dial은 화면 가운데의 shared orbit 위에 놓인 하나의 face selector다(흩어진 원 세 개가 아니다).
  *
  * overlay는 언제나 정확히 한 화면이다. overlay 자체는 늘어나지 않고(overflow hidden),
  * 문서에 세로 scroll을 더하지 않는다. 모바일은 브라우저 UI 높이를 따라가도록 100dvh(없으면 100vh).
@@ -24,24 +25,117 @@
   opacity: 0;
 }
 
-/* 세 dial이 놓이는 면(화면 전체). 이 면도 dial의 자리도 움직이지 않는다 — drag / 관성 / floating 없음. */
+/*
+ * 세 dial이 놓이는 면(화면 전체). 이 면도 dial의 자리도 움직이지 않는다 — drag / 관성 / floating 없음.
+ *   --d       dial 지름. 폭 기준 19vw(280 ~ 360px)이고, 낮은 화면에서는 높이 33vh를 넘지 않는다
+ *   --gx/gy   그룹(shared orbit)의 중심. 화면 가운데, 위쪽 bar만큼 조금 아래
+ *   --orbit   dial 중심이 놓이는 orbit 반지름(dial 지름 x 0.74, allFacesPresets.ORBIT_RADIUS와 같은 값)
+ *   --ring    바깥 눈금 arc ring 반지름. dial 바깥 끝보다 조금 더 바깥이다
+ */
 .all-faces__stage {
+  --d: clamp(280px, min(19vw, 33vh), 360px);
+  --gx: 50%;
+  --gy: calc(50% + 24px);
+  --orbit: calc(var(--d) * 0.74);
+  --ring: calc(var(--d) * 1.32);
   position: absolute;
   inset: 0;
 }
 
+/* shared orbit 층. 그룹 중심에 놓인 0 x 0 기준점이고, 안의 원들은 이 점을 중심으로 그린다. dial보다 뒤. */
+.all-faces__orbit {
+  position: absolute;
+  top: var(--gy);
+  left: var(--gx);
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.all-faces__orbit > * {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+}
+
+/* dial 중심을 지나는 얇은 원 하나(고정). dial 사이에서만 보이며 세 dial을 한 줄로 잇는다. */
+.all-faces__orbit-path {
+  width: calc(var(--orbit) * 2);
+  height: calc(var(--orbit) * 2);
+  box-sizing: border-box;
+  border: 1px solid rgb(212 229 239 / 0.12);
+  border-radius: 50%;
+}
+
 /*
- * project 하나(dial 하나). 자리는 열 때 고른 구도의 dial 중심(--cx / --cy, 화면 비율, allFacesPresets.ts)이다.
+ * 바깥 arc ring — 그룹을 두르는 원의 세 조각(arc)과 그 바깥의 잔눈금, 12시 자리의 점 하나.
+ * 이 층만 60초에 한 바퀴 돈다(그룹 전체의 아주 작은 생동감). dial / 글자 / orbit path는 움직이지 않는다.
+ */
+.all-faces__orbit-ring {
+  width: calc(var(--ring) * 2);
+  height: calc(var(--ring) * 2);
+  box-sizing: border-box;
+  border: 1px solid rgb(212 229 239 / 0.14);
+  border-radius: 50%;
+  -webkit-mask: conic-gradient(#000 0 40deg, transparent 40deg 100deg, #000 100deg 190deg, transparent 190deg 230deg, #000 230deg 280deg, transparent 280deg 320deg, #000 320deg);
+  mask: conic-gradient(#000 0 40deg, transparent 40deg 100deg, #000 100deg 190deg, transparent 190deg 230deg, #000 230deg 280deg, transparent 280deg 320deg, #000 320deg);
+  animation: all-faces-orbit 64s linear infinite;
+}
+
+.all-faces__orbit-ticks {
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from -0.2deg, rgb(212 229 239 / 0.1) 0 0.4deg, transparent 0.4deg 4deg);
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 7px), #000 calc(100% - 7px));
+  mask: radial-gradient(closest-side, transparent calc(100% - 7px), #000 calc(100% - 7px));
+}
+
+.all-faces__orbit-dot {
+  position: absolute;
+  top: -2.5px;
+  left: calc(50% - 2px);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgb(212 229 239 / 0.45);
+}
+
+@keyframes all-faces-orbit {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* 그룹의 기준점. 세 dial 가운데의 작은 두 줄(03 / PROJECT FACES) — 가운데 빈자리에 들어가는 폭이다. */
+.all-faces__group-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-indent: 0.1em;
+  white-space: nowrap;
+  color: rgb(212 229 239 / 0.42);
+}
+
+/*
+ * project 하나(dial 하나). 자리는 그룹 중심에서 orbit 위의 한 점(--ox / --oy, dial 지름 배수, allFacesPresets.ts)이다.
  * 열릴 때의 motion만 이 element에 잠깐 걸린다(끝나면 지운다). hover 크기는 안쪽 __dial이 맡는다.
  * 네모난 box의 모서리는 hover / click 대상이 아니다 — pointer는 원(__dial)만 받는다.
  */
 .all-faces__project {
-  --size: clamp(280px, 19vw, 360px);
   position: absolute;
-  top: calc(var(--cy) * 100% - var(--size) / 2);
-  left: calc(var(--cx) * 100% - var(--size) / 2);
-  width: var(--size);
-  height: var(--size);
+  top: calc(var(--gy) + var(--oy) * var(--d) - var(--d) / 2);
+  left: calc(var(--gx) + var(--ox) * var(--d) - var(--d) / 2);
+  width: var(--d);
+  height: var(--d);
   margin: 0;
   outline: none;
   pointer-events: none;
@@ -54,9 +148,9 @@
   opacity: 1;
 }
 
-/* 한 dial에 올라가 있으면 나머지는 한 걸음 물러난다. */
+/* 한 dial에 올라가 있으면 나머지는 한 걸음 물러난다(자리는 그대로, opacity만). */
 .all-faces__stage[data-hovered] .all-faces__project:not(.is-hovered) {
-  opacity: 0.5;
+  opacity: 0.52;
 }
 
 /*
@@ -64,7 +158,7 @@
  * hover: 1.04배, 몸체가 아주 조금 밝아지고 외곽선이 선명해진다(300ms power2.out).
  */
 .all-faces__dial {
-  --rim-color: rgb(164 169 173 / 0.5);
+  --rim-color: rgb(164 169 173 / 0.32);
   position: relative;
   box-sizing: border-box;
   width: 100%;
@@ -96,9 +190,8 @@
 }
 
 /*
- * 도는 눈금 rim(dial 바깥 띠). 60개 잔눈금 + 30°마다 조금 긴 시 눈금 + 12시 자리의 Ice 점 하나.
- * 단색 테두리만 돌면 회전이 보이지 않으므로 눈금과 한 점으로 "가만히 보면 아주 조금 살아 있다" 정도만 보이게 한다.
- * 30~45초에 한 바퀴, linear, 끝없이. 글자는 이 layer 밖이라 돌지 않는다.
+ * 눈금 rim(dial 바깥 띠). 60개 잔눈금 + 30°마다 조금 긴 시 눈금 + 12시 자리의 점 하나.
+ * 돌지 않는다 — 세 dial이 각자 다른 속도로 돌면 그룹이 흩어져 보인다. 움직임은 그룹의 바깥 arc ring 하나만 맡는다.
  */
 .all-faces__rim {
   position: absolute;
@@ -106,21 +199,13 @@
   border-radius: 50%;
   color: var(--rim-color);
   background:
-    radial-gradient(circle at 50% 2.2%, #d4e5ef 0 1.6px, transparent 2.2px),
+    radial-gradient(circle at 50% 2.2%, rgb(212 229 239 / 0.6) 0 1.6px, transparent 2.2px),
     repeating-conic-gradient(from -0.6deg, currentColor 0 1.2deg, transparent 1.2deg 30deg),
-    repeating-conic-gradient(from -0.25deg, rgb(164 169 173 / 0.35) 0 0.5deg, transparent 0.5deg 6deg);
+    repeating-conic-gradient(from -0.25deg, rgb(164 169 173 / 0.2) 0 0.5deg, transparent 0.5deg 6deg);
   -webkit-mask: radial-gradient(circle closest-side, transparent 0 88%, #000 88.5% 100%);
   mask: radial-gradient(circle closest-side, transparent 0 88%, #000 88.5% 100%);
-  animation: all-faces-rim var(--rim-duration, 40s) linear infinite;
-  animation-direction: var(--rim-direction, normal);
   transition: color 300ms ease;
   pointer-events: none;
-}
-
-@keyframes all-faces-rim {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 /* 글자. 돌지 않는다. FACE 01(Geist) -> project 이름(Anton) -> 설명 두 줄. */
@@ -229,8 +314,17 @@
 }
 
 @media (max-width: 760px) {
-  .all-faces__project {
-    --size: clamp(130px, 38vw, 170px);
+  /* 모바일은 작은 삼각 cluster. 가운데가 좁아 03 PROJECT FACES는 그룹 아래(ring 바로 밑)에 둔다. */
+  .all-faces__stage {
+    --d: clamp(130px, 38vw, 170px);
+    --gy: calc(50% + 8px);
+    --ring: calc(var(--d) * 1.28);
+  }
+
+  .all-faces__group-label {
+    top: calc(var(--ring) + 22px);
+    flex-direction: row;
+    gap: 0.5em;
   }
 
   .all-faces__rim {
@@ -268,8 +362,8 @@
     transition: none;
   }
 
-  /* rim도 돌지 않는다. dial은 완전히 정지해 있다. */
-  .all-faces__rim {
+  /* 그룹의 arc ring도 돌지 않는다. 화면 전체가 정지해 있다. */
+  .all-faces__orbit-ring {
     animation: none;
   }
 }
