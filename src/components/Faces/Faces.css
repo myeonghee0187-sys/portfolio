@@ -86,7 +86,12 @@
   pointer-events: auto;
 }
 
+/*
+ * 글자 CTA 하나(LIVE SITE ↗ / CASE STUDY ↗). 밑줄은 글자와 화살표에 따로 긋지 않고, anchor 전체 폭에 선 하나(::after)로
+ * 긋는다 — 글자 / 간격 / 화살표 아래가 끊기지 않고 한 줄로 이어진다. 평소에는 옅고, hover / focus에서 글자와 같은 색으로 선명해진다.
+ */
 .faces__cta {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -109,18 +114,32 @@
   display: none;
 }
 
-.faces__cta span {
+.faces__cta-arrow {
   font-size: 1.15em;
   letter-spacing: 0;
+}
+
+/* 한 줄 밑줄. 좌우 padding 안쪽, 글자 아래 5px. 색은 글자색(currentColor) 그대로이고 선명도만 바뀐다. */
+.faces__cta::after {
+  content: '';
+  position: absolute;
+  top: calc(50% + 0.6em + 4px);
+  right: 4px;
+  left: 4px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.45;
+  transition: opacity 220ms ease;
 }
 
 .faces__cta:hover,
 .faces__cta:focus-visible {
   opacity: 1;
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 5px;
-  text-decoration-color: rgb(212 229 239 / 0.6);
+}
+
+.faces__cta:hover::after,
+.faces__cta:focus-visible::after {
+  opacity: 1;
 }
 
 .faces__cta:focus-visible {

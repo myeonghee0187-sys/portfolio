@@ -27,13 +27,23 @@ export default function Journey({ interactive, ready }: JourneyProps) {
             card 안쪽 구간은 불투명한 surface 아래로 지나간다.
           */}
           {/*
-            하루의 시간(14 : 10 -> 17 : 00). line에 붙은 작은 time marker다 — 빛이 그 구간을 지나가며 아주 옅게 남기는
-            흔적이다(--time-o). 자리(--node-x / --node-y)는 실제 경로를 재서 정한다(useJourneyInteraction). 보조기술에는 읽히지 않는다.
+            하루의 시간(14 : 10 -> 17 : 00). line 옆 여백에 크고 희미하게 깔리는 background time marker —
+            Geist 시간 + 아래의 짧은 선과 순번(01 ~ 04). 빛이 그 자리에 오면 드러난다(--time-r, useJourneyInteraction).
+            자리(--node-x / --node-y)는 실제 경로를 재서 정한다. 문서형(static)에서는 card 사이 흐름에 놓인다(--node-order).
+            보조기술에는 읽히지 않는다.
           */}
-          {JOURNEY_TIMES.map((t) => (
-            <div key={t.time} className={`journey__time journey__time--${t.side}`} aria-hidden="true">
-              <span className="journey__time-tick" />
+          {JOURNEY_TIMES.map((t, k) => (
+            <div
+              key={t.time}
+              className={`journey__time journey__time--${t.side}`}
+              style={{ '--node-order': t.from * 2 + 1 } as CSSProperties}
+              aria-hidden="true"
+            >
               <span className="journey__time-value">{t.time}</span>
+              <span className="journey__time-code">
+                <span className="journey__time-rule" />
+                <span>{String(k + 1).padStart(2, '0')}</span>
+              </span>
             </div>
           ))}
           <svg className="journey__path" viewBox={`0 0 1920 ${JOURNEY_WORLD_HEIGHT}`} preserveAspectRatio="xMidYMin meet" aria-hidden="true" focusable="false">
@@ -44,7 +54,7 @@ export default function Journey({ interactive, ready }: JourneyProps) {
             const Title = i === 0 ? 'h2' : 'h3'
             return (
               <article key={node.id} className="journey__node" data-node={node.id}
-                style={{ '--node-x': node.position.x, '--node-y': node.position.y } as CSSProperties}>
+                style={{ '--node-x': node.position.x, '--node-y': node.position.y, '--node-order': i * 2 } as CSSProperties}>
                 <div className={i === 0 ? 'journey__intro-entry' : undefined}>
                   {/*
                     card 바탕. 경로 위, card 테두리 / 글자 아래에 놓이는 불투명한 면이다(opacity / blur 없음).
