@@ -29,10 +29,17 @@ const SMOOTHING = 0.14
  * 이어서 Contact의 Light Rays가 0.35에서 출발해 0.5까지 올라간다(useContactScene).
  */
 /**
- * Journey 시간 글자의 opacity. 빛이 from card를 떠나 구간 가운데에 올 때까지 0 -> .08,
- * to card에 닿을 때까지 .08 -> .11. 그 뒤로는 .11로 남는다(지나간 시간의 흔적). 되감으면 같은 값을 거꾸로 지난다.
+ * Journey time marker의 opacity. 빛이 from card를 떠나 marker 자리에 올 때까지 0 -> .08,
+ * to card에 닿을 때까지 .08 -> .12. 그 뒤로는 .12로 남는다(빛이 지나간 흔적). 되감으면 같은 값을 거꾸로 지난다.
  */
-const TIME_TRACE = { approach: 0.08, passed: 0.11 }
+const TIME_TRACE = { approach: 0.08, passed: 0.12 }
+
+/**
+ * time marker 자리(화면 px). marker 상자와 line의 가장 가까운 거리가 gap(30 ~ 42) 안에 들어오게 둔다 —
+ * 사선 구간에서는 가로로 더 떨어뜨려야 같은 거리가 된다. card와는 card만큼, 화면 가장자리와는 edge만큼 떨어진다.
+ * 그중 card에서 가장 먼(여백 한가운데) 자리를 고른다 — card 옆이 아니라 두 card 사이 line 구간의 여백에 적힌다.
+ */
+const MARKER = { gap: [30, 42] as const, card: 48, edge: 24 }
 
 const CONTACT_AMBIENT: ReadonlyArray<readonly [number, number]> = [
   [0.78, 0],
@@ -220,7 +227,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
         const t = JOURNEY_TIMES[k]
         if (!t) return
         const start = m[t.from]
-        const mid = (m[t.from] + m[t.to]) / 2
+        const mid = m[t.from] + (m[t.to] - m[t.from]) * (Number(el.dataset.beside) || 0.5)
         const opacity = piecewise([[start, 0], [mid, TIME_TRACE.approach], [m[t.to], TIME_TRACE.passed]], p).toFixed(3)
         if (timeWritten.get(el) === opacity) return
         timeWritten.set(el, opacity)
@@ -298,6 +305,81 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       return hits
     }
 
+    /**
+     * time marker 자리. 각 marker가 붙는 line 구간(빛이 from card에 닿는 곳 ~ to card에 닿는 곳)을 따라가며
+     * marker 상자를 line의 side 쪽에 GAP만큼 떨어뜨려 놓아 보고, line / card / 화면 가장자리에서 충분히 떨어진 자리 중
+     * 여백 구간의 가운데에 가장 가까운 점을 고른다. refresh마다 경로와 함께 다시 잰다(scroll 중에는 재지 않는다).
+     */
+    const placeTimes = (boxes: Box[], hits: number[], total: number, scale: number) => {
+      const step = 4
+      const samples: (Point & { s: number })[] = []
+      for (let s = 0; s <= total; s += step) {
+        const pt = active.getPointAtLength(s)
+        samples.push({ x: pt.x, y: pt.y, s })
+      }
+      const u = (px: number) => px / scale
+      const inCard = (x0: number, x1: number, y0: number, y1: number, pad: number) => boxes.some(b =>
+        x1 > b.x - b.hw - pad && x0 < b.x + b.hw + pad && y1 > b.y - b.hh - pad && y0 < b.y + b.hh + pad)
+      // 화면에 보이는 line(card 밖). card 아래로 지나가는 부분은 marker와의 거리를 잴 때 세지 않는다.
+      const visible = samples.filter(q => !inCard(q.x, q.x, q.y, q.y, 0))
+      times.forEach((el, k) => {
+        const t = JOURNEY_TIMES[k]
+        if (!t) return
+        const w = u(el.offsetWidth), h = u(el.offsetHeight)
+        const range = samples.filter(p => p.s > hits[t.from] && p.s < hits[t.to])
+        // card 밖으로 나온 line 구간과 그 가운데(자리가 여럿이면 가운데에 가까운 쪽).
+        const outside = range.filter(p => !inCard(p.x, p.x, p.y, p.y, 0))
+        const middle = outside.length ? (outside[0].s + outside[outside.length - 1].s) / 2 : (hits[t.from] + hits[t.to]) / 2
+        const lineDistance = (x0: number, x1: number, y0: number, y1: number) => {
+          let d = Infinity
+          for (const q of visible) {
+            if (Math.abs(q.y - (y0 + y1) / 2) > h + u(MARKER.gap[1]) * 2) continue
+            d = Math.min(d, Math.hypot(Math.max(x0 - q.x, 0, q.x - x1), Math.max(y0 - q.y, 0, q.y - y1)))
+          }
+          return d
+        }
+        const cardDistance = (x0: number, x1: number, y0: number, y1: number) => Math.min(...boxes.map(b =>
+          Math.hypot(Math.max(b.x - b.hw - x1, 0, x0 - b.x - b.hw), Math.max(b.y - b.hh - y1, 0, y0 - b.y - b.hh))))
+        type Spot = { x: number; y: number; s: number; score: number }
+        const search = (cardPad: number, gapMax: number, dir: 1 | -1) => {
+          let best: Spot | null = null
+          const free = outside.filter(p => !inCard(p.x, p.x, p.y, p.y, u(cardPad)))
+          for (let i = 0; i < free.length; i += 2) {
+            const p = free[i]
+            // line에서 side 쪽으로 조금씩 떨어뜨려 보며 상자와 line의 거리가 처음 gap 안에 들어오는 자리를 찾는다.
+            for (let g = u(MARKER.gap[0]); g < u(160); g += u(4)) {
+              const x0 = dir > 0 ? p.x + g : p.x - g - w
+              const x1 = x0 + w, y0 = p.y - h / 2, y1 = p.y + h / 2
+              const d = lineDistance(x0, x1, y0, y1)
+              if (d < u(MARKER.gap[0])) continue
+              if (d > u(gapMax)) break
+              if (x0 < u(MARKER.edge) || x1 > 1920 - u(MARKER.edge)) break
+              const cd = cardDistance(x0, x1, y0, y1)
+              if (cd < u(cardPad)) break
+              // 여백 한가운데일수록(card에서 멀수록) 좋다. 충분히 멀면(160px) 구간 가운데에 가까운 쪽.
+              const score = Math.min(cd, u(160)) * 1000 - Math.abs(p.s - middle)
+              if (!best || score > best.score) best = { x: dir > 0 ? x0 : x1, y: p.y, s: p.s, score }
+              break
+            }
+          }
+          return best
+        }
+        // 작은 데스크톱에서는 card가 여백을 거의 다 차지한다. 그때만 card / line과의 거리를 조금씩 좁혀 다시 찾는다.
+        const side = t.side === 'right' ? 1 : -1
+        const best = search(MARKER.card, MARKER.gap[1], side) ?? search(20, MARKER.gap[1], side) ?? search(12, 56, side)
+        el.hidden = !best
+        // 어디에도 들어갈 자리가 없으면(1024 x 768의 FIGMA DESIGN -> FRONT - END처럼 card 사이가 거의 붙은 구간)
+        // card 위에 겹쳐 적지 않고 그 marker만 쉰다.
+        if (!best) return
+        const at = best
+        el.style.setProperty('--node-x', at.x.toFixed(1))
+        el.style.setProperty('--node-y', at.y.toFixed(1))
+        // 빛이 marker 옆을 지나는 순간(구간 안의 비율). 여기서 opacity가 .08에 닿는다.
+        const beside = best.s
+        el.dataset.beside = String((beside - hits[t.from]) / Math.max(1, hits[t.to] - hits[t.from]))
+      })
+    }
+
     const rebuildPath = () => {
       const scale = world.getBoundingClientRect().width / 1920
       if (!scale) return
@@ -308,7 +390,8 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       const L = total * scale
       geom.length = L
       // card가 켜지는 자리 = 빛이 그 card 테두리에 닿는 순간(경로 길이에 비례).
-      geom.marks = borderHits(boxes, total).map((at, i) =>
+      const hits = borderHits(boxes, total)
+      geom.marks = hits.map((at, i) =>
         i === 0 ? LINE_FROM : LINE_FROM + (at / total) * (LINE_TO - LINE_FROM))
       const header = document.querySelector('.site-header')?.getBoundingClientRect().height ?? 0
       const unit = stage.clientWidth / 1920
@@ -327,6 +410,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       lastY = ''
       lastOffset = ''
       lastAmbient = ''
+      placeTimes(boxes, hits, total, scale)
       if (import.meta.env.DEV) {
         stage.dataset.line = JSON.stringify({ length: +L.toFixed(1), marks: geom.marks.map(v => +v.toFixed(4)) })
       }
@@ -413,7 +497,13 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       stage.style.removeProperty('--contact-ambient')
       active.style.removeProperty('stroke-dasharray')
       active.style.removeProperty('stroke-dashoffset')
-      for (const el of times) el.style.removeProperty('--time-o')
+      for (const el of times) {
+        el.style.removeProperty('--time-o')
+        el.style.removeProperty('--node-x')
+        el.style.removeProperty('--node-y')
+        delete el.dataset.beside
+        el.hidden = false
+      }
       for (const node of nodes) {
         node.style.removeProperty('--node-in')
         node.style.removeProperty('--node-out')

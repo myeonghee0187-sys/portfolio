@@ -358,18 +358,19 @@
 }
 
 /*
- * 하루의 시간(14 : 10 / 15 : 00 / 16 : 20 / 17 : 00). line 옆 여백의 배경 글자.
- * 같은 Geist 시간 언어를 쓰고 보조 graphic만 다르다(ghost / arc / timecode / ticks). 색은 Frost 하나이고
- * 전체 opacity(--time-o)는 빛의 진행으로만 정해진다 — 0 -> .08(구간에 다가옴) -> .11(지나감).
- * world 좌표의 한 점(--node-x / --node-y)이 글자의 중심이다. card / line 뒤에 깔린다.
+ * 하루의 시간(14 : 10 / 15 : 00 / 16 : 20 / 17 : 00). line에 붙은 작은 time marker — 짧은 hairline 하나와 Geist 시간.
+ * (--node-x / --node-y)는 line에서 MARKER_GAP만큼 떨어진 점이고, marker는 그 점에서 line 반대쪽으로 적힌다
+ * (right: 점에서 오른쪽으로, left: 점에서 왼쪽으로). 색은 Frost 하나, 전체 opacity(--time-o)는 빛의 진행으로만
+ * 정해진다 — 0 -> .08(빛이 다가옴) -> .12(지나간 흔적). card / line 뒤에 깔린다.
  */
 .journey__time {
   position: absolute;
-  left: calc(var(--node-x) * var(--ju));
-  top: calc(var(--node-y) * var(--ju));
-  display: grid;
-  place-items: center;
-  transform: translate(-50%, -50%);
+  left: calc(var(--node-x, 0) * var(--ju));
+  top: calc(var(--node-y, 0) * var(--ju));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translateY(-50%);
   color: #d4e5ef;
   opacity: var(--time-o, 0);
   pointer-events: none;
@@ -377,69 +378,28 @@
   will-change: opacity;
 }
 
-.journey__time > * {
-  grid-area: 1 / 1;
+/* 들어갈 여백이 없는 작은 화면에서는 그 marker만 쉰다(card 위에 겹쳐 적지 않는다). */
+.journey__time[hidden] {
+  display: none;
+}
+
+.journey__time--left {
+  flex-direction: row-reverse;
+  transform: translate(-100%, -50%);
+}
+
+.journey__time-tick {
+  width: 10px;
+  height: 1px;
+  background: currentColor;
 }
 
 .journey__time-value {
   font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
   font-weight: 300;
-  font-size: calc(120 * var(--ju));
+  font-size: clamp(18px, calc(22 * var(--ju)), 24px);
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.02em;
   white-space: nowrap;
-}
-
-/* 14 : 10 — 큰 ghost time. */
-.journey__time--ghost .journey__time-value {
-  font-weight: 200;
-  font-size: calc(210 * var(--ju));
-  letter-spacing: -0.04em;
-}
-
-/* 15 : 00 — 아주 얇은 dial arc(원의 3/4)가 글자를 두른다. */
-.journey__time-arc {
-  width: calc(300 * var(--ju));
-  height: calc(300 * var(--ju));
-  overflow: visible;
-}
-
-.journey__time-arc circle {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1px;
-  vector-effect: non-scaling-stroke;
-  stroke-dasharray: 270 90;
-  transform: rotate(-45deg);
-  transform-origin: 50% 50%;
-}
-
-/* 16 : 20 — timecode. 글자 아래 짧은 눈금자. */
-.journey__time--timecode {
-  grid-template-rows: auto auto;
-  row-gap: calc(18 * var(--ju));
-}
-
-.journey__time--timecode > * {
-  grid-area: auto;
-}
-
-.journey__time-ruler {
-  width: calc(260 * var(--ju));
-  height: calc(14 * var(--ju));
-  background:
-    linear-gradient(currentColor, currentColor) 0 100% / 100% 1px no-repeat,
-    repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px calc(20 * var(--ju))) 0 100% / 100% 60% no-repeat,
-    repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px calc(100 * var(--ju))) 0 0 / 100% 100% no-repeat;
-}
-
-/* 17 : 00 — 최소한의 눈금(12개)이 글자를 두른다. */
-.journey__time-ticks {
-  width: calc(300 * var(--ju));
-  height: calc(300 * var(--ju));
-  border-radius: 50%;
-  background: repeating-conic-gradient(from -1deg, currentColor 0 2deg, transparent 2deg 30deg);
-  -webkit-mask: radial-gradient(circle closest-side, transparent 0 91%, #000 91.5% 100%);
-  mask: radial-gradient(circle closest-side, transparent 0 91%, #000 91.5% 100%);
 }

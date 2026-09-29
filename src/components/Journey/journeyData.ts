@@ -132,32 +132,26 @@ export const JOURNEY_NODES: JourneyNode[] = [
 export const JOURNEY_WORLD_HEIGHT = 5300
 
 /**
- * Journey의 시간(story/storyTime.ts). Watch가 없는 Journey에서 line 옆 여백에 "하루 동안 작업 시간이 흘러간다"는
- * 흔적을 배경처럼 남긴다. 콘텐츠보다 먼저 보이지 않도록 아주 옅다(opacity 최대 .11).
- *   from / to   이 시간이 놓이는 line 구간(JOURNEY_NODES index). 빛이 from card를 떠나면 나타나기 시작한다
- *   side        line의 어느 쪽 여백인지
- *   x / y       world 좌표(1920 기준, card와 line에 닿지 않는 빈 자리)
- *   style       같은 Geist 시간 언어 위에 보조 graphic만 다르다
+ * Journey의 시간(story/storyTime.ts). 따로 선 시계가 아니라 line에 붙은 작은 time marker다 —
+ * 빛이 그 구간을 지나가며 남기는 흔적처럼, line 옆 여백에 아주 옅게 적힌다(opacity 최대 .12).
+ *   from / to   marker가 붙는 line 구간(JOURNEY_NODES index). 빛이 from card를 떠나면 나타나기 시작한다
+ *   side        line의 어느 쪽에 적히는지. 자리는 좌표로 적지 않는다 — 실제 경로를 재서, 그 구간 중
+ *               card에서 떨어진 여백의 한 점을 고르고 line에서 MARKER_GAP만큼 떨어뜨린다(useJourneyInteraction)
  */
-export type JourneyTimeStyle = 'ghost' | 'arc' | 'timecode' | 'ticks'
-
 export type JourneyTime = {
   time: string
   from: number
   to: number
   side: 'left' | 'right'
-  x: number
-  y: number
-  style: JourneyTimeStyle
 }
 
 export const JOURNEY_TIMES: JourneyTime[] = [
   // FROM FIGMA TO WEB -> FIGMA DESIGN, line 오른쪽
-  { time: STORY_TIME.journey[0], from: 0, to: 1, side: 'right', x: 1370, y: 560, style: 'ghost' },
+  { time: STORY_TIME.journey[0], from: 0, to: 1, side: 'right' },
   // FIGMA DESIGN -> FRONT - END, line 왼쪽
-  { time: STORY_TIME.journey[1], from: 1, to: 3, side: 'left', x: 470, y: 1850, style: 'arc' },
+  { time: STORY_TIME.journey[1], from: 1, to: 3, side: 'left' },
   // FRONT - END -> WORKING WITH AI, line 오른쪽
-  { time: STORY_TIME.journey[2], from: 3, to: 5, side: 'right', x: 1450, y: 2880, style: 'timecode' },
+  { time: STORY_TIME.journey[2], from: 3, to: 5, side: 'right' },
   // WORKING WITH AI -> STILL UPDATING, line 왼쪽
-  { time: STORY_TIME.journey[3], from: 5, to: 6, side: 'left', x: 470, y: 4150, style: 'ticks' },
+  { time: STORY_TIME.journey[3], from: 5, to: 6, side: 'left' },
 ]
