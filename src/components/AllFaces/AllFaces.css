@@ -160,10 +160,13 @@
   outline-offset: 6px;
 }
 
-/* 가운데 logo. 원을 답답하게 채우지 않는다(폭 52% / 높이 36% 안). 배경 위에서 읽히도록 아주 옅은 그림자만 둔다. */
+/*
+ * 가운데 logo. 폭은 project마다 원 지름의 38~58%(--logo-w, AllFaces.tsx의 LOGO_WIDTH)이고 높이는 36%를 넘지 않는다.
+ * 배경 위에서 읽히도록 아주 옅은 그림자만 둔다(카드 / pill UI 없음).
+ */
 .all-faces__logo {
   display: block;
-  max-width: 52%;
+  width: var(--logo-w, 50%);
   max-height: 36%;
   object-fit: contain;
   filter: drop-shadow(0 2px 10px rgb(0 0 0 / 0.18));

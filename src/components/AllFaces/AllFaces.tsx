@@ -21,6 +21,12 @@ import './AllFaces.css'
  *   click  onProjectSelect(click / Enter). Case Study가 아직 없어서 지금은 연결돼 있지 않다
  */
 
+/**
+ * 원 지름 대비 logo 폭. Figma node 안의 logo 비율을 원에 맞게 옮겼다(F45는 작은 심볼, TCHAIKIM은 두 줄 wordmark,
+ * JADUYA는 캐릭터 + 글자). 원을 답답하게 채우지 않도록 60%를 넘지 않는다.
+ */
+const LOGO_WIDTH: Record<string, number> = { f45: 38, tchaikim: 58, jaduya: 54 }
+
 /** 열릴 때 출발하는 방향(px). 들어온 뒤에는 0이다. */
 const ENTER_FROM: Record<string, { x: number; y: number }> = {
   f45: { x: -44, y: 32 },
@@ -219,6 +225,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
             '--dy': `${float.dy.toFixed(2)}s`,
             '--px': `${float.px.toFixed(2)}s`,
             '--py': `${float.py.toFixed(2)}s`,
+            '--logo-w': `${LOGO_WIDTH[project.id] ?? 50}%`,
           } as CSSProperties
           return (
             <figure
