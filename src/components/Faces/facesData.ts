@@ -1,6 +1,14 @@
 import f45Video from '../../../assets/vid/faces/f45-faces-4x5.mp4'
 import tchaikimVideo from '../../../assets/vid/faces/tchaikim-faces-4x5.mp4'
 import jaduyaVideo from '../../../assets/vid/faces/jaduya-faces.mp4'
+// ALL FACES 원형 object visual. Figma "all faces logo" node(F45 255:597 / TCHAIKIM 253:529 / JADUYA 253:563)에서 가져왔다.
+// 배경은 원본 이미지 + Figma의 옅은 막을 정사각 cover로 그린 것이고, logo는 글자를 outline한 SVG다.
+import f45OrbImage from '../../../assets/img/all-faces/f45-bg.jpg'
+import f45Logo from '../../../assets/img/all-faces/f45-logo.svg'
+import tchaikimOrbImage from '../../../assets/img/all-faces/tchaikim-bg.jpg'
+import tchaikimLogo from '../../../assets/img/all-faces/tchaikim-logo.svg'
+import jaduyaOrbImage from '../../../assets/img/all-faces/jaduya-bg.jpg'
+import jaduyaLogo from '../../../assets/img/all-faces/jaduya-logo.svg'
 
 /**
  * FACES에 놓이는 프로젝트. 배열 순서가 곧 rail 위의 순서다(왼쪽 -> 오른쪽).
@@ -19,9 +27,12 @@ export type FaceProject = {
   liveUrl: string
   caseStudyPath?: string
   /**
-   * 프로젝트 logo 파일(ALL FACES의 원형 object 가운데). repository에 실제 logo asset이 생기면 import해서 넣는다.
-   * 지금은 세 project 모두 asset이 없어서 비어 있고, ALL FACES는 그 자리에 project 이름만 보여 준다(임시 fallback).
+   * ALL FACES 원형 object의 visual(Figma "all faces logo" node에서 가져온 asset).
+   *   orbImage  원을 꽉 채우는 배경 이미지(object-fit: cover)
+   *   logo      그 위 정중앙의 project logo
+   * FACES section은 이 두 값을 쓰지 않는다(media 영상만 쓴다). 없으면 ALL FACES는 project 이름만 가운데에 둔다(fallback).
    */
+  orbImage?: string
   logo?: string
   /**
    * 영상의 원본 비율(가로 / 세로). loadedmetadata의 videoWidth / videoHeight로 다시 확인하지만,
@@ -44,6 +55,8 @@ export const FACE_PROJECTS: FaceProject[] = [
     category: 'RESPONSIVE WEB REDESIGN',
     // FACES 전용 4:5 영상(864 x 1080). Watch display와 비율이 가까워 cover로 거의 전체가 보인다.
     media: f45Video,
+    orbImage: f45OrbImage,
+    logo: f45Logo,
     aspect: 864 / 1080,
   },
   {
@@ -54,6 +67,8 @@ export const FACE_PROJECTS: FaceProject[] = [
     category: 'FASHION BRAND WEB REDESIGN',
     // FACES 전용 4:5 영상(960 x 1200). PixVerse 결과(960 x 1280)의 위쪽 80px(워터마크 자리)을 잘라 만들었다.
     media: tchaikimVideo,
+    orbImage: tchaikimOrbImage,
+    logo: tchaikimLogo,
     aspect: 960 / 1200,
   },
   {
@@ -69,6 +84,8 @@ export const FACE_PROJECTS: FaceProject[] = [
      * 환경(Safari / iOS, 많은 Android 등)에서 frame이 나오지 않고 texture가 검게 남았다. F45 / TCHAIKIM도 FACES 전용 크기다.
      */
     media: jaduyaVideo,
+    orbImage: jaduyaOrbImage,
+    logo: jaduyaLogo,
     aspect: 1664 / 3648,
     // 캐릭터 위로 사과가 튀어 오르는 동작까지 창 안에 남도록 조금 위를 중심으로 둔다.
     focus: [0.5, 0.46],
