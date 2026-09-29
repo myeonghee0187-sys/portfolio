@@ -1,5 +1,10 @@
 import f45Video from '../../../assets/vid/faces/f45-faces-4x5.mp4'
-import tchaikimVideo from '../../../assets/vid/faces/tchaikim-faces-4x5.mp4'
+/*
+ * TCHAIKIM은 loop 전용 영상을 쓴다. 원본(tchaikim-faces-4x5.mp4)은 0.67초의 wide shot 뒤에 close-up으로 hard cut되는
+ * 편집이라, 반복될 때마다 close-up -> wide -> close-up으로 두 번 끊겨 보였다. loop 영상은 이어지는 close-up 한 컷만 쓰고
+ * 마지막 1초가 첫 1초로 부드럽게 녹아들게(smoothstep dissolve) 다시 인코딩했다. 영상을 되감거나 reset하는 코드는 없다.
+ */
+import tchaikimVideo from '../../../assets/vid/faces/tchaikim-faces-4x5-loop.mp4'
 import jaduyaVideo from '../../../assets/vid/faces/intro_vid.mp4'
 
 /**
@@ -47,7 +52,7 @@ export const FACE_PROJECTS: FaceProject[] = [
     index: '02',
     title: 'TCHAIKIM',
     category: 'FASHION BRAND WEB REDESIGN',
-    // FACES 전용 4:5 영상(960 x 1200). PixVerse 결과(960 x 1280)의 위쪽 80px(워터마크 자리)을 잘라 만들었다.
+    // FACES 전용 4:5 영상(960 x 1200). PixVerse 결과(960 x 1280)의 위쪽 80px(워터마크 자리)을 잘라 만들었다. loop 이음매 없음.
     media: tchaikimVideo,
     aspect: 960 / 1200,
   },

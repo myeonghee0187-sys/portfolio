@@ -371,6 +371,8 @@ uniform vec2 uAmbientCenter;  // 빛의 중심(canvas CSS px) = 화면 가운데
 uniform float uAmbientUnit;   // About 좌표계 1단위의 px(About.css의 --about-u)
 uniform float uDisplayInteraction;
 uniform float uAmbient;       // 세기 = .about__ambient의 opacity(sharedAmbient.level)
+// About -> FACES 노출(camera flash)의 brightness. display 바깥(gallery / rim)에만 곱한다 — display 안은 노출과 분리된다.
+uniform float uExposure;
 
 // Apple Watch Portfolio material. project가 무엇이든 이 색만 쓴다.
 // CARBON은 About / FACES 공통 바탕(index.css --color-carbon-black)과 같은 8bit 값이다. 색 변환 없이 그대로 나간다.
@@ -632,14 +634,15 @@ vec3 rimColor(vec2 p, float dOut, float dDisp, float reach) {
   glass += ELECTRIC * electricLine * (0.08 + 0.3 * away + 0.2 * uSpeed);
 
   // 안쪽 transition band: display 가장자리에서 rim의 굴절 영상으로 검은 선 없이 넘어간다.
-  return mix(displayColor(p, dDisp), glass, smoothstep(0.0, 0.1, s));
+  // 노출은 rim(유리 / titanium)까지만 받는다. display 쪽으로 넘어가는 띠에서는 함께 풀린다.
+  return mix(displayColor(p, dDisp), glass * uExposure, smoothstep(0.0, 0.1, s));
 }
 
 void main() {
   vec2 p = vec2(gl_FragCoord.x, uSize.y * uPixelRatio - gl_FragCoord.y) / uPixelRatio;
 
   if (uWatch < 0.5) {
-    gl_FragColor = vec4(outsideAt(sceneAt4(p), p), 1.0);
+    gl_FragColor = vec4(clamp(outsideAt(sceneAt4(p), p) * uExposure, 0.0, 1.0), 1.0);
     return;
   }
 
@@ -654,7 +657,7 @@ void main() {
   float wRim = clamp(1.0 - wOut - wDisp, 0.0, 1.0);
 
   vec3 color = vec3(0.0);
-  if (wOut > 0.0) color += outsideColor(p, dOut, reach) * wOut;
+  if (wOut > 0.0) color += outsideColor(p, dOut, reach) * uExposure * wOut;
   if (wDisp > 0.0) color += displayColor(p, dDisp) * wDisp;
   if (wRim > 0.0) color += rimColor(p, dOut, dDisp, reach) * wRim;
 
@@ -733,8 +736,8 @@ export type FacesWatchGeometry = {
 export type FacesRenderState = {
   /** 풀지 않은(unwrapped) 논리 위치(px). 커질수록 plane이 왼쪽으로 간다. */
   position: number
-  /** SHARED ICE AMBIENT의 세기(= About .about__ambient의 opacity)와 중심(canvas CSS px). */
-  ambient: { level: number; cx: number; cy: number }
+  /** SHARED ICE AMBIENT의 세기(= About .about__ambient의 opacity)와 중심(canvas CSS px), About -> FACES 노출 배율. */
+  ambient: { level: number; cx: number; cy: number; exposure?: number }
   interaction?: number
   /** project plane 자체의 휨(px). */
   bend: number
@@ -834,7 +837,11 @@ export default class FacesScene {
       video.defaultMuted = true
       video.loop = true
       video.playsInline = true
-      video.preload = 'metadata'
+      /*
+       * 첫 project(F45)는 About -> FACES에서 display가 열리는 순간 이미 첫 frame이 있어야 한다.
+       * 그 전에는 texture가 비어 검게 보였다가 영상이 들어오며 깜빡인다. 나머지는 재생 직전에 auto로 바뀐다.
+       */
+      video.preload = i === 0 ? 'auto' : 'metadata'
       video.setAttribute('muted', '')
       video.setAttribute('playsinline', '')
       video.addEventListener('loadedmetadata', () => {
@@ -927,6 +934,7 @@ export default class FacesScene {
         uAmbientCenter: { value: new THREE.Vector2() },
         uAmbientUnit: { value: 1 },
         uAmbient: { value: 0 },
+        uExposure: { value: 1 },
         uDisplayInteraction: { value: 0 },
       },
     })
@@ -1110,6 +1118,7 @@ export default class FacesScene {
     u.uVelocity.value = state.velocity
     u.uSpeed.value = state.speed
     u.uAmbient.value = state.ambient.level
+    u.uExposure.value = state.ambient.exposure ?? 1
     u.uDisplayInteraction.value = state.interaction ?? 0
     u.uAmbientCenter.value.set(state.ambient.cx, state.ambient.cy)
     this.renderer.render(this.compositeScene, this.camera)

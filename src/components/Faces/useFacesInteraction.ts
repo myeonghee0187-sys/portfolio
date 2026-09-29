@@ -62,8 +62,19 @@ const DISPLAY = { x0: 42.8, y0: 46.9, x1: 556.8, y1: 722.6, r: 112 }
 /** active가 바뀌려면 새 후보가 지금 active보다 plane 간격의 이 비율만큼 더 가까워야 한다. */
 const ACTIVE_HYSTERESIS = 0.04
 
-/** 이만큼(px) 움직이기 전까지는 drag로 보지 않는다. 나중에 project 링크 클릭을 살려 두기 위해서다. */
+/** 이만큼(px) 움직이기 전까지는 drag로 보지 않는다. 그 안에서 떼면 display 클릭(Live 사이트 열기)이다. */
 const DRAG_THRESHOLD = 7
+
+/*
+ * display Live Link가 열리는 조건. display 안을 한 project가 더 많이 차지하고 있으면 그 project로 연다 —
+ * scroll을 어디에서 멈춰도 pointer가 된다. 두 project가 정확히 반반에 가까운 아주 짧은 순간과 빠른 이동 중에만 닫힌다.
+ *   LINK_SLOT      display 띠 위치가 가장 가까운 자리에서 이만큼(자리 단위) 안이면 그 project가 display의 주인이다(55% 이상)
+ *   LINK_LAG       rail이 아직 따라잡지 못한 거리(stage 폭 비율)
+ *   LINK_VELOCITY  page scroll 속도(px/s)
+ */
+const LINK_SLOT = 0.45
+const LINK_LAG = 0.02
+const LINK_VELOCITY = 1200
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
@@ -186,7 +197,7 @@ export default function useFacesInteraction({
      */
     const ambientState = () => {
       const c = stage.getBoundingClientRect()
-      return { level: sharedAmbient.level, cx: c.width / 2, cy: window.innerHeight / 2 - c.top }
+      return { level: sharedAmbient.level, exposure: sharedAmbient.exposure, cx: c.width / 2, cy: window.innerHeight / 2 - c.top }
     }
 
     let active = -1
@@ -204,13 +215,27 @@ export default function useFacesInteraction({
 
     /* ---------- 영상 재생: 화면 근처에 있는 것만 ---------- */
 
+    /** 지금 display를 차지하고 있는 project. 링크는 눈에 보이는 display를 따른다(metadata의 active와 같은 project다). */
+    const displayProject = () => {
+      const n = FACE_PROJECTS.length
+      return ((Math.round(scene.displaySlot) % n) + n) % n
+    }
+    /*
+     * FACES pin 안(= Watch display가 project를 보여 주는 구간)인지. trigger.isActive는 pin 시작 지점과 정확히 같은
+     * scroll에서 false라, F45가 처음 자리 잡는 바로 그 위치에서 링크가 닫혀 있었다. scroll 범위로 직접 본다.
+     */
+    const inFaces = () => Boolean(
+      trigger && window.scrollY >= trigger.start - 1 && window.scrollY <= trigger.start + panelTiming.facesDistance,
+    )
     const canActivate = () => Boolean(
-      trigger?.isActive && window.scrollY <= trigger.start + panelTiming.facesDistance &&
-      panelTiming.handoff < 0.001 && active >= 0 && !dragging &&
-      scene.focus(active, current) >= 0.92 && Math.abs(target() - current) / stageWidth < 0.002 &&
-      Math.abs(trigger.getVelocity()) < 420 && Math.abs(scene.displaySlot - Math.round(scene.displaySlot)) < 0.015
+      running && inFaces() &&
+      panelTiming.handoff < 0.001 && !dragging &&
+      Math.abs(scene.displaySlot - Math.round(scene.displaySlot)) < LINK_SLOT &&
+      Math.abs(target() - current) / stageWidth < LINK_LAG &&
+      Math.abs(trigger?.getVelocity() ?? 0) < LINK_VELOCITY
     )
     let lastReady: boolean | undefined
+    let lastProject = -1
     const updateLink = () => {
       const ready = canActivate()
       if (link && lastReady !== ready) {
@@ -218,9 +243,14 @@ export default function useFacesInteraction({
         link.tabIndex = ready ? 0 : -1
         lastReady = ready
       }
-      if (link && active >= 0 && link.href !== FACE_PROJECTS[active].liveUrl) link.href = FACE_PROJECTS[active].liveUrl
+      const project = displayProject()
+      if (link && project !== lastProject) {
+        lastProject = project
+        link.href = FACE_PROJECTS[project].liveUrl
+        link.setAttribute('aria-label', `${FACE_PROJECTS[project].title} 완성 웹사이트 새 탭에서 보기`)
+      }
       if (import.meta.env.DEV) {
-        section.dataset.gallery = JSON.stringify({ current, dragOffset, active, focus: active < 0 ? 0 : scene.focus(active, current), slot: scene.displaySlot, ready, running })
+        section.dataset.gallery = JSON.stringify({ current, dragOffset, active, project, focus: active < 0 ? 0 : scene.focus(active, current), slot: scene.displaySlot, ready, running })
       }
     }
 
@@ -291,7 +321,7 @@ export default function useFacesInteraction({
         link.style.setProperty('--display-radius', d.r + 'px')
       }
       const ambient = ambientState()
-      const key = `${current.toFixed(2)} ${interaction.toFixed(3)} ${ambient.level.toFixed(4)} ${ambient.cy.toFixed(1)} ${
+      const key = `${current.toFixed(2)} ${interaction.toFixed(3)} ${ambient.level.toFixed(4)} ${ambient.exposure.toFixed(4)} ${ambient.cy.toFixed(1)} ${
         watch ? `${watch.outer.cx.toFixed(1)} ${watch.outer.cy.toFixed(1)} ${watch.unit.toFixed(4)}` : ''
       }`
       if (key !== lastKey || videoDirty || !canWatchFrames) {
@@ -363,7 +393,8 @@ export default function useFacesInteraction({
         trigger: section,
         id: 'faces-playback',
         start: () => (trigger?.start ?? 0) - window.innerHeight,
-        end: () => (trigger?.start ?? 0) + panelTiming.facesDistance + window.innerHeight * HANDOFF_VIEWPORTS * 0.88,
+        // handoff는 scrub(1.15초)으로 scroll보다 늦게 따라온다. Journey가 완전히 덮은 뒤까지 여유를 두고 멈춘다.
+        end: () => (trigger?.start ?? 0) + panelTiming.facesDistance + window.innerHeight * (HANDOFF_VIEWPORTS + 0.25),
         refreshPriority: -2,
         onToggle: (self) => (self.isActive ? start() : stop()),
         onRefresh: (self) => (self.isActive ? start() : stop()),
@@ -378,7 +409,7 @@ export default function useFacesInteraction({
 
     const onPointerDown = (event: PointerEvent) => {
       // pin 중에만. 한 바퀴를 몇 번 돌아도 document scroll은 그대로다.
-      if (!event.isPrimary || event.button !== 0 || !trigger?.isActive || panelTiming.handoff > 0) return
+      if (!event.isPrimary || event.button !== 0 || !inFaces() || panelTiming.handoff > 0) return
       pointerId = event.pointerId
       downX = lastX = event.clientX
       downY = event.clientY
@@ -466,6 +497,11 @@ export default function useFacesInteraction({
           panelsEnd: trigger?.end ?? 0,
           handoff: panelTiming.handoff,
           ready: canActivate(),
+          running,
+          velocity: trigger?.getVelocity() ?? 0,
+          isActive: trigger?.isActive ?? false,
+          linkProject: displayProject(),
+          href: link?.href,
           progress: trigger?.progress ?? 0,
           active,
         }

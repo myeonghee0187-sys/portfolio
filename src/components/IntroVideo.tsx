@@ -43,9 +43,10 @@ const TEXT_SWAP_DELAY_SEC = (TEXT_FADE_MS + TEXT_SWAP_GAP_MS) / 1000
  * 전환 시간은 영상 길이에서 거꾸로 잡는다(video.duration). 영상이 바뀌어도 끝부분에서 같은 길이로 진행된다.
  *   start = duration - END_MARGIN - TRANSITION_DURATION
  * 끝을 영상 끝보다 END_MARGIN만큼 앞에 두어, 영상의 ended(이른 종료 경로)보다 전환이 먼저 끝나게 한다.
- * opening-watch-final.mp4(5.04s)에서는 3.89 -> 4.94s다. 이 구간은 Watch display 유리를 아주 가까이서 보는 장면이다.
+ * opening-watch-final.mp4(5.04s)에서는 3.79 -> 4.94s다. 이 구간은 Watch display 유리를 아주 가까이서 보는 장면이다.
+ * 1.15초: 급하게 닫히지 않고 Watch 쪽으로 다가가는 움직임이 먼저 읽힌 뒤 Carbon Black으로 가라앉는다.
  */
-const TRANSITION_DURATION = 1.05
+const TRANSITION_DURATION = 1.15
 const END_MARGIN = 0.1
 /** reduced motion: 확대 없이 Carbon Black fade만 짧게. */
 const TRANSITION_DURATION_REDUCED = 0.45
@@ -53,13 +54,14 @@ const TRANSITION_DURATION_REDUCED = 0.45
 /*
  * 전환 진행률(0 -> 1) 구간.
  *   0    ~ 0.2   문구가 사라진다
- *   0.05 ~ 0.8   Watch display 쪽으로 확대 (1.05s 기준 약 0.79s) — 시작 직후부터 천천히, 끝에 몰리지 않게 power2.inOut
- *   0    ~ 1     Carbon Black overlay (OVERLAY_KEYS). 초반은 옅게 두어 확대가 먼저 보인다
- *   0.78 ~ 1     Intro 전체가 사라지며 아래의 Hero가 그대로 드러난다 (약 0.23s)
+ *   0    ~ 0.9   Watch display 쪽으로 확대 (약 1.04s). sine.inOut이라 0에서 속도 0으로 출발하고 끝에서 멈추듯 닿는다
+ *                — 확대가 한 번에 몰리거나 마지막에 뚝 끊기지 않는다
+ *   0    ~ 1     Carbon Black overlay (OVERLAY_KEYS). 초반은 옅게 두어 확대가 먼저 보이고, 후반에 부드럽게 수렴한다
+ *   0.76 ~ 1     Intro 전체가 사라지며 아래의 Hero가 그대로 드러난다 (약 0.28s). Hero 자체는 확대 / 이동하지 않는다
  */
-const ZOOM_FROM = 0.05
-const ZOOM_TO = 0.8
-const ZOOM_EASE = 'power2.inOut'
+const ZOOM_FROM = 0
+const ZOOM_TO = 0.9
+const ZOOM_EASE = 'sine.inOut'
 const ZOOM_SCALE = 1.17
 /** 좁은 화면은 cover crop 때문에 초점이 이미 화면을 크게 차지한다. 확대를 약하게 한다. */
 const ZOOM_SCALE_NARROW = 1.1
@@ -71,18 +73,22 @@ const ZOOM_SCALE_NARROW = 1.1
  */
 const ZOOM_FOCUS = { x: 0.58, y: 0.36 }
 
-/** Carbon Black overlay의 opacity keyframe(전환 진행률 → opacity). 뒤로 갈수록 빨리 짙어진다. */
+/**
+ * Carbon Black overlay의 opacity keyframe(전환 진행률 → opacity). 초반은 거의 투명하고,
+ * 가운데에서 점점 짙어져 끝에서 기울기가 줄며 1에 닿는다(각 구간 사이는 직선이지만 기울기 변화가 작다).
+ */
 const OVERLAY_KEYS: ReadonlyArray<readonly [number, number]> = [
   [0, 0],
-  [0.25, 0.06],
-  [0.5, 0.18],
-  [0.7, 0.42],
-  [0.85, 0.76],
+  [0.2, 0.03],
+  [0.4, 0.12],
+  [0.6, 0.34],
+  [0.76, 0.62],
+  [0.9, 0.87],
   [1, 1],
 ]
 
 /** Intro 전체가 사라지기 시작하는 진행률. 그 전까지 Hero는 Intro 아래에 가려져 있다. */
-const REVEAL_AT = 0.78
+const REVEAL_AT = 0.76
 
 /** 문구는 전환 시작과 함께 사라진다(전환의 앞 20%). */
 const CAPTION_OUT_MS = 210
@@ -209,7 +215,7 @@ export default function IntroVideo({ onFinish }: IntroVideoProps) {
     const zoom = gsap.fromTo(video, { scale: 1 }, {
       scale: zoomScale, duration: 1, ease: ZOOM_EASE, paused: true, immediateRender: false,
     })
-    const revealEase = gsap.parseEase('power1.inOut')
+    const revealEase = gsap.parseEase('sine.inOut')
 
     const renderEnding = (progress: number) => {
       zoom.progress(Math.min(1, Math.max(0, (progress - ZOOM_FROM) / (ZOOM_TO - ZOOM_FROM))))

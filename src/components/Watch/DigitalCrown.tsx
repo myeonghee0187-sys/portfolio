@@ -126,16 +126,22 @@ type DigitalCrownProps = {
    * App에서 열림 상태와 현재 프로젝트 데이터를 준비한다. 최종 화면은 추후 연결한다.
    */
   onOpenAllFaces?: () => void
+  /** ALL FACES가 열려 있는지. 열려 있는 동안 dial이 22deg 더 돌아가 있다(DigitalCrown.css). */
+  allFacesOpen?: boolean
 }
 
-export default function DigitalCrown({ onOpenAllFaces }: DigitalCrownProps) {
+export default function DigitalCrown({ onOpenAllFaces, allFacesOpen = false }: DigitalCrownProps) {
   const trackRef = useRef<HTMLDivElement>(null)
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
   useCrownWheel(trackRef, KNURL_PITCH_WU, !prefersReducedMotion)
 
   return (
-    <div ref={trackRef} className="watch__crown">
+    /*
+     * className은 고정이다. controller / cue class는 useScrollScene이 classList로 붙였다 떼므로
+     * React가 className을 다시 쓰면 지워진다. 열림 상태는 data 속성으로만 준다.
+     */
+    <div ref={trackRef} className="watch__crown" data-all-faces-open={allFacesOpen}>
       {/*
         Contact에서 Crown이 Watch로 돌아가는 위치 / 크기만 맡는 layer(useContactScene).
         GSAP이 transform을 다루지 않는 element라 FACES의 transform(.watch__crown)과 섞이지 않는다.
@@ -182,6 +188,8 @@ export default function DigitalCrown({ onOpenAllFaces }: DigitalCrownProps) {
           type="button"
           className="watch__crown-front-button"
           aria-label="모든 프로젝트 보기"
+          aria-haspopup="dialog"
+          aria-expanded={allFacesOpen}
           tabIndex={-1}
           aria-disabled="true"
           onClick={onOpenAllFaces}

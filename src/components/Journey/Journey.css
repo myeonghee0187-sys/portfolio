@@ -64,7 +64,7 @@
 }
 
 /*
- * 세 path가 같은 d(하나의 경로)를 쓴다. 선 굵기는 world 배율과 상관없이 실제 px이다.
+ * 두 path가 같은 d(하나의 경로)를 쓴다. 선 굵기는 world 배율과 상관없이 실제 px이다.
  * non-scaling-stroke에서는 dash 길이도 화면 px로 적용되므로 useJourneyInteraction이 길이를 world 배율로 환산한다.
  */
 .journey__path path {
@@ -81,19 +81,13 @@
 }
 
 /*
- * 처음부터 지금 scroll 위치까지 이어진 빛. 지나온 길은 어두워지지 않는다.
+ * 처음부터 지금 scroll 위치까지 이어진 빛. 색은 정확히 Ice(#D4E5EF) 하나다.
+ * 지나온 길은 어두워지지 않고, 앞쪽 끝만 따로 밝게 하거나 움직이는 빛 조각을 두지 않는다.
  * 공통 규칙(.journey__path path)보다 우선해야 2.5px이 된다.
  */
 .journey__path .journey__path-active {
-  stroke: rgb(212 229 239 / 0.74);
+  stroke: #d4e5ef;
   stroke-width: 2.5px;
-}
-
-/* 빛의 앞쪽 끝(전체 길이의 4%)만 조금 더 밝게. Electric Ice는 아주 옅은 glow에만 쓴다. */
-.journey__path .journey__path-edge {
-  stroke: rgb(243 244 244 / 0.95);
-  stroke-width: 2.5px;
-  filter: drop-shadow(0 0 5px rgb(24 109 229 / 0.16));
 }
 
 .journey__node {
@@ -124,7 +118,8 @@
    * 경로 끝과 card 사이에 틈이 생기지 않는다. scale / 투명도 / blur 값 자체는 이전과 같다.
    */
   transform: translate(-50%, -50%) scale(calc(0.9 + 0.1 * var(--node-in) - 0.05 * var(--node-out)));
-  border: 1px solid color-mix(in srgb, rgb(212 229 239 / 0.10), rgb(24 109 229 / 0.55) calc(var(--node-in) * (1 - var(--node-out)) * 100%));
+  /* UI border 공통값(#186DE5). 경로가 닿아 활성인 card만 선명하고, 나머지는 같은 색의 낮은 투명도다. */
+  border: 1px solid color-mix(in srgb, var(--ui-border) calc(30% + 70% * var(--node-in) * (1 - var(--node-out))), transparent);
   border-radius: var(--journey-card-radius);
   background: linear-gradient(rgb(255 255 255 / calc(0.025 + 0.02 * var(--node-in) - 0.012 * var(--node-out))), rgb(255 255 255 / calc(0.025 + 0.02 * var(--node-in) - 0.012 * var(--node-out)))), var(--color-carbon-black);
   opacity: calc(0.3 + 0.7 * var(--node-in) - 0.38 * var(--node-out));
@@ -274,25 +269,6 @@
   margin: 0 0.32em;
 }
 
-/*
- * 처음과 마지막 card의 경로 끝점. 4~6px Ice point 하나뿐이다(고리 / pulse 없음).
- * card 바깥선과 20px 떨어져 있고, 경로가 곧게 떠나고 도착하는 구간 위에 놓인다.
- */
-.journey__point {
-  position: absolute;
-  left: -2.5px;
-  top: calc(var(--journey-card-height) / 2 + 20px);
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #d4e5ef;
-  opacity: var(--node-in);
-}
-
-.journey__node[data-node='now'] .journey__point {
-  top: calc(var(--journey-card-height) / -2 - 25px);
-}
-
 /* The same seven cards become a document with one central vertical path. */
 .journey--static .journey__stage {
   container-type: normal;
@@ -304,7 +280,7 @@
   --ju: 1px;
 }
 
-.journey--static .journey__path, .journey--static .journey__point {
+.journey--static .journey__path {
   display: none;
 }
 

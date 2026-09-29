@@ -111,12 +111,16 @@ export default function Faces({ interactive, ready }: FacesProps) {
         {interactive ? (
           <div className="faces__scene">
             <canvas ref={canvasRef} className="faces__canvas" aria-hidden="true" />
+            {/*
+              display 자리에만 놓이는 투명한 실제 링크. href / aria-label / aria-disabled / tabIndex는
+              useFacesInteraction이 display에 보이는 project와 클릭 가능 여부에 맞춰 직접 쓴다(여기 값은 첫 상태다).
+            */}
             <a
               className="faces__display-link"
-              href={FACE_PROJECTS[active].liveUrl}
+              href={FACE_PROJECTS[0].liveUrl}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={`${FACE_PROJECTS[active].title} 완성 웹사이트 보기`}
+              aria-label={`${FACE_PROJECTS[0].title} 완성 웹사이트 새 탭에서 보기`}
               aria-disabled="true"
               tabIndex={-1}
               draggable={false}

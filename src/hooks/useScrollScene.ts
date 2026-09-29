@@ -692,16 +692,46 @@ export default function useScrollScene(enabled: boolean) {
          *   glint    최대 밝기 근처에서만 Watch steel 테두리를 지나가는 Frost / Ice 반사
          * 진행률: 0.18 시작 -> 0.38 분명히 밝아짐 -> 0.52 최대 -> 0.75 FACES가 보이기 시작 -> 1 Carbon Black.
          * 되감으면 같은 값을 거꾸로 지나간다. 흰 화면까지는 가지 않는다(최대 opacity 0.75, brightness 1.22).
+         *
+         * Watch display는 이 노출과 분리된다. 유리 안쪽 화면이 주변과 함께 뿌옇게 밝아지면 안 된다.
+         *   bloom    display 자리만 clip-path(evenodd)로 뚫는다. 주변 / steel case / rim은 그대로 빛을 받는다
+         *   bright   About stage와 Watch 하드웨어(case, Crown)에만 CSS filter. FACES canvas는 shader가
+         *            display 바깥(gallery / rim)에만 곱한다(sharedAmbient.exposure)
+         *   display  대신 유리 표면을 비스듬히 지나가는 반사 한 줄(.watch__display-glint)만 통과한다
          */
         const bloom = document.querySelector<HTMLElement>('.about-faces-bloom')
         const glint = watch.querySelector<HTMLElement>('.watch__reflection')
-        const lit = [stage, watchLayer, faces.querySelector<HTMLElement>('.faces__scene')]
-        const exposure = { bloom: 0, scale: 0.82, bright: 1, glint: 0, sweep: 120 }
+        const displayGlint = watch.querySelector<HTMLElement>('.watch__display-glint')
+        const lit = [stage, watch.querySelector<HTMLElement>('.watch__case'), crown]
+        const exposure = { bloom: 0, scale: 0.82, bright: 1, glint: 0, sweep: 120, glass: 0, glassSweep: 130 }
+        /*
+         * bloom에서 뚫을 display 모양. DOM case의 구멍(Watch 좌표계 58, 64 / 484 x 646 / 모서리 96)과 같다.
+         * bloom은 inset -10%에 화면 중심 기준 scale이 걸린 fixed layer라, 화면 좌표를 그 layer의 좌표로 되돌린다.
+         * clip-path는 filter(blur) 뒤에 적용되므로 구멍의 가장자리는 유리 경계처럼 선명하다.
+         */
+        const bloomHole = () => {
+          const r = watch.getBoundingClientRect()
+          if (!r.width) return 'none'
+          const vw = document.documentElement.clientWidth
+          const vh = window.innerHeight
+          const s = exposure.scale
+          const u = r.width / 600 / s
+          const x0 = vw * 0.6 + (r.left + 58 * (r.width / 600) - vw / 2) / s
+          const y0 = vh * 0.6 + (r.top + 64 * (r.width / 600) - vh / 2) / s
+          const w = 484 * u
+          const h = 646 * u
+          const k = 96 * u
+          const f = (v: number) => v.toFixed(1)
+          return `path(evenodd, "M0 0H${f(vw * 1.2)}V${f(vh * 1.2)}H0Z M${f(x0 + k)} ${f(y0)}H${f(x0 + w - k)}A${f(k)} ${f(k)} 0 0 1 ${f(x0 + w)} ${f(y0 + k)}V${f(y0 + h - k)}A${f(k)} ${f(k)} 0 0 1 ${f(x0 + w - k)} ${f(y0 + h)}H${f(x0 + k)}A${f(k)} ${f(k)} 0 0 1 ${f(x0)} ${f(y0 + h - k)}V${f(y0 + k)}A${f(k)} ${f(k)} 0 0 1 ${f(x0 + k)} ${f(y0)}Z")`
+        }
         const writeExposure = () => {
           if (bloom) {
+            const on = exposure.bloom > 0.001
             bloom.style.opacity = exposure.bloom.toFixed(3)
-            bloom.style.visibility = exposure.bloom > 0.001 ? 'visible' : 'hidden'
+            bloom.style.visibility = on ? 'visible' : 'hidden'
             bloom.style.transform = `scale(${exposure.scale.toFixed(3)})`
+            if (on) bloom.style.clipPath = bloomHole()
+            else bloom.style.removeProperty('clip-path')
           }
           for (const el of lit) {
             if (!el) continue
@@ -709,9 +739,14 @@ export default function useScrollScene(enabled: boolean) {
             if (exposure.bright > 1.001) el.style.filter = `brightness(${exposure.bright.toFixed(3)})`
             else el.style.removeProperty('filter')
           }
+          sharedAmbient.exposure = exposure.bright
           if (glint) {
             glint.style.opacity = exposure.glint.toFixed(3)
             glint.style.setProperty('--reflection-x', `${exposure.sweep.toFixed(1)}%`)
+          }
+          if (displayGlint) {
+            displayGlint.style.opacity = exposure.glass.toFixed(3)
+            displayGlint.style.setProperty('--glass-x', `${exposure.glassSweep.toFixed(1)}%`)
           }
         }
         const expose = (from: Partial<typeof exposure>, to: Partial<typeof exposure>, duration: number, ease: string, at: number) =>
@@ -726,6 +761,10 @@ export default function useScrollScene(enabled: boolean) {
         expose({ glint: 0 }, { glint: 0.55 }, 0.07, 'sine.out', 0.45)
         expose({ glint: 0.55 }, { glint: 0 }, 0.09, 'sine.in', 0.52)
         expose({ sweep: 120 }, { sweep: -20 }, 0.16, 'none', 0.45)
+        // display 유리 반사: 노출이 오르는 동안 한 번 비스듬히 지나가고 최대 밝기 뒤에 사라진다. 화면 자체는 밝히지 않는다.
+        expose({ glass: 0 }, { glass: 1 }, 0.16, 'sine.out', 0.3)
+        expose({ glass: 1 }, { glass: 0 }, 0.2, 'sine.in', 0.5)
+        expose({ glassSweep: 130 }, { glassSweep: -30 }, 0.4, 'sine.inOut', 0.3)
 
         /*
          * Crown이 정면 controller가 된 직후 딱 한 번 도는 cue.
@@ -765,11 +804,15 @@ export default function useScrollScene(enabled: boolean) {
         sharedAmbient.level = 0
         // About -> FACES 노출은 tween 대상이 proxy라 직접 쓴 style을 여기서 지운다.
         const bloom = document.querySelector<HTMLElement>('.about-faces-bloom')
-        for (const prop of ['opacity', 'visibility', 'transform']) bloom?.style.removeProperty(prop)
-        for (const el of [stage, watchLayer, faces?.querySelector<HTMLElement>('.faces__scene')]) el?.style.removeProperty('filter')
+        for (const prop of ['opacity', 'visibility', 'transform', 'clip-path']) bloom?.style.removeProperty(prop)
+        for (const el of [stage, watch.querySelector<HTMLElement>('.watch__case'), crown]) el?.style.removeProperty('filter')
+        sharedAmbient.exposure = 1
         const glint = watch.querySelector<HTMLElement>('.watch__reflection')
         glint?.style.removeProperty('opacity')
         glint?.style.removeProperty('--reflection-x')
+        const displayGlint = watch.querySelector<HTMLElement>('.watch__display-glint')
+        displayGlint?.style.removeProperty('opacity')
+        displayGlint?.style.removeProperty('--glass-x')
         crown?.removeEventListener('animationend', clearCue)
         crown?.classList.remove('watch__crown--controller', 'watch__crown--cue')
         // 방향은 tween이 아니라 applyCrown이 직접 쓴 값이라 여기서 지운다.

@@ -17,13 +17,12 @@ export default function Journey({ interactive, ready }: JourneyProps) {
         <div className="journey__ambient" aria-hidden="true" />
         <div ref={worldRef} className="journey__world" style={{ '--world-h': JOURNEY_WORLD_HEIGHT } as CSSProperties}>
           {/*
-            경로는 하나다. 세 path가 같은 d를 쓴다(전체 길 / 처음부터 지금까지 이어진 빛 / 그 빛의 앞쪽 끝).
-            d는 card 안의 anchor를 실제로 재서 만든다(useJourneyInteraction).
+            경로는 하나다. 두 path가 같은 d를 쓴다(전체 길 / 처음부터 지금까지 이어진 빛).
+            d는 card 안의 anchor를 실제로 재서 만든다(useJourneyInteraction). 시작 / 끝에 따로 점을 두지 않는다.
           */}
           <svg className="journey__path" viewBox={`0 0 1920 ${JOURNEY_WORLD_HEIGHT}`} preserveAspectRatio="xMidYMin meet" aria-hidden="true" focusable="false">
             <path className="journey__path-base" />
             <path className="journey__path-active" />
-            <path className="journey__path-edge" />
           </svg>
           {JOURNEY_NODES.map((node, i) => {
             const Title = i === 0 ? 'h2' : 'h3'
@@ -52,7 +51,6 @@ export default function Journey({ interactive, ready }: JourneyProps) {
                       {node.keywords && <ul className="journey__keywords">{node.keywords.map(word => <li key={word}>{word}</li>)}</ul>}
                     </div>
                   </div>
-                  {(i === 0 || i === JOURNEY_NODES.length - 1) && <span className="journey__point" aria-hidden="true" />}
                 </div>
               </article>
             )

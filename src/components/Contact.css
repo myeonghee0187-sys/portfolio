@@ -21,6 +21,32 @@
   scroll-margin-top: var(--header-total);
 }
 
+/*
+ * 층: Carbon Black(section 바탕) -> Light Rays(0) -> 가독성 mask(0) -> 문장(1) -> Watch(2) -> Crown(global fixed layer).
+ * Light Rays는 section을 채우고 위 가운데에서 내려온다. opacity는 useContactScene이 0 -> 0.5로 올린다.
+ */
+.contact__rays {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/*
+ * 가독성 mask. 빛줄기가 문장 뒤에서 밝게 걸리지 않도록 왼쪽(문장 쪽)과 아래(footer 쪽)를 Carbon으로 조금 가라앉힌다.
+ * Watch 쪽(오른쪽)은 거의 그대로 둔다.
+ */
+.contact__mask {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgb(8 9 10 / 0.62) 0%, rgb(8 9 10 / 0.4) 34%, rgb(8 9 10 / 0.12) 58%, rgb(8 9 10 / 0) 76%),
+    linear-gradient(0deg, rgb(8 9 10 / 0.55) 0%, rgb(8 9 10 / 0) 22%);
+}
+
 .contact__inner {
   position: relative;
   z-index: 1;
@@ -40,13 +66,13 @@
   padding: var(--header-total) 0 96px;
 }
 
-/* 효과 없이 크기와 여백만으로 화면을 잡는다(gradient / glow / shadow 없음). 줄간격은 실제 line-height 140%. */
+/* 효과 없이 크기와 여백만으로 화면을 잡는다(gradient / glow / shadow 없음). 줄간격은 실제 line-height 135%. */
 .contact__title {
   margin: 0;
   font-family: 'Anton', sans-serif;
   font-weight: 400;
   font-size: clamp(92px, 7.3vw, 140px);
-  line-height: 1.4;
+  line-height: 1.35;
   letter-spacing: -0.005em;
   color: #f3f4f4;
 }
@@ -71,7 +97,7 @@
   gap: 12px;
   min-height: 60px;
   padding: 0 28px;
-  border: 1px solid rgb(212 229 239 / 0.32);
+  border: 1px solid var(--ui-border);
   border-radius: 12px;
   background: none;
   color: #f3f4f4;
@@ -85,24 +111,76 @@
 }
 
 .contact__cta:hover {
-  border-color: rgb(212 229 239 / 0.62);
-  background: rgb(212 229 239 / 0.05);
+  background: rgb(24 109 229 / 0.1);
   transform: translateY(-1px);
 }
 
-/* 이메일: 글자 링크 하나. 밑줄은 주소에만(화살표까지 이으면 두 줄로 끊겨 보인다). */
+/* 이메일: 누르면 복사되는 글자 버튼 하나. 밑줄은 주소에만(아이콘까지 이으면 두 줄로 끊겨 보인다). */
 .contact__email {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
   font: 500 19px/1 'Inter', sans-serif;
   letter-spacing: 0.02em;
   color: var(--contact-titanium);
   text-decoration: none;
+  cursor: pointer;
   transition:
     color 220ms ease,
     transform 220ms ease;
+}
+
+/* Copy / Check 두 아이콘이 같은 자리에 겹쳐 있고, 복사 직후 1.2초 동안만 Check가 보인다. */
+.contact__email-icon {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.contact__email-icon svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.contact__icon-check {
+  opacity: 0;
+  transform: scale(0.8);
+  color: #d4e5ef;
+}
+
+.contact__email.is-copied .contact__icon-copy {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.contact__email.is-copied .contact__icon-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.contact__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .contact__email-label {
@@ -134,6 +212,7 @@
  */
 .contact__watch {
   position: absolute;
+  z-index: 2;
   top: 50%;
   right: clamp(72px, 6.25vw, 120px);
   width: var(--contact-watch-w);

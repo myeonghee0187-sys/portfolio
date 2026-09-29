@@ -74,7 +74,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  border: 1px solid var(--ui-border);
   background: rgba(0, 0, 0, 0.3);
   color: rgba(255, 255, 255, 0.9);
   font-family: inherit;
@@ -93,8 +93,7 @@
 
 .intro__skip:hover,
 .intro__skip:focus-visible {
-  border-color: rgba(255, 255, 255, 0.9);
-  background: rgba(0, 0, 0, 0.55);
+  background: rgb(24 109 229 / 0.22);
   color: #fff;
 }
 

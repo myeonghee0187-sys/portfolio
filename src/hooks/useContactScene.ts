@@ -19,33 +19,39 @@ const JOURNEY_DIM = { end: 0.5, opacity: 0.5 }
 const WATCH_ENTER = { start: 0.15, end: 0.55, y: 140, x: 32, scale: 0.96, rotate: 1.5 }
 
 /**
- * Crown이 Watch 쪽으로 가는 방식. 올라오는 Watch의 socket이 Crown 높이에 닿는 지점(reach)이 기준이다.
- * reach는 화면 크기마다 달라서(대략 0.45 ~ 0.5) earliest ~ latest 사이로만 제한한다.
- *   carry  세로. reach 조금 전부터 서서히 따라붙어(Watch와 Crown이 서로 가까워진다) Watch에 실려 올라간다
- *   align  가로 / 크기 / 정면 -> 옆모습. ALIGN.end까지 천천히 맞춰지고, socket 옆 ATTACH 간격만 남긴다
+ * Crown이 Watch에 결합하는 구간(Contact progress). 전부 scroll 진행률의 순수 함수다 — 시간 기반 tween도,
+ * 마지막 frame에 좌표를 강제로 맞추는 snap도 없다. 되감으면 같은 기하로 그대로 풀린다.
+ *   APPROACH.start ~ end  Crown이 controller 자리에서 socket 쪽으로 다가간다. 매 frame 두 중심을
+ *                         getBoundingClientRect()로 다시 재서 deltaX / deltaY에 approach(0 -> 1)를 곱한다.
+ *                         sine.inOut이라 end에서 속도 0으로 socket에 닿는다(= 결합).
+ *   ORIENT                같은 approach 위에서 정면 -> 옆모습으로 돌아선다(crownLink.attach).
+ * 영향 없는 자리(시작 전 / 결합 후)에서는 값이 변하지 않는다.
  */
-const CARRY = { lead: 0.05, span: 0.17 }
-const ALIGN = { earliest: 0.4, latest: 0.66, end: 0.86 }
+const APPROACH = { start: 0.4, end: 0.92 }
+const ORIENT = { from: 0.35, to: 0.95 }
 
 /**
- * 결합. 남은 14px을 Crown(+6px)과 Watch(-8px)가 동시에 좁힌다. 시간 기반이고 튕김 / 크기 변화가 없다.
- * ATTACH.at을 지나면 붙고, 되감아 그 앞으로 가면 같은 시간 동안 천천히 떨어진다.
+ * Watch도 Crown 쪽으로 조금 다가간다(가로 최대 WATCH_REACH px). 결합이 가까워질 때 가장 크고(approach 2/3),
+ * 결합하는 순간 원래 자리(0)로 돌아와 있다. Crown은 매 frame 그 순간의 socket을 따라가므로 두 쪽이 서로 접근한다.
  */
-const ATTACH = { at: 0.88, crownGap: 6, watchGap: 8, duration: 0.42, ease: 'power2.inOut' }
+const WATCH_REACH = 10
 
-/** 결합 순간 steel 테두리를 한 번 지나가는 Ice 반사. */
+/** 결합 순간 steel 테두리를 한 번 지나가는 Ice 반사. 빛만 시간 기반이고 위치와는 무관하다. */
 const GLINT = { peak: 0.22, duration: 0.6 }
 
 /**
- * Crown의 scroll 회전 영향(진행률 -> 1이면 page scroll 그대로 돈다). 가까워질수록 서서히 줄고 결합하면 0 —
- * 회전은 그때의 각도 그대로 멈춘다(0°로 돌아가지 않는다). 되감으면 같은 각도를 거꾸로 지나간다.
+ * Crown의 scroll 회전 영향(진행률 -> 1이면 page scroll 그대로 돈다). 가까워질수록 1 -> .7 -> .35 -> 0으로 줄고
+ * 결합하면 0 — 회전은 그때의 각도 그대로 멈춘다(0°로 돌아가지 않는다). 되감으면 같은 각도를 거꾸로 지나간다.
  */
 const SPIN_INFLUENCE: ReadonlyArray<readonly [number, number]> = [
-  [0.46, 1],
-  [0.62, 0.65],
-  [0.76, 0.25],
-  [0.88, 0],
+  [APPROACH.start, 1],
+  [0.6, 0.7],
+  [0.76, 0.35],
+  [APPROACH.end, 0],
 ]
+
+/** Light Rays. Journey -> Contact 진입 때 opacity 0 -> 0.5가 1.4초 동안 오른다(시간 기반). 되감으면 다시 가라앉는다. */
+const RAYS = { start: 'top 75%', opacity: 0.5, duration: 1.4 }
 
 /** 문장 / 링크 등장. 글자 단위 분해 없이 묶음 단위로 짧게 올라온다. */
 const REVEAL = { start: 'top 70%', duration: 0.7, stagger: 0.08 }
@@ -79,9 +85,10 @@ function spinIntegral(progress: number) {
  *
  * 연출이 켜져 있으면 FACES부터 화면 오른쪽 아래에 있던 global Crown(같은 DOM)이 Contact Watch의 socket으로 돌아간다.
  *   - Watch가 section과 함께 아래에서 올라오며 Crown 가까이로 온다(Watch가 Crown을 받으러 온다).
- *   - socket이 Crown 높이에 닿을 즈음 Crown이 서서히 Watch에 실려 올라가고, 정면 -> 옆모습으로 돌아서며 크기가 맞춰진다.
- *   - socket 옆 14px에서 기다렸다가, Crown과 Watch가 함께 0.42초 동안 남은 거리를 좁히며 결합한다.
- *   - 가까워질수록 Crown의 scroll 회전이 서서히 줄고, 결합하면 그 각도에 멈춘다.
+ *   - progress 0.4부터 Crown이 socket 쪽으로 서서히 다가간다. 매 frame 두 중심을 실제로 재서(deltaX / deltaY)
+ *     그 비율만큼만 옮기고, 정면 -> 옆모습으로 돌아서며 크기가 맞춰진다. Watch도 Crown 쪽으로 조금 다가갔다 제자리로 온다.
+ *   - 0.92에서 속도 0으로 socket에 닿는다. 자석처럼 붙는 시간 기반 tween이나 마지막 frame의 좌표 보정은 없다.
+ *   - 가까워질수록 Crown의 scroll 회전이 1 -> .7 -> .35 -> 0으로 줄고, 결합하면 그 각도에 멈춘다.
  * Crown 위치 / 크기는 .watch__crown-attach 하나에만 쓰고(GSAP이 다루지 않는 layer), 방향은 crownLink로
  * useScrollScene과 함께 그린다. scroll 진행률의 함수라 되감으면 결합이 풀리고 Crown은 원래 controller 자리로 돌아간다.
  *
@@ -99,6 +106,27 @@ export default function useContactScene({ interactive, ready, sectionRef }: Opti
     const cleanups: Array<() => void> = []
 
     const ctx = gsap.context(() => {
+      /* ---------- Light Rays (OGL). 그리기는 LightRays가, 세기(opacity)는 여기서 ---------- */
+      const rays = section.querySelector<HTMLElement>('.contact__rays')
+      if (rays) {
+        let raysTween: gsap.core.Tween | null = null
+        const fadeRays = (opacity: number, duration: number) => {
+          raysTween?.kill()
+          raysTween = gsap.to(rays, { opacity, duration, ease: 'sine.inOut', overwrite: true })
+        }
+        ScrollTrigger.create({
+          trigger: section,
+          start: RAYS.start,
+          refreshPriority: -4,
+          onEnter: () => fadeRays(RAYS.opacity, RAYS.duration),
+          onLeaveBack: () => fadeRays(0, RAYS.duration * 0.7),
+        })
+        cleanups.push(() => {
+          raysTween?.kill()
+          rays.style.removeProperty('opacity')
+        })
+      }
+
       /* ---------- 문장 / 링크 등장 (시간 기반, 들어오면 재생 / 되감으면 역재생) ---------- */
       const revealTl = gsap.timeline({ paused: true })
       if (reduced) {
@@ -128,7 +156,7 @@ export default function useContactScene({ interactive, ready, sectionRef }: Opti
           { autoAlpha: 1, y: 0, duration: reduced ? 0.5 : 1, ease: reduced ? 'none' : 'power2.out' },
         )
         if (ownCrown && !reduced) {
-          enter.fromTo(ownCrown, { x: ATTACH.crownGap }, { x: 0, duration: ATTACH.duration, ease: ATTACH.ease }, 0.55)
+          enter.fromTo(ownCrown, { x: 6 }, { x: 0, duration: 0.42, ease: 'power2.inOut' }, 0.55)
         }
         ScrollTrigger.create({
           trigger: watchBox,
@@ -148,50 +176,12 @@ export default function useContactScene({ interactive, ready, sectionRef }: Opti
       const journeyWorld = document.querySelector<HTMLElement>('.journey__world')
       if (!socket || !crown || !attachLayer) return
 
-      const alignEase = gsap.parseEase('power1.inOut')
-      const carryEase = gsap.parseEase('sine.inOut')
-      const attach = { v: 0 }
-      let align = 0 // 가로 위치 / 크기 / 방향이 socket 옆 자리에 맞춰진 정도
-      let carry = 0 // 세로로 Watch에 실려 가는 정도
+      const approachEase = gsap.parseEase('sine.inOut')
+      const orientEase = gsap.parseEase('sine.inOut')
+      const segment = (p: number, from: number, to: number) => gsap.utils.clamp(0, 1, (p - from) / (to - from))
+      let watchShift = 0 // 지금 .contact__watch-tilt에 쓴 가로 이동(px). socket rect에 이미 들어 있다
       let attached = false
-      let watchShift = 0 // 지금 .contact__watch-tilt에 쓴 가로 이동(px)
-      let rectShift = 0 // 마지막으로 socket을 잴 때 Watch에 걸려 있던 가로 이동(px)
-      let attachTween: gsap.core.Tween | null = null
       let glintTl: gsap.core.Timeline | null = null
-
-      const measure = () => {
-        rectShift = watchShift
-        return { cr: crown.getBoundingClientRect(), sr: socket.getBoundingClientRect() }
-      }
-
-      /*
-       * Crown / Watch 위치. 매번 Crown 박스(controller 자리)와 socket의 화면 좌표를 다시 읽는다 —
-       * socket은 section과 함께 scroll되고 등장 tween으로도 움직이기 때문이다. 읽기를 먼저, 쓰기를 나중에 한다.
-       * .watch__crown 박스 자체는 이 transform의 영향을 받지 않으므로 controller 자리는 언제 읽어도 같다.
-       */
-      const pose = (rects = measure()) => {
-        watchShift = -ATTACH.watchGap * (1 - attach.v)
-        if (align <= 0 && carry <= 0) {
-          attachLayer.style.removeProperty('transform')
-        } else {
-          const { cr, sr } = rects
-          // Crown이 놓인 layer의 배율(화면 px / Crown 좌표). offsetWidth는 정수로 반올림돼 몇 px씩 어긋나므로 소수 폭을 쓴다.
-          const k = cr.width / parseFloat(getComputedStyle(crown).width)
-          if (k > 0 && cr.height > 0) {
-            // 잰 socket 위치에는 잴 때의 Watch 이동이 들어 있다. 이번에 쓸 이동으로 바로잡는다.
-            const socketX = sr.left + sr.width / 2 + (watchShift - rectShift)
-            const gap = (ATTACH.crownGap + ATTACH.watchGap) * (1 - attach.v)
-            const tx = (align * (socketX + gap - (cr.left + cr.width / 2))) / k
-            const ty = (carry * (sr.top + sr.height / 2 - (cr.top + cr.height / 2))) / k
-            const size = 1 + (sr.height / cr.height - 1) * align
-            attachLayer.style.transform = `translate(${tx.toFixed(2)}px, ${ty.toFixed(2)}px) scale(${size.toFixed(4)})`
-          }
-        }
-        if (watchShift) watchTilt.style.translate = `${watchShift.toFixed(2)}px 0`
-        else watchTilt.style.removeProperty('translate')
-        crownLink.attach = align
-        crownLink.refresh()
-      }
 
       const playGlint = () => {
         if (!glint) return
@@ -203,36 +193,50 @@ export default function useContactScene({ interactive, ready, sectionRef }: Opti
           .to(glint, { opacity: 0, duration: GLINT.duration * 0.6, ease: 'sine.in' }, GLINT.duration * 0.4)
       }
 
-      const update = (progress: number, distance: number) => {
-        const rects = measure()
-        /*
-         * socket이 Crown 높이에 닿는 progress. section은 progress 1당 distance px만큼 일정하게 올라가므로
-         * 지금 두 높이의 차이에서 바로 구한다(등장 tween이 거의 끝난 구간이라 오차는 몇 px 이내).
-         * 현재 상태만으로 정해지는 값이라 되감아도 같은 자리에서 풀린다.
-         */
-        const socketY = rects.sr.top + rects.sr.height / 2
-        const crownY = rects.cr.top + rects.cr.height / 2
-        const reach = gsap.utils.clamp(ALIGN.earliest, ALIGN.latest, progress + (socketY - crownY) / Math.max(1, distance))
-        carry = carryEase(gsap.utils.clamp(0, 1, (progress - (reach - CARRY.lead)) / CARRY.span))
-        align = alignEase(gsap.utils.clamp(0, 1, (progress - reach) / (ALIGN.end - reach)))
+      /**
+       * progress 하나로 Crown / Watch를 그린다. 읽기(rect)를 먼저, 쓰기를 나중에 한다.
+       *   .watch__crown 박스는 attach layer의 transform 영향을 받지 않으므로 controller 자리의 중심은 언제 읽어도 같다.
+       *   socket은 section과 함께 scroll되고 Watch 등장 / 접근 이동으로도 움직인다. 잰 rect에는 지난 frame의
+       *   Watch 이동이 들어 있어, 이번 frame에 쓸 이동과의 차이만큼 바로잡는다.
+       */
+      const update = (progress: number) => {
+        const cr = crown.getBoundingClientRect()
+        const sr = socket.getBoundingClientRect()
+        const approach = approachEase(segment(progress, APPROACH.start, APPROACH.end))
+        const nextShift = WATCH_REACH * 6.75 * approach * approach * (1 - approach)
 
-        const shouldAttach = progress >= ATTACH.at && align >= 1
-        if (shouldAttach !== attached) {
-          attached = shouldAttach
-          attachTween?.kill()
-          attachTween = gsap.to(attach, {
-            v: shouldAttach ? 1 : 0,
-            duration: ATTACH.duration,
-            ease: ATTACH.ease,
-            onUpdate: () => pose(),
-          })
-          if (shouldAttach) playGlint()
+        if (approach <= 0) {
+          attachLayer.style.removeProperty('transform')
+        } else {
+          // Crown이 놓인 layer의 배율(화면 px / Crown 좌표). offsetWidth는 정수로 반올림돼 몇 px씩 어긋나므로 소수 폭을 쓴다.
+          const k = cr.width / parseFloat(getComputedStyle(crown).width)
+          if (k > 0 && cr.height > 0) {
+            const socketX = sr.left + sr.width / 2 + (nextShift - watchShift)
+            const socketY = sr.top + sr.height / 2
+            const deltaX = socketX - (cr.left + cr.width / 2)
+            const deltaY = socketY - (cr.top + cr.height / 2)
+            const size = 1 + (sr.height / cr.height - 1) * approach
+            attachLayer.style.transform = `translate(${((deltaX * approach) / k).toFixed(2)}px, ${((deltaY * approach) / k).toFixed(2)}px) scale(${size.toFixed(4)})`
+          }
+        }
+
+        watchShift = nextShift
+        if (watchShift > 0.01) watchTilt.style.translate = `${watchShift.toFixed(2)}px 0`
+        else watchTilt.style.removeProperty('translate')
+
+        crownLink.attach = orientEase(segment(approach, ORIENT.from, ORIENT.to))
+        crownLink.refresh()
+
+        // 결합한 순간에만 테두리에 빛이 한 번 지나간다. 되감아 떨어지면 빛도 지운다.
+        const isAttached = approach >= 1
+        if (isAttached !== attached) {
+          attached = isAttached
+          if (isAttached) playGlint()
           else {
             glintTl?.kill()
             if (glint) gsap.set(glint, { opacity: 0 })
           }
         }
-        pose(rects)
       }
 
       /** Crown 회전이 따라가는 scroll. Contact 구간에서만 SPIN_INFLUENCE만큼 줄어든다. */
@@ -251,10 +255,10 @@ export default function useContactScene({ interactive, ready, sectionRef }: Opti
           scrub: true, // Watch와 Crown이 같은 frame에 움직여야 해서 지연을 두지 않는다.
           invalidateOnRefresh: true,
           refreshPriority: -4, // Faces / Journey pin 길이가 정해진 뒤에 잰다.
-          onUpdate: (self) => update(self.progress, self.end - self.start),
+          onUpdate: (self) => update(self.progress),
           onRefresh: (self) => {
             setCrownScrollRemap(spinRemap(self.start, self.end))
-            update(self.progress, self.end - self.start)
+            update(self.progress)
           },
         },
       })
@@ -270,7 +274,6 @@ export default function useContactScene({ interactive, ready, sectionRef }: Opti
       tl.set({}, {}, 1)
 
       cleanups.push(() => {
-        attachTween?.kill()
         glintTl?.kill()
         setCrownScrollRemap(null)
         if (glint) gsap.set(glint, { clearProps: 'opacity,--reflection-x' })

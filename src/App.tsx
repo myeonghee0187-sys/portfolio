@@ -11,26 +11,41 @@ import useMediaQuery from './hooks/useMediaQuery'
 import useScrollScene from './hooks/useScrollScene'
 import { FACE_PROJECTS } from './components/Faces/facesData'
 import Contact from './components/Contact'
+import AllFaces from './components/AllFaces/AllFaces'
 
 export default function App() {
   const [isIntroDone, setIsIntroDone] = useState(false)
-  // Reserved for the forthcoming ALL FACES design; no temporary screen or fake route.
-  const [allFaces, setAllFaces] = useState({ open: false, projects: FACE_PROJECTS })
+  /*
+   * ALL FACES(전체 project world). Crown이 열고 CLOSE / ESC가 닫는다.
+   * selectedProjectId는 Case Study 연결 자리다 — 상세 화면이 설계되면 여기서 연다(지금은 선택만 기록한다).
+   */
+  const [allFaces, setAllFaces] = useState<{ open: boolean; projects: typeof FACE_PROJECTS; selectedProjectId: string | null }>({
+    open: false,
+    projects: FACE_PROJECTS,
+    selectedProjectId: null,
+  })
   const isFinePointer = useMediaQuery('(hover: hover) and (pointer: fine)')
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const isWideEnough = useMediaQuery('(min-width: 901px)')
 
   const handleIntroFinish = useCallback(() => setIsIntroDone(true), [])
 
-  /*
-   * FACES 이후 고정되는 정면 Digital Crown의 click handler.
-   *
-   * 원래 자리는 "ALL FACES(전체 project view)"를 여는 것인데, 그 view는 아직 없다.
-   * 다른 기능을 임의로 붙이지 않고 연결 지점만 만들어 둔다 —
-   * view가 생기면 이 함수 안에서 열면 된다.
-   */
+  /* FACES 이후 고정되는 정면 Digital Crown의 click handler. ALL FACES를 연다. page scroll 위치는 그대로다. */
   const handleOpenAllFaces = useCallback(() => {
-    setAllFaces({ open: true, projects: FACE_PROJECTS })
+    setAllFaces((state) => ({ ...state, open: true, projects: FACE_PROJECTS }))
+  }, [])
+
+  /* 닫힘 motion이 끝난 뒤 불린다. focus는 열었던 Crown으로 돌려준다. */
+  const handleCloseAllFaces = useCallback(() => {
+    setAllFaces((state) => ({ ...state, open: false }))
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLButtonElement>('.watch--stage .watch__crown-front-button')?.focus({ preventScroll: true }),
+    )
+  }, [])
+
+  /* Case Study가 아직 없어 선택한 project id만 받는다(가짜 URL / 상세 화면 / modal 없음). */
+  const handleProjectSelect = useCallback((projectId: string) => {
+    setAllFaces((state) => ({ ...state, selectedProjectId: projectId }))
   }, [])
 
   /*
@@ -92,7 +107,12 @@ export default function App() {
         />
       )}
 
-      <div className="site" data-all-faces-open={allFaces.open} data-all-faces-count={allFaces.projects.length}>
+      <div
+        className="site"
+        data-all-faces-open={allFaces.open}
+        data-all-faces-count={allFaces.projects.length}
+        data-all-faces-selected={allFaces.selectedProjectId ?? undefined}
+      >
         <Header />
         <main>
           <Hero inlineWatch={!scrollSceneEnabled} />
@@ -111,7 +131,11 @@ export default function App() {
           Hero와 About이 공유하는 Watch. 연출이 켜져 있을 때만 이 레이어가 들고 있고,
           Hero/About은 각자 앵커만 남겨둔다. 그래서 화면의 Watch는 언제나 하나다.
         */}
-        {scrollSceneEnabled && <WatchStage onOpenAllFaces={handleOpenAllFaces} />}
+        {scrollSceneEnabled && <WatchStage onOpenAllFaces={handleOpenAllFaces} allFacesOpen={allFaces.open} />}
+
+        {allFaces.open && (
+          <AllFaces projects={allFaces.projects} onClose={handleCloseAllFaces} onProjectSelect={handleProjectSelect} />
+        )}
       </div>
     </>
   )

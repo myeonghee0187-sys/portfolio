@@ -115,6 +115,35 @@
   pointer-events: none;
 }
 
+/*
+ * About -> FACES 노출 중 display 유리 표면의 반사. 구멍과 같은 모양이고 평소에는 opacity 0이다.
+ * 노출(bloom / brightness)은 display를 비켜 가고, 유리를 지나가는 이 얇은 반사만 화면 위에 남는다.
+ * --glass-x와 opacity는 useScrollScene이 scroll 진행률로 쓴다. screen 합성이라 검은 화면은 검게 남는다.
+ */
+.watch__display-glint {
+  position: absolute;
+  top: calc(64 * var(--wu));
+  left: calc(58 * var(--wu));
+  width: calc(484 * var(--wu));
+  height: calc(646 * var(--wu));
+  overflow: hidden;
+  border-radius: calc(96 * var(--wu));
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background:
+    linear-gradient(
+        118deg,
+        transparent 38%,
+        rgb(212 229 239 / 0.07) 45%,
+        rgb(243 244 244 / 0.16) 49%,
+        rgb(212 229 239 / 0.06) 53%,
+        transparent 60%
+      )
+      var(--glass-x, 130%) 0 / 300% 100% no-repeat,
+    linear-gradient(180deg, rgb(243 244 244 / 0.05), transparent 22%);
+}
+
 /* ---------------- Hero / About watch face ---------------- */
 
 /* 시계·이름·타이틀 묶음. Watch 박스를 그대로 덮어 안쪽 배치는 이전과 같다. */

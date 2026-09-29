@@ -11,9 +11,11 @@ import './WatchStage.css'
 type WatchStageProps = {
   /** 정면 Digital Crown(= FACES 이후의 global controller)을 눌렀을 때. */
   onOpenAllFaces?: () => void
+  /** ALL FACES가 열려 있는지. Crown dial이 한 칸 더 돌아가 있다. */
+  allFacesOpen?: boolean
 }
 
-export default function WatchStage({ onOpenAllFaces }: WatchStageProps) {
+export default function WatchStage({ onOpenAllFaces, allFacesOpen }: WatchStageProps) {
   return (
     /*
      * aria-hidden을 두지 않는다. 이 안에는 Watch face의 실제 텍스트와
@@ -22,7 +24,7 @@ export default function WatchStage({ onOpenAllFaces }: WatchStageProps) {
      */
     <>
       <div className="watch-stage">
-        <WatchAssembly variant="stage" onOpenAllFaces={onOpenAllFaces} />
+        <WatchAssembly variant="stage" onOpenAllFaces={onOpenAllFaces} allFacesOpen={allFacesOpen} />
       </div>
       {/*
         About -> FACES에서 화면 전체의 노출이 잠깐 올라가는 빛(camera flash / 일출).

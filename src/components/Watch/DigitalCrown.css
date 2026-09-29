@@ -294,20 +294,32 @@
 }
 
 /*
- * 바깥 테두리(받침 가장자리와 같은 원). FACES부터 늘 보이는 옅은 Frost 선 + 아주 옅은 Ice glow.
- * 누를 수 있는 부품이라는 것을 글자 없이 알린다. 강한 neon / 반복 pulse는 없다.
+ * 바깥 테두리(받침 가장자리와 같은 원) = Outer Rim Electric Ice.
+ * FACES부터 idle에서도 분명히 보인다: Electric Ice(#186DE5) 선 + 바로 안쪽의 얇은 Ice 반사 + 낮은 Electric glow.
+ * 누를 수 있는 부품이라는 것을 글자 없이 알린다. 반복 pulse는 없다. 세기는 --rim-glow 하나로 바뀐다
+ * (idle 1 / hover 1.9 / press 0.7 / 첫 도착 cue에서 잠깐 2.2).
  */
 .watch__crown-front-rim {
+  --rim-glow: 1;
   inset: -5%;
-  border: 1px solid rgb(212 229 239 / 0.58);
+  border: 1.5px solid var(--ui-border, #186de5);
   box-shadow:
-    0 0 0 1px rgb(212 229 239 / 0.18),
-    0 0 14px rgb(24 109 229 / 0.16),
-    inset 0 0 8px rgb(212 229 239 / 0.1);
+    inset 0 0 0 1px rgb(212 229 239 / calc(0.2 + 0.14 * var(--rim-glow))),
+    inset 0 0 calc(10px * var(--rim-glow)) rgb(24 109 229 / 0.22),
+    0 0 0 1px rgb(24 109 229 / calc(0.18 * var(--rim-glow))),
+    0 0 calc(12px * var(--rim-glow)) rgb(24 109 229 / calc(0.36 * var(--rim-glow))),
+    0 0 calc(30px * var(--rim-glow)) rgb(24 109 229 / calc(0.12 * var(--rim-glow)));
   pointer-events: none;
   transition:
-    border-color 260ms cubic-bezier(0.33, 1, 0.68, 1),
+    --rim-glow 260ms cubic-bezier(0.33, 1, 0.68, 1),
     box-shadow 260ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+/* box-shadow 안의 calc를 transition으로 보간하려면 등록된 숫자 변수여야 한다. */
+@property --rim-glow {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
 }
 
 
@@ -315,14 +327,14 @@
 
 /*
  * 눈에 보이는 label은 두지 않는다. 누를 수 있다는 것은 재질과 움직임으로만 전한다.
- *   idle   바깥 테두리(rim)에 늘 옅은 Frost 선과 아주 옅은 Ice glow
- *   hover  살짝 떠오르며 커지고, dial이 조금 더 돌고, 테두리 빛이 밝아진다
+ *   idle   바깥 테두리(rim)에 늘 보이는 Electric Ice 선과 낮은 glow
+ *   hover  살짝 떠오르며 1.045배로 커지고, dial이 조금 더 돌고, 테두리 빛이 밝아진다
  *   press  가라앉으며 작아지고 테두리 빛도 조금 가라앉는다(하드웨어 버튼을 누른 느낌). bounce 없음
  *   focus  테두리 바깥의 선명한 2px Frost / Ice ring
  */
 .watch__crown--controller .watch__crown-front-button:hover .watch__crown-front-fx {
-  transform: translateY(-2px) scale(1.04);
-  filter: brightness(1.08);
+  transform: translateY(-1.5px) scale(1.045);
+  filter: brightness(1.1);
 }
 
 .watch__crown--controller .watch__crown-front-button:hover .watch__crown-front-spin {
@@ -330,12 +342,7 @@
 }
 
 .watch__crown--controller .watch__crown-front-button:hover .watch__crown-front-rim {
-  border-color: rgb(243 244 244 / 0.92);
-  box-shadow:
-    0 0 0 1px rgb(212 229 239 / 0.45),
-    0 0 22px rgb(24 109 229 / 0.32),
-    0 0 38px rgb(24 109 229 / 0.14),
-    inset 0 0 12px rgb(212 229 239 / 0.18);
+  --rim-glow: 1.9;
 }
 
 .watch__crown--controller .watch__crown-front-button:active .watch__crown-front-fx {
@@ -346,12 +353,18 @@
 
 /* 누르는 동안은 테두리 빛도 조금 가라앉는다. */
 .watch__crown--controller .watch__crown-front-button:active .watch__crown-front-rim {
-  border-color: rgb(212 229 239 / 0.42);
-  box-shadow:
-    0 0 0 1px rgb(212 229 239 / 0.12),
-    0 0 10px rgb(24 109 229 / 0.12),
-    inset 0 0 6px rgb(212 229 239 / 0.08);
+  --rim-glow: 0.7;
   transition-duration: 90ms;
+}
+
+/*
+ * ALL FACES가 열릴 때 dial이 한 칸(22deg) 더 돌아간 채로 있다. 닫히면 원래 각도로 돌아온다.
+ * scroll / drag 회전과는 다른 layer(front-spin)라 그 각도를 덮어쓰지 않는다. hover 회전보다 우선한다.
+ */
+.watch__crown[data-all-faces-open='true'] .watch__crown-front-button .watch__crown-front-spin {
+  transform: rotate(22deg);
+  transition-duration: 780ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .watch__crown-front-button:focus-visible {
@@ -377,33 +390,15 @@
   animation: crown-cue-lift 760ms cubic-bezier(0.34, 0.8, 0.3, 1);
 }
 
-/* 처음 도착했을 때 테두리 빛: 0.45 -> 1 -> 평소(0.58). */
+/* 처음 도착했을 때 테두리 빛: 0.6 -> 2.2 -> 평소(1). 한 번뿐이다. */
 .watch__crown--cue .watch__crown-front-rim {
   animation: crown-cue-rim 760ms cubic-bezier(0.34, 0.8, 0.3, 1);
 }
 
 @keyframes crown-cue-rim {
-  0% {
-    border-color: rgb(212 229 239 / 0.45);
-    box-shadow:
-      0 0 0 1px rgb(212 229 239 / 0.12),
-      0 0 10px rgb(24 109 229 / 0.1),
-      inset 0 0 6px rgb(212 229 239 / 0.06);
-  }
-  42% {
-    border-color: rgb(243 244 244 / 1);
-    box-shadow:
-      0 0 0 1px rgb(212 229 239 / 0.5),
-      0 0 24px rgb(24 109 229 / 0.34),
-      inset 0 0 12px rgb(212 229 239 / 0.2);
-  }
-  100% {
-    border-color: rgb(212 229 239 / 0.58);
-    box-shadow:
-      0 0 0 1px rgb(212 229 239 / 0.18),
-      0 0 14px rgb(24 109 229 / 0.16),
-      inset 0 0 8px rgb(212 229 239 / 0.1);
-  }
+  0% { --rim-glow: 0.6; }
+  42% { --rim-glow: 2.2; }
+  100% { --rim-glow: 1; }
 }
 
 @keyframes crown-cue-dial {

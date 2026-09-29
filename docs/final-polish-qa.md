@@ -1,5 +1,34 @@
 # Portfolio final polish — 구현 및 검수 기록
 
+## 2026-09-29 이어서 작업 (FINAL POLISH + ALL FACES)
+
+기준 코드: 원격 브랜치의 마지막 커밋 `c3beb2b contact 구현 2차, 디테일 수정`. 이전 VS Code 세션의 로컬 미커밋 변경은 이 작업 환경에 없었으므로 포함되지 않는다.
+완료된 항목(G: PROJECTS 03, H: Contact 문장 / Watch 배치 / display 구조 / 이메일 주소)은 그대로 두고, 나머지만 이어서 구현했다. reset / checkout / revert / commit / push 없음.
+
+| 항목 | 구현 | 브라우저 검수 |
+|---|---|---|
+| A. About → Faces | 첫 project F45(`preload=auto`로 첫 frame 확보). bloom은 display 자리만 `clip-path: path(evenodd)`로 뚫고, brightness는 About stage / Watch case / Crown에만 CSS filter, Faces canvas는 shader `uExposure`로 display 바깥(gallery · rim)에만 곱한다. display에는 유리 반사 한 줄(`.watch__display-glint`)만 지나간다. | 진입 구간 display slot 0 / active 0 확인. 노출 최대(p 0.45~0.62)에서 display가 뿌옇게 밝아지지 않고 주변만 밝아지는 것 스크린샷 비교. |
+| B. Faces loop | 원본 TCHAIKIM은 0.67초 wide shot → close-up hard cut 편집이라 반복마다 두 번 끊겼다. 이어지는 close-up 한 컷 + 마지막 1초를 첫 1초로 smoothstep dissolve한 `tchaikim-faces-4x5-loop.mp4`(4.71초, 1.47MB)로 교체. 원본 파일은 그대로 둠. 코드의 video / VideoTexture reset 없음. | 인접 frame PSNR 최저 31.9dB(cut 없음), 이음매 29.2dB. 13초 동안 2회 loop, loadstart 1회(최초)뿐. |
+| B. Live Link | display를 한 project가 55% 이상 차지하면(slot 오차 < 0.45) pointer + 그 project로 열림. rail 지연 < 2%, scroll 속도 < 1200px/s. pin 시작 지점에서 링크가 닫혀 있던 문제(`isActive`) 수정. href / aria-label은 display에 보이는 project를 따른다. 7px drag threshold 유지. | F45 / TCHAIKIM / JADUYA 각각 클릭 → 새 탭 요청 URL이 정확히 해당 사이트. 15px · 230px drag → 새 탭 0. |
+| C. Crown | Outer Rim Electric Ice(#186DE5 1.5px + Ice 안쪽 반사 + glow, `--rim-glow`로 idle 1 / hover 1.9 / press 0.7 / cue 2.2). hover scale 1.045. 첫 도착 cue 1회(기존) 유지. ALL FACES 열림 동안 dial +22deg. | hover 스크린샷, ALL FACES 열림 시 `data-all-faces-open=true`. |
+| D. Intro → Hero | 1.15초(`duration - 0.1 - 1.15`부터), 확대 0 → 0.9 sine.inOut, overlay keyframe 완만화, Hero 공개 0.76~1. Hero transform 없음, 완료 후 unmount. | video.currentTime 3.79s부터 확대 1 → 1.168, overlay 단조 증가, Hero transform none, Intro 제거 확인. |
+| E. Faces → Journey | handoff 1.1H(110vh), scrub 1.15, 모든 tween sine ease, Faces scene 전체 scale 0.93 / opacity 0.3. Faces 재생 종료를 handoff 끝 + 0.25H로 늦춤(scrub 지연 중 정지 방지). | handoff 1.1H(1440×900에서 990px) 확인, 역방향 스크린샷. |
+| F. Journey line | 한 path(M 1 + C 6). 옆 anchor에서 경로가 card 테두리 1px 안쪽을 따라 card 밑에 숨었다 나오던 것이 끊김의 원인 → 옆 card는 14단위 바깥을 스쳐 지나가는 세로 흐름으로 변경. active stroke `#D4E5EF`, 앞쪽 빛 조각(path-edge) 제거, 시작 / 끝 point 제거. 선은 scroll 진행률을 100ms smoothing으로만 따르고 card / camera(scrub 0.5)와 분리. | 6개 진행률 스크린샷: 선이 끊기지 않고 card 밖으로 보임. point 0, edge path 0, stroke rgb(212,229,239). |
+| H. Contact | line-height 1.35, 이메일 = 복사 button(Copy → Check 1.2초, toast 없음, status 문구는 보조기술용). | 클립보드 값 `songmyeonghee0725@gmail.com`, 1.2초 뒤 원래 아이콘. 1920 / 1440 / 1024 / 390에서 1.35배. |
+| I. Crown attach | 시간 기반 결합 tween 제거. progress 0.4 → 0.92에서 매 frame `getBoundingClientRect()`로 Crown 중심 → socket 중심 delta를 재서 sine.inOut 비율만큼 이동, 끝에서 속도 0으로 닿는다. Watch는 Crown 쪽으로 최대 10px 다가갔다 제자리. 회전 영향 1 → .7 → .35 → 0, 각도 reset 없음. | delta: 0.8에서 (0, -37.6) → 0.9에서 (0, -1.4) → 0.92 이후 (0, 0). 역방향에서 같은 값으로 분리. |
+| J. Light Rays | React Bits LightRays(OGL, `ogl` 의존성 추가). 설정값 지정대로. 층: Carbon → Rays → mask → 문장 → Watch → Crown. 진입(top 75%) 때 opacity 0 → 0.5 1.4초. IntersectionObserver / RAF / context 정리, reduced motion은 정지 한 장. | opacity 0.5, canvas 생성, 모든 크기에서 오류 0. |
+| K. Border | `--ui-border: #186DE5` 하나로 About / Journey card, Contact CTA, 문의 modal, Intro SKIP, Crown rim, ALL FACES card를 통일. 활성 / 비활성 차이가 필요한 곳은 같은 색의 투명도만 다르다. Watch titanium rim / shader는 변경 없음. | computed border 색 모두 rgb(24,109,229) 계열. |
+| L. ALL FACES | 신규 `AllFaces`. 화면보다 큰 bounded 평면(1.6 × 1.6 뷰포트) 위 3개 project 비대칭 배치, drag(7px) + 관성(friction 0.935) + 경계 저항 / 복귀, wheel 이동, idle 부유(x ±6~10 / y ±8~14 / ±0.4~0.7deg), hover scale 1.025 · 나머지 0.55. 열림 약 0.84초(overlay, card opacity / scale .96 / offset), CLOSE × · ESC, page scroll 위치 유지, Tab 가두기, 닫으면 Crown으로 focus 복귀. project 선택은 `onProjectSelect(projectId)`까지만(App이 id만 기록). | 열기 / 관성(합성 pointer 입력으로 경계까지 미끄러짐) / rubber 복귀 / hover / 선택 기록 / ESC · CLOSE / scrollY 불변을 1920 · 1440 · 1024에서 확인. |
+| M. QA | 1920×1080, 1440×900, 1024×768, 390×844, reduced motion. | pin 2 / 2 / 2 / 0 / 0, 가로 overflow 0, 앱 console error 0. `npm run lint` exit 0, `npm run build` 성공(500KB chunk 경고는 기존과 같음). |
+
+### 검수 환경의 한계
+
+- 이 작업 환경의 headless Chromium은 H.264를 재생하지 못해, 검수 때만 같은 영상을 WebM으로 바꿔 넣었다(저장소의 영상 파일은 그대로).
+- GPU가 없어 WebGL이 SwiftShader로 약 1.5fps에서 돈다. 그래서 위치 / 상태 / 기하 / 순서는 확인했지만, 60fps에서의 움직임의 부드러움(scrub 느낌, 관성의 손맛, hover 전환)은 실제 브라우저에서 한 번 더 봐야 한다.
+- Google Fonts가 차단되어 Anton / Inter / SUIT 대신 대체 글꼴로 렌더됐다. 390px Contact 제목이 잘려 보인 것은 대체 글꼴 폭 때문이며, 실제 글꼴에서의 줄바꿈은 확인하지 못했다.
+
+---
+
 검수일: 2026-09-28. 현재 working tree를 기준으로 수정했으며 reset, checkout, commit, push는 하지 않았습니다.
 
 최신 사용자 답변을 우선 적용했습니다. Contact는 최소 도착 지점만 추가했습니다. ALL FACES는 App 상태·Crown handler·프로젝트 3개·미래 `caseStudyPath` 필드만 준비했으며, 임시 화면·Modal·가짜 Case Study URL은 없습니다.

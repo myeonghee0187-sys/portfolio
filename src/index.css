@@ -11,6 +11,11 @@
    * 바탕이 아니라 Watch 뒤의 ambient 빛뿐이다.
    */
   --color-carbon-black: #08090a;
+  /*
+   * UI component의 border 색은 이 한 값(Electric Ice #186DE5)이다. 활성 / 비활성의 차이가 필요한 곳은
+   * 같은 색의 투명도만 바꾼다. Apple Watch의 titanium rim / WebGL shader material은 여기에 포함되지 않는다.
+   */
+  --ui-border: #186de5;
 }
 
 html,
