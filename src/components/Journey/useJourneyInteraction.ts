@@ -29,20 +29,18 @@ const SMOOTHING = 0.14
  * 이어서 Contact의 Light Rays가 0.35에서 출발해 0.5까지 올라간다(useContactScene).
  */
 /**
- * Journey time marker가 드러나는 구간(journey-master 진행률). 빛의 머리가 marker 옆에 닿기 TIME_REVEAL 전부터
- * 닿는 순간까지 --time-r 0 -> 1(opacity 0 -> 1, y 12px -> 0, Journey.css). 지나간 뒤에는 그대로 남는다.
- * 되감으면 같은 값을 거꾸로 지난다.
+ * Journey의 큰 배경 시간(14 : 10 -> 17 : 00)이 드러나는 구간(journey-master 진행률). 빛이 그 구간(from -> to card)에
+ * 들어와 시간 글자의 높이에 이르기 TIME_REVEAL 전부터 이르는 순간까지 --time-r 0 -> 1(opacity 0 -> 1, y 20px -> 0,
+ * Journey.css). 지나간 뒤에는 그대로 희미하게 남고, 되감으면 같은 값을 거꾸로 지난다.
  */
-const TIME_REVEAL = 0.03
+const TIME_REVEAL = 0.04
 
 /**
- * time marker 자리(화면 px). marker 상자와 line의 가장 가까운 거리가 gap(36 ~ 64) 안에 들어오게 둔다 —
- * 사선 구간에서는 가로로 더 떨어뜨려야 같은 거리가 된다. card와는 card만큼, 화면 가장자리와는 edge만큼 떨어진다.
- * 그중 card에서 가장 먼(여백 한가운데) 자리를 고른다 — card 옆이 아니라 두 card 사이 line 구간의 여백에 적힌다.
+ * 배경 시간의 자리. 시간은 line에 붙지 않고 화면(world)의 좌 / 우 가장자리에 걸친다 —
+ *   crop   글자 폭의 이만큼이 화면 밖으로 나가 잘린다(0.14 = 14%)
+ *   card   card와 떨어지는 거리(화면 px). 그 구간의 높이 안에서 card와 겹치지 않는 가장 가운데 높이를 고른다
  */
-const MARKER = { gap: [36, 64] as const, card: 48, edge: 24 }
-/** marker 상자를 line 점에서 위아래로 옮겨 보는 정도(상자 높이 배수). */
-const SHIFTS = [0, 0.7, -0.7, 1.4, -1.4]
+const EDGE_TIME = { crop: 0.14, card: 40 }
 
 const CONTACT_AMBIENT: ReadonlyArray<readonly [number, number]> = [
   [0.78, 0],
@@ -229,7 +227,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       times.forEach((el, k) => {
         const t = JOURNEY_TIMES[k]
         if (!t) return
-        const at = m[t.from] + (m[t.to] - m[t.from]) * (Number(el.dataset.beside) || 0.5)
+        const at = m[t.from] + (m[t.to] - m[t.from]) * (Number(el.dataset.at) || 0.5)
         const reveal = clamp01((p - (at - TIME_REVEAL)) / TIME_REVEAL).toFixed(3)
         if (timeWritten.get(el) === reveal) return
         timeWritten.set(el, reveal)
@@ -312,80 +310,36 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
      * marker 상자를 line의 side 쪽에 GAP만큼 떨어뜨려 놓아 보고, line / card / 화면 가장자리에서 충분히 떨어진 자리 중
      * 여백 구간의 가운데에 가장 가까운 점을 고른다. refresh마다 경로와 함께 다시 잰다(scroll 중에는 재지 않는다).
      */
-    const placeTimes = (boxes: Box[], hits: number[], total: number, scale: number) => {
-      const step = 4
-      const samples: (Point & { s: number })[] = []
-      for (let s = 0; s <= total; s += step) {
-        const pt = active.getPointAtLength(s)
-        samples.push({ x: pt.x, y: pt.y, s })
-      }
-      const u = (px: number) => px / scale
-      const inCard = (x0: number, x1: number, y0: number, y1: number, pad: number) => boxes.some(b =>
-        x1 > b.x - b.hw - pad && x0 < b.x + b.hw + pad && y1 > b.y - b.hh - pad && y0 < b.y + b.hh + pad)
-      // 화면에 보이는 line(card 밖). card 아래로 지나가는 부분은 marker와의 거리를 잴 때 세지 않는다.
-      const visible = samples.filter(q => !inCard(q.x, q.x, q.y, q.y, 0))
+    /**
+     * 배경 시간의 자리. 가로는 side 쪽 화면 가장자리에 붙이고 글자 폭의 EDGE_TIME.crop만큼 밖으로 내보낸다.
+     * 세로는 그 시간이 맡은 구간(from card ~ to card)의 높이 안에서, 같은 가장자리의 card와 겹치지 않는 가장 가운데 높이다.
+     * 겹치지 않는 높이가 없으면 가장 적게 겹치는 높이 — 시간은 card 뒤에 깔려 card 글자를 가리지 않는다.
+     * refresh(초기 mount, 폰트 로드, resize)마다 다시 잰다(scroll 중에는 재지 않는다).
+     */
+    const placeTimes = (boxes: Box[], scale: number) => {
+      const pad = EDGE_TIME.card / scale
       times.forEach((el, k) => {
         const t = JOURNEY_TIMES[k]
         if (!t) return
-        // 앞선 refresh에서 쉬게 된 marker도 다시 잰다(숨겨진 채로 재면 크기가 0이다).
-        el.hidden = false
-        const w = u(el.offsetWidth), h = u(el.offsetHeight)
-        const range = samples.filter(p => p.s > hits[t.from] && p.s < hits[t.to])
-        // card 밖으로 나온 line 구간과 그 가운데(자리가 여럿이면 가운데에 가까운 쪽).
-        const outside = range.filter(p => !inCard(p.x, p.x, p.y, p.y, 0))
-        const middle = outside.length ? (outside[0].s + outside[outside.length - 1].s) / 2 : (hits[t.from] + hits[t.to]) / 2
-        const lineDistance = (x0: number, x1: number, y0: number, y1: number) => {
-          let d = Infinity
-          for (const q of visible) {
-            if (Math.abs(q.y - (y0 + y1) / 2) > h + u(MARKER.gap[1]) * 2) continue
-            d = Math.min(d, Math.hypot(Math.max(x0 - q.x, 0, q.x - x1), Math.max(y0 - q.y, 0, q.y - y1)))
-          }
-          return d
+        const w = el.offsetWidth / scale, h = el.offsetHeight / scale
+        const x0 = t.side === 'right' ? 1920 - w * (1 - EDGE_TIME.crop) : -w * EDGE_TIME.crop
+        const x1 = x0 + w
+        const yFrom = boxes[t.from].y, yTo = boxes[t.to].y
+        const middle = (yFrom + yTo) / 2
+        const overlap = (y: number) => boxes.reduce((sum, b) => {
+          const ox = Math.min(x1, b.x + b.hw + pad) - Math.max(x0, b.x - b.hw - pad)
+          const oy = Math.min(y + h / 2, b.y + b.hh + pad) - Math.max(y - h / 2, b.y - b.hh - pad)
+          return sum + (ox > 0 && oy > 0 ? ox * oy : 0)
+        }, 0)
+        let best = { y: middle, overlap: overlap(middle) }
+        for (let y = yFrom; y <= yTo; y += 8) {
+          const o = overlap(y)
+          if (o < best.overlap - 1e-6 || (Math.abs(o - best.overlap) < 1e-6 && Math.abs(y - middle) < Math.abs(best.y - middle))) best = { y, overlap: o }
         }
-        const cardDistance = (x0: number, x1: number, y0: number, y1: number) => Math.min(...boxes.map(b =>
-          Math.hypot(Math.max(b.x - b.hw - x1, 0, x0 - b.x - b.hw), Math.max(b.y - b.hh - y1, 0, y0 - b.y - b.hh))))
-        type Spot = { x: number; y: number; s: number; score: number }
-        const search = (cardPad: number, gapMax: number, dir: 1 | -1) => {
-          let best: Spot | null = null
-          const free = outside.filter(p => !inCard(p.x, p.x, p.y, p.y, u(cardPad)))
-          for (let i = 0; i < free.length; i += 2) {
-            const p = free[i]
-            // marker는 line 점과 같은 높이가 기본이다. card가 큰 화면에서는 card 바로 위 / 아래의 빈자리를 쓰도록
-            // 상자를 위아래로 조금(높이의 0.7 / 1.4배) 옮겨 보기도 한다 — 덜 옮긴 자리가 조금 더 좋다.
-            for (const shift of SHIFTS) {
-              const cy = p.y + shift * h
-              // line에서 side 쪽으로 조금씩 떨어뜨려 보며 상자와 line의 거리가 처음 gap 안에 들어오는 자리를 찾는다.
-              for (let g = u(MARKER.gap[0]); g < u(240); g += u(4)) {
-                const x0 = dir > 0 ? p.x + g : p.x - g - w
-                const x1 = x0 + w, y0 = cy - h / 2, y1 = cy + h / 2
-                const d = lineDistance(x0, x1, y0, y1)
-                if (d < u(MARKER.gap[0])) continue
-                if (d > u(gapMax)) break
-                if (x0 < u(MARKER.edge) || x1 > 1920 - u(MARKER.edge)) break
-                const cd = cardDistance(x0, x1, y0, y1)
-                if (cd < u(cardPad)) break
-                // 여백 한가운데일수록(card에서 멀수록) 좋다. 충분히 멀면(160px) 덜 옮긴 자리, 구간 가운데에 가까운 쪽.
-                const score = (Math.min(cd, u(160)) - Math.abs(shift) * u(40)) * 1000 - Math.abs(p.s - middle)
-                if (!best || score > best.score) best = { x: dir > 0 ? x0 : x1, y: cy, s: p.s, score }
-                break
-              }
-            }
-          }
-          return best
-        }
-        // 작은 데스크톱에서는 card가 여백을 거의 다 차지한다. 그때만 card / line과의 거리를 조금씩 좁혀 다시 찾는다.
-        const side = t.side === 'right' ? 1 : -1
-        const best = search(MARKER.card, MARKER.gap[1], side) ?? search(20, MARKER.gap[1], side) ?? search(12, 100, side)
-        el.hidden = !best
-        // 어디에도 들어갈 자리가 없으면(1024 x 768의 FIGMA DESIGN -> FRONT - END처럼 card 사이가 거의 붙은 구간)
-        // card 위에 겹쳐 적지 않고 그 marker만 쉰다.
-        if (!best) return
-        const at = best
-        el.style.setProperty('--node-x', at.x.toFixed(1))
-        el.style.setProperty('--node-y', at.y.toFixed(1))
-        // 빛이 marker 옆을 지나는 순간(구간 안의 비율). 여기서 marker가 다 드러난다.
-        const beside = best.s
-        el.dataset.beside = String((beside - hits[t.from]) / Math.max(1, hits[t.to] - hits[t.from]))
+        el.style.setProperty('--node-x', (t.side === 'right' ? x1 : x0).toFixed(1))
+        el.style.setProperty('--node-y', best.y.toFixed(1))
+        // 구간 안에서 시간 글자가 놓인 높이의 비율. 빛이 이 비율만큼 왔을 때 다 드러난다.
+        el.dataset.at = String(clamp01((best.y - yFrom) / Math.max(1, yTo - yFrom)))
       })
     }
 
@@ -419,7 +373,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       lastY = ''
       lastOffset = ''
       lastAmbient = ''
-      placeTimes(boxes, hits, total, scale)
+      placeTimes(boxes, scale)
       if (import.meta.env.DEV) {
         stage.dataset.line = JSON.stringify({ length: +L.toFixed(1), marks: geom.marks.map(v => +v.toFixed(4)) })
       }
@@ -510,8 +464,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
         el.style.removeProperty('--time-r')
         el.style.removeProperty('--node-x')
         el.style.removeProperty('--node-y')
-        delete el.dataset.beside
-        el.hidden = false
+        delete el.dataset.at
       }
       for (const node of nodes) {
         node.style.removeProperty('--node-in')

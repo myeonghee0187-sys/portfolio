@@ -30,6 +30,11 @@
   perspective: 400px;
 }
 
+/* 뒤따르는 기호(↗). 문장과의 간격은 부모가 정한다(--rotating-trailing-gap, 없으면 단어 사이 간격 그대로). */
+.rotating-words__word--trailing {
+  margin-left: calc(var(--rotating-trailing-gap, 0.34em) - 0.34em);
+}
+
 /* 같은 단어 두 줄. -50%면 아래 줄(들어오는 줄)이 칸에 들어온다. */
 .rotating-words__track {
   display: flex;

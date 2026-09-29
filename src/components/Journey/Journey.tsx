@@ -27,23 +27,19 @@ export default function Journey({ interactive, ready }: JourneyProps) {
             card 안쪽 구간은 불투명한 surface 아래로 지나간다.
           */}
           {/*
-            하루의 시간(14 : 10 -> 17 : 00). line 옆 여백에 크고 희미하게 깔리는 background time marker —
-            Geist 시간 + 아래의 짧은 선과 순번(01 ~ 04). 빛이 그 자리에 오면 드러난다(--time-r, useJourneyInteraction).
-            자리(--node-x / --node-y)는 실제 경로를 재서 정한다. 문서형(static)에서는 card 사이 흐름에 놓인다(--node-order).
-            보조기술에는 읽히지 않는다.
+            하루의 시간(14 : 10 -> 17 : 00). 화면 좌 / 우 가장자리에 크고 아주 희미하게 깔리는 배경 글자(editorial background
+            typography)다 — line / card에 연결하지 않고, 자리(--node-x / --node-y)만으로 그 구간과 이어진다(useJourneyInteraction).
+            빛이 그 구간에 오면 드러난다(--time-r). 문서형(static)에서는 card 사이 흐름에 놓인다(--node-order).
+            path / card보다 먼저 그려져 그 뒤에 깔린다. 보조기술에는 읽히지 않는다.
           */}
-          {JOURNEY_TIMES.map((t, k) => (
+          {JOURNEY_TIMES.map((t) => (
             <div
               key={t.time}
               className={`journey__time journey__time--${t.side}`}
               style={{ '--node-order': t.from * 2 + 1 } as CSSProperties}
               aria-hidden="true"
             >
-              <span className="journey__time-value">{t.time}</span>
-              <span className="journey__time-code">
-                <span className="journey__time-rule" />
-                <span>{String(k + 1).padStart(2, '0')}</span>
-              </span>
+              {t.time}
             </div>
           ))}
           <svg className="journey__path" viewBox={`0 0 1920 ${JOURNEY_WORLD_HEIGHT}`} preserveAspectRatio="xMidYMin meet" aria-hidden="true" focusable="false">
