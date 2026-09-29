@@ -19,6 +19,11 @@ export type FaceProject = {
   liveUrl: string
   caseStudyPath?: string
   /**
+   * 프로젝트 logo 파일(ALL FACES의 원형 object 가운데). repository에 실제 logo asset이 생기면 import해서 넣는다.
+   * 지금은 세 project 모두 asset이 없어서 비어 있고, ALL FACES는 그 자리에 project 이름만 보여 준다(임시 fallback).
+   */
+  logo?: string
+  /**
    * 영상의 원본 비율(가로 / 세로). loadedmetadata의 videoWidth / videoHeight로 다시 확인하지만,
    * 그 전에도 레이아웃이 튀지 않도록 원본 파일에서 잰 값을 미리 둔다.
    */

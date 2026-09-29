@@ -4,8 +4,14 @@ import gsap from 'gsap'
 import { CONTACT_EMAIL } from './contactInfo'
 import './ContactModal.css'
 
-const SUBJECTS = ['RECRUITMENT', 'INTERVIEW', 'PROJECT', 'OTHER'] as const
-type Subject = (typeof SUBJECTS)[number]
+/** 문의 종류. value는 영문 그대로 두고(보낼 데이터), 화면에는 label만 한국어로 보인다. */
+const SUBJECTS = [
+  { value: 'recruitment', label: '채용 제안' },
+  { value: 'interview', label: '면접 제안' },
+  { value: 'project', label: '프로젝트 문의' },
+  { value: 'other', label: '기타' },
+] as const
+type Subject = (typeof SUBJECTS)[number]['value']
 
 type Values = { name: string; company: string; email: string; subject: Subject | ''; message: string }
 type Field = 'name' | 'company' | 'email' | 'message'
@@ -13,7 +19,6 @@ type Errors = Partial<Record<Field, string>>
 
 const EMPTY: Values = { name: '', company: '', email: '', subject: '', message: '' }
 const FIELD_ORDER: Field[] = ['name', 'company', 'email', 'message']
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /** 뒤 화면을 scroll시키는 키. 입력 칸 / radio / button이 원래 쓰는 경우는 막지 않는다. */
 const SCROLL_KEYS = new Set(['PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown', ' '])
@@ -28,8 +33,8 @@ function validate(values: Values): Errors {
   const errors: Errors = {}
   if (!values.name.trim()) errors.name = '성함을 입력해 주세요.'
   if (!values.company.trim()) errors.company = '회사명을 입력해 주세요.'
-  if (!values.email.trim()) errors.email = '회신받을 이메일을 입력해 주세요.'
-  else if (!EMAIL_PATTERN.test(values.email.trim())) errors.email = '이메일 형식을 확인해 주세요.'
+  // 이메일뿐 아니라 전화번호 등 연락처도 받는다. 비어 있는지만 확인한다(형식은 강제하지 않는다).
+  if (!values.email.trim()) errors.email = '회신 받을 이메일 또는 연락처를 입력해 주세요.'
   if (!values.message.trim()) errors.message = '전달할 내용을 입력해 주세요.'
   return errors
 }
@@ -232,14 +237,13 @@ export default function ContactModal({ onClose }: ContactModalProps) {
           </div>
 
           <div className="contact-modal__field">
-            <label htmlFor="contact-email">
-              EMAIL <span aria-hidden="true">*</span>
+            <label htmlFor="contact-email" className="contact-modal__label-ko">
+              회신 받을 이메일 또는 연락처 <span aria-hidden="true">*</span>
             </label>
             <input
-              type="email"
-              autoComplete="email"
-              inputMode="email"
-              placeholder="회신받을 이메일"
+              type="text"
+              autoComplete="on"
+              placeholder="이메일 또는 연락처를 입력해주세요."
               onChange={(e) => update('email', e.target.value)}
               {...fieldProps('email')}
             />
@@ -250,15 +254,15 @@ export default function ContactModal({ onClose }: ContactModalProps) {
             <legend>SUBJECT</legend>
             <div className="contact-modal__chips">
               {SUBJECTS.map((subject) => (
-                <label key={subject} className="contact-modal__chip">
+                <label key={subject.value} className="contact-modal__chip">
                   <input
                     type="radio"
                     name="subject"
-                    value={subject}
-                    checked={values.subject === subject}
-                    onChange={() => update('subject', subject)}
+                    value={subject.value}
+                    checked={values.subject === subject.value}
+                    onChange={() => update('subject', subject.value)}
                   />
-                  <span>{subject}</span>
+                  <span>{subject.label}</span>
                 </label>
               ))}
             </div>

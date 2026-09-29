@@ -1,7 +1,7 @@
 import { useLayoutEffect, type RefObject } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { JOURNEY_NODES } from './journeyData'
+import { JOURNEY_NODES, type JourneyAnchor } from './journeyData'
 import { HANDOFF_VIEWPORTS, JOURNEY_VIEWPORTS, PANEL_TRIGGER_ID, panelTiming } from '../../hooks/panelTiming'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -23,6 +23,17 @@ const NODE_LEAVE = 0.5
  */
 const SMOOTHING = 0.14
 
+/**
+ * Journey -> Contact handoff. Journey는 끝까지 어둡고, 마지막 구간에서만 Contact 쪽 빛(.journey__handoff)이
+ * 화면 아래에서 들어온다. [진행률, opacity] — 0.78까지 0, 0.90에 0.12, 1.00에 0.35.
+ * 이어서 Contact의 Light Rays가 0.35에서 출발해 0.5까지 올라간다(useContactScene).
+ */
+const CONTACT_AMBIENT: ReadonlyArray<readonly [number, number]> = [
+  [0.78, 0],
+  [0.9, 0.12],
+  [1, 0.35],
+]
+
 type Options = {
   enabled: boolean
   sectionRef: RefObject<HTMLElement | null>
@@ -30,24 +41,77 @@ type Options = {
   worldRef: RefObject<HTMLDivElement | null>
 }
 
-type Point = { x: number; y: number }
+/** 경로가 지나는 점. role in = card로 들어오는 점, out = card에서 나가는 점. */
+type Point = { x: number; y: number; side: JourneyAnchor; role: 'in' | 'out' }
+
+/** card 바깥을 향하는 단위 방향(경로가 닿는 변의 법선). */
+const OUTWARD: Record<JourneyAnchor, { x: number; y: number }> = {
+  top: { x: 0, y: -1 },
+  bottom: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+}
 
 /**
- * 점들을 하나의 부드러운 경로로 잇는다(가지 없음).
- * 두 점 사이는 세로 중간 높이(midY)에 두 제어점을 둔 Cubic Bézier다.
- *   C p0.x midY, p1.x midY, p1.x p1.y
- * 양 끝의 접선이 세로라서 좌우 card 사이를 오가도 꺾이는 곳 없이 S curve로 흐른다.
+ * 점들을 하나의 부드러운 경로로 잇는다(가지 없음, M 하나에 C만 이어진다). 두 점 사이는 Cubic Bézier 하나다.
+ * 각 점에서 경로는 그 card 변에 수직이다 — 제어점을 anchor에서 변의 법선(OUTWARD) 방향으로 둔다.
+ *   out -> in   card 사이의 보이는 선. 나갈 때도 들어올 때도 제어점이 card 바깥에 있다
+ *   in -> out   card 바탕 아래로 지나는 선(보이지 않는다). 제어점이 card 안쪽에 있다
+ * 그래서 옆 변(left / right)에 닿는 선도 변을 따라 미끄러지지 않고 정면으로 들어와 테두리에서 끊김 없이 이어진다
+ * (세로 접선이면 선이 card 옆면에 비스듬히 스치며 테두리 직전에서 잘려 보였다).
+ * k(제어점 거리)는 reach()가 정한다.
  */
+/** 선이 card 바깥선을 지나 card 안쪽으로 더 들어가는 거리(화면 px). 선 끝이 card 바탕 아래에 숨는다. */
+const LINE_OVERLAP = 8
+/** 옆 변에서 in / out이 변 가운데에서 떨어진 거리(card 높이 비율). in이 위, out이 아래다(경로는 위에서 아래로 흐른다). */
+const ANCHOR_SPREAD = 0.22
+/** 기존 옆 변 조합을 그대로 쓰는 최소 트인 거리(화면 px). 이보다 좁으면 선이 card 아래에 묻히거나 변을 스친다. */
+const MIN_SIDE_CLEARANCE = 48
+
+/** 법선 방향으로 뒤돌아 가야 할 때 제어점 거리의 최소값(world px). 테두리에서 수직으로 잠깐 나온 뒤 바로 방향을 튼다. */
+const MIN_REACH = 36
+
+/**
+ * 제어점 거리. card 사이의 선(outside)에서 상대 점이 법선 앞쪽에 있으면 거리의 0.3배와 법선 방향 거리의 절반 중 큰 값 —
+ * 가까운 card 사이에서도 꺾이지 않는다. 상대 점이 법선 뒤쪽(작은 화면에서 card가 커져 옆 card의 변이 서로 엇갈릴 때)이면
+ * 길게 뻗으면 선이 되돌아가며 고리를 만든다 — 그때는 MIN_REACH만큼만 수직으로 나온다.
+ * card 아래의 선(inside)은 거리의 0.3배다(보이지 않는다).
+ */
+function reach(dist: number, ahead: number, outside: boolean) {
+  if (!outside) return dist * 0.3
+  if (ahead <= 0) return MIN_REACH
+  return Math.max(Math.min(dist * 0.3, ahead * 1.5), ahead / 2, MIN_REACH)
+}
+
 function buildSmoothPath(points: Point[]): string {
   if (points.length < 2) return ''
   let d = `M ${points[0].x} ${points[0].y}`
   for (let i = 1; i < points.length; i += 1) {
     const p0 = points[i - 1]
     const p1 = points[i]
-    const midY = (p0.y + p1.y) / 2
-    d += ` C ${p0.x} ${midY}, ${p1.x} ${midY}, ${p1.x} ${p1.y}`
+    const dx = p1.x - p0.x
+    const dy = p1.y - p0.y
+    const dist = Math.hypot(dx, dy)
+    const n0 = OUTWARD[p0.side]
+    const n1 = OUTWARD[p1.side]
+    const k0 = reach(dist, dx * n0.x + dy * n0.y, p0.role === 'out') * (p0.role === 'out' ? 1 : -1)
+    const k1 = reach(dist, -(dx * n1.x + dy * n1.y), p1.role === 'in') * (p1.role === 'in' ? 1 : -1)
+    const c0 = { x: p0.x + n0.x * k0, y: p0.y + n0.y * k0 }
+    const c1 = { x: p1.x + n1.x * k1, y: p1.y + n1.y * k1 }
+    d += ` C ${c0.x.toFixed(2)} ${c0.y.toFixed(2)}, ${c1.x.toFixed(2)} ${c1.y.toFixed(2)}, ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`
   }
   return d
+}
+
+/** 진행률 -> 값(구간마다 선형). 첫 점 앞 / 마지막 점 뒤는 양 끝 값. */
+function piecewise(stops: ReadonlyArray<readonly [number, number]>, p: number) {
+  if (p <= stops[0][0]) return stops[0][1]
+  for (let i = 1; i < stops.length; i++) {
+    const [p0, v0] = stops[i - 1]
+    const [p1, v1] = stops[i]
+    if (p <= p1) return v0 + ((v1 - v0) * (p - p0)) / (p1 - p0)
+  }
+  return stops[stops.length - 1][1]
 }
 
 /**
@@ -110,7 +174,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
     /*
      * 경로 기하. card 안의 anchor element를 실제로 재서 만든다.
      * length는 화면 px이다 — non-scaling-stroke에서는 dash가 화면 px로 적용되기 때문이다.
-     *   marks[i]  빛이 i번째 card anchor에 닿는 journey-master 진행률. 경로 길이에 비례한다 —
+     *   marks[i]  빛이 i번째 card의 in anchor에 닿는 journey-master 진행률. 경로 길이에 비례한다 —
      *             그래서 빛은 한 속도로 흐르고, card는 빛이 자기 자리를 지날 때 켜진다.
      *   camera    진행률 -> world의 y. marks[i]에서 i번째 card가 화면 가운데(Header 아래)에 오고,
      *             그 사이는 멈추지 않고 이어진다(monotoneCubic).
@@ -126,6 +190,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
     const written = new Map<HTMLElement, string>()
     let lastY = ''
     let lastOffset = ''
+    let lastAmbient = ''
 
     /**
      * 진행률 하나로 빛 / camera / card를 모두 그린다. 되감아도 같은 진행률이면 같은 화면이다.
@@ -143,6 +208,13 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       if (offset !== lastOffset) {
         active.style.strokeDashoffset = offset
         lastOffset = offset
+      }
+
+      // Contact 쪽 빛. 화면에 그리는 진행률을 그대로 따라가므로 빛 / camera와 같은 frame에 움직인다.
+      const ambient = piecewise(CONTACT_AMBIENT, p).toFixed(3)
+      if (ambient !== lastAmbient) {
+        stage.style.setProperty('--contact-ambient', ambient)
+        lastAmbient = ambient
       }
 
       const y = geom.camera(p).toFixed(2)
@@ -184,35 +256,74 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
     }
 
     /**
-     * anchor 중심의 world 좌표(viewBox 단위).
-     * card 안에서의 위치는 화면 rect 차이를 card의 현재 scale로 나눠 구한다(소수점까지, camera / 등장 motion과 무관).
-     * card 자체는 node 점에서 자기 크기의 절반만큼 translate(-50%, -50%)되어 있다.
+     * 경로가 지나는 점(world 좌표, viewBox 단위). card마다 in / out 순서로 이어 붙인다.
+     * card의 실제 크기(CSS width / height)를 재서, 선이 닿는 변 위의 점을 계산한다.
+     * 점은 그 변의 바깥선보다 LINE_OVERLAP(화면 8px)만큼 card 안쪽이다 — 선이 테두리를 지나 surface 아래에 숨는다.
+     *
+     * 변 고르기: card 사이 한 구간마다 먼저 card의 변(data-anchor)끼리 잇는다(기존 경로).
+     * 두 변 앞이 MIN_SIDE_CLEARANCE보다 좁게 막혀 있을 때만(두 card가 위아래로 겹쳐 놓였거나, 작은 화면에서
+     * card가 최소 폭 460px에 걸려 서로 엇갈릴 때) {옆 변, 아래 / 위 변} 조합 중 가장 넓게 트인 조합으로 바꾼다 —
+     * 선이 card 아래에 묻히거나 변을 스치지 않는다.
+     * entry[i] = i번째 card에 빛이 들어오는 점의 index(첫 card는 경로의 시작점).
      */
-    const measureAnchors = (scale: number): Point[] =>
-      nodes.map((node, i) => {
-        const card = node.querySelector<HTMLElement>('.journey__card')!
-        const anchor = card.querySelector<HTMLElement>('.journey-card__anchor')!
-        const cs = getComputedStyle(card)
-        const w = parseFloat(cs.width), h = parseFloat(cs.height)
-        const c = card.getBoundingClientRect(), a = anchor.getBoundingClientRect()
-        const k = c.width / w
-        const lx = (a.left + a.width / 2 - c.left) / k
-        const ly = (a.top + a.height / 2 - c.top) / k
-        const { x, y } = JOURNEY_NODES[i].position
-        return { x: x + (lx - w / 2) / scale, y: y + (ly - h / 2) / scale }
+    const measureAnchors = (scale: number) => {
+      const boxes = nodes.map((node, i) => {
+        const cs = getComputedStyle(node.querySelector<HTMLElement>('.journey__card')!)
+        const { position, anchor } = JOURNEY_NODES[i]
+        return { ...position, hw: parseFloat(cs.width) / 2 / scale, hh: parseFloat(cs.height) / 2 / scale, side: anchor }
       })
+      const inset = LINE_OVERLAP / scale
+      /** 변 위의 점. 옆 변은 in이 위, out이 아래(ANCHOR_SPREAD). 위 / 아래 변은 가운데. */
+      const at = (b: (typeof boxes)[number], side: JourneyAnchor, role: Point['role']): Point => {
+        const n = OUTWARD[side]
+        if (n.x !== 0) {
+          const dy = b.hh * 2 * ANCHOR_SPREAD * (role === 'in' ? -1 : 1)
+          return { x: b.x + n.x * (b.hw - inset), y: b.y + dy, side, role }
+        }
+        return { x: b.x, y: b.y + n.y * (b.hh - inset), side, role }
+      }
+      /** 두 점이 서로 변 앞쪽으로 떨어진 거리 중 작은 쪽(클수록 선이 card 밖으로 넓게 보인다). */
+      const clearance = (a: Point, b: Point) => {
+        const na = OUTWARD[a.side], nb = OUTWARD[b.side]
+        return Math.min((b.x - a.x) * na.x + (b.y - a.y) * na.y, (a.x - b.x) * nb.x + (a.y - b.y) * nb.y)
+      }
+      const outSide: JourneyAnchor[] = []
+      const inSide: JourneyAnchor[] = []
+      for (let i = 0; i + 1 < boxes.length; i++) {
+        const a = boxes[i], b = boxes[i + 1]
+        const outs: JourneyAnchor[] = i === 0 ? [a.side] : [a.side, 'bottom']
+        const ins: JourneyAnchor[] = i + 1 === boxes.length - 1 ? [b.side] : [b.side, 'top']
+        let best = { score: clearance(at(a, outs[0], 'out'), at(b, ins[0], 'in')), o: outs[0], n: ins[0] }
+        if (best.score < MIN_SIDE_CLEARANCE / scale) {
+          for (const o of outs) for (const n of ins) {
+            const score = clearance(at(a, o, 'out'), at(b, n, 'in'))
+            if (score > best.score) best = { score, o, n }
+          }
+        }
+        outSide[i] = best.o
+        inSide[i + 1] = best.n
+      }
+      const points: Point[] = []
+      const entry: number[] = []
+      boxes.forEach((b, i) => {
+        entry.push(points.length)
+        if (i > 0) points.push(at(b, inSide[i], 'in'))
+        if (i < boxes.length - 1) points.push(at(b, outSide[i], 'out'))
+      })
+      return { points, entry }
+    }
 
     const rebuildPath = () => {
       const scale = world.getBoundingClientRect().width / 1920
       if (!scale) return
-      const points = measureAnchors(scale)
+      const { points, entry } = measureAnchors(scale)
       const d = buildSmoothPath(points)
       paths.forEach(p => p.setAttribute('d', d))
       const L = active.getTotalLength() * scale
       geom.length = L
-      geom.marks = points.map((_, i) => {
+      geom.marks = entry.map((at, i) => {
         if (i === 0) return LINE_FROM
-        probe.setAttribute('d', buildSmoothPath(points.slice(0, i + 1)))
+        probe.setAttribute('d', buildSmoothPath(points.slice(0, at + 1)))
         return LINE_FROM + ((probe.getTotalLength() * scale) / L) * (LINE_TO - LINE_FROM)
       })
       const header = document.querySelector('.site-header')?.getBoundingClientRect().height ?? 0
@@ -230,6 +341,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       written.clear()
       lastY = ''
       lastOffset = ''
+      lastAmbient = ''
       if (import.meta.env.DEV) {
         stage.dataset.line = JSON.stringify({ length: +L.toFixed(1), marks: geom.marks.map(v => +v.toFixed(4)) })
       }
@@ -259,7 +371,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
        * 특정 지점을 넘자마자 딱 붙지 않는다.
        *   FACES 장면   15 ~ 90%  scale 1 -> 0.95, opacity 1 -> 0.35, blur 0 -> 1.5px
        *   Journey      8 ~ 88%   yPercent 100 -> 0
-       *   첫 card      62 ~ 100% opacity 0 -> 1, y 28 -> 0
+       *   첫 card      62 ~ 100% opacity 0 -> 1, y 28 -> 0 (경로도 같은 구간에 opacity 0 -> 1)
        * FACES와 Journey는 같은 pin 하나 안에 있다(nested pin 없음). 이 구간에서 pin이 풀리지 않으므로
        * 풀리는 순간의 1 frame jump가 생길 자리가 없다. pin은 Journey가 끝난 뒤 Contact에서만 풀린다.
        */
@@ -274,6 +386,8 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       handoff.fromTo(facesBlur, { px: 0 }, { px: 1.5, ease: 'none', duration: 0.75, onUpdate: writeBlur, immediateRender: false }, 0.15)
       handoff.to('.faces__meta', { opacity: 0, duration: 0.15, ease: 'none' }, 0)
       handoff.fromTo('.journey__intro-entry', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.38, ease: 'none' }, 0.62)
+      // 경로도 첫 card와 함께 들어온다 — card가 아직 옅고 28px 아래에 있을 때 그 surface 너머로 선 끝이 비치지 않는다.
+      handoff.fromTo(world.querySelector('.journey__path'), { opacity: 0 }, { opacity: 1, duration: 0.38, ease: 'none' }, 0.62)
       handoff.fromTo(stage, { '--leading-light': 1 }, { '--leading-light': 0, duration: 0.5, ease: 'none' }, 0.5)
       handoff.set({}, {}, 1)
 
@@ -305,6 +419,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       ScrollTrigger.removeEventListener('revert', rebuildPath)
       ctx.revert()
       facesCanvas?.style.removeProperty('filter')
+      stage.style.removeProperty('--contact-ambient')
       active.style.removeProperty('stroke-dasharray')
       active.style.removeProperty('stroke-dashoffset')
       for (const node of nodes) {

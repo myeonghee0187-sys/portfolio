@@ -29,11 +29,17 @@
   --ju: calc(100cqw / 1920);
 }
 
-.journey__ambient {
+/*
+ * Journey -> Contact handoff 빛. Journey는 Carbon Black 그대로이고(전체에 깔린 frost gradient 없음),
+ * 이 층만 마지막 구간에서 --contact-ambient(0 -> 0.35)로 켜진다. Contact Light Rays가 시작되는 자리(화면 아래
+ * 가운데)에서 위로 옅어지는 빛이라, 이어서 올라오는 Contact의 빛과 같은 자리 / 같은 세기로 맞물린다.
+ */
+.journey__handoff {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse at 50% 52%, rgb(212 229 239 / 0.065), rgb(24 109 229 / 0.022) 45%, transparent 74%);
+  background: radial-gradient(ellipse var(--handoff-ellipse) at 50% 100%, var(--handoff-light));
+  opacity: var(--contact-ambient, 0);
 }
 
 .journey__stage::before {
@@ -100,46 +106,71 @@
   height: 0;
 }
 
-.journey__card {
+/*
+ * card와 card 바탕(surface)은 같은 크기 / 자리 / scale이다. 층: 경로 -> surface -> card(테두리 + 글자).
+ * surface는 언제나 불투명하고 흐려지지 않는다 — 경로 끝을 덮는 것은 이 면이다.
+ */
+.journey__card,
+.journey__surface {
   position: absolute;
   left: 0;
   top: 0;
   box-sizing: border-box;
-  /* 제목 + 본문 묶음은 위, meta / keyword 묶음은 아래 끝에 붙는다. 두 묶음 사이는 최소 20px. */
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 20px;
   width: var(--journey-card-width);
   height: var(--journey-card-height);
-  padding: var(--journey-card-padding);
+  border-radius: var(--journey-card-radius);
   /*
    * scale 기준점은 경로가 닿는 변(data-anchor)이다. 비활성 상태로 작아져도 그 변은 제자리에 있어서
    * 경로 끝과 card 사이에 틈이 생기지 않는다. scale / 투명도 / blur 값 자체는 이전과 같다.
    */
   transform: translate(-50%, -50%) scale(calc(0.9 + 0.1 * var(--node-in) - 0.05 * var(--node-out)));
+}
+
+/*
+ * 바탕색은 전과 같은 값이다: card가 투명도 o로 그리던 흰 막(α)을 surface가 α x o로, 불투명하게 그린다.
+ * Carbon Black 위에서는 같은 색이고, 그 아래의 경로만 가려진다.
+ */
+.journey__surface {
+  --surface-a: calc(0.025 + 0.02 * var(--node-in) - 0.012 * var(--node-out));
+  --surface-o: calc(0.3 + 0.7 * var(--node-in) - 0.38 * var(--node-out));
+  background: linear-gradient(rgb(255 255 255 / calc(var(--surface-a) * var(--surface-o))), rgb(255 255 255 / calc(var(--surface-a) * var(--surface-o)))), var(--color-carbon-black);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.journey__card {
+  /* 제목 + 본문 묶음은 위, meta / keyword 묶음은 아래 끝에 붙는다. 두 묶음 사이는 최소 20px. */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+  padding: var(--journey-card-padding);
   /* UI border는 Electric Ice(#186DE5) 하나. 대기 중인 card는 옅게, 빛이 닿은 card는 불투명하게 두른다. */
   border: 1px solid color-mix(in srgb, rgb(24 109 229 / 0.3), #186de5 calc(var(--node-in) * (1 - var(--node-out)) * 100%));
-  border-radius: var(--journey-card-radius);
-  background: linear-gradient(rgb(255 255 255 / calc(0.025 + 0.02 * var(--node-in) - 0.012 * var(--node-out))), rgb(255 255 255 / calc(0.025 + 0.02 * var(--node-in) - 0.012 * var(--node-out)))), var(--color-carbon-black);
+  /* 바탕은 .journey__surface가 그린다. card 자체는 테두리와 글자만 흐려지고 옅어진다(경로 위에 어두운 번짐이 생기지 않는다). */
+  background: none;
   opacity: calc(0.3 + 0.7 * var(--node-in) - 0.38 * var(--node-out));
   filter: blur(calc(2.4px * (1 - var(--node-in)) + 1.1px * var(--node-out)));
   will-change: transform, opacity, filter;
 }
 
-.journey__card[data-anchor='right'] {
+.journey__card[data-anchor='right'],
+.journey__surface[data-anchor='right'] {
   transform-origin: 100% 50%;
 }
 
-.journey__card[data-anchor='left'] {
+.journey__card[data-anchor='left'],
+.journey__surface[data-anchor='left'] {
   transform-origin: 0% 50%;
 }
 
-.journey__card[data-anchor='top'] {
+.journey__card[data-anchor='top'],
+.journey__surface[data-anchor='top'] {
   transform-origin: 50% 0%;
 }
 
-.journey__card[data-anchor='bottom'] {
+.journey__card[data-anchor='bottom'],
+.journey__surface[data-anchor='bottom'] {
   transform-origin: 50% 100%;
 }
 
@@ -152,37 +183,6 @@
   height: 1px;
   background: linear-gradient(90deg, transparent, rgb(212 229 239 / 0.5), transparent);
   opacity: calc(var(--node-in) * (1 - var(--node-out)));
-}
-
-/*
- * 경로가 card에 닿는 한 점. 보이지 않고 위치만 준다(2 x 2, 중심이 card 바깥선보다 2px 안쪽).
- * 경로는 이 점까지 이어지고 card의 불투명한 바탕이 그 안쪽을 덮는다 — 끊겨 보이는 틈이 없다.
- */
-.journey-card__anchor {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  pointer-events: none;
-}
-
-.journey__card[data-anchor='right'] .journey-card__anchor {
-  top: calc(50% - 1px);
-  right: 0;
-}
-
-.journey__card[data-anchor='left'] .journey-card__anchor {
-  top: calc(50% - 1px);
-  left: 0;
-}
-
-.journey__card[data-anchor='top'] .journey-card__anchor {
-  top: 0;
-  left: calc(50% - 1px);
-}
-
-.journey__card[data-anchor='bottom'] .journey-card__anchor {
-  bottom: 0;
-  left: calc(50% - 1px);
 }
 
 /* 제목 + 본문. 제목과 본문 사이 32. */
@@ -280,7 +280,9 @@
   --ju: 1px;
 }
 
-.journey--static .journey__path {
+.journey--static .journey__path,
+.journey--static .journey__surface,
+.journey--static .journey__handoff {
   display: none;
 }
 
@@ -317,6 +319,8 @@
   min-height: 0;
   padding: 28px;
   border-radius: 18px;
+  /* 연출이 꺼진 문서형 Journey에는 surface가 없다. card가 자기 바탕을 그대로 그린다. */
+  background: linear-gradient(rgb(255 255 255 / 0.045), rgb(255 255 255 / 0.045)), var(--color-carbon-black);
   transform: none;
   filter: none;
   opacity: 1;
@@ -341,7 +345,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .journey__card {
+  .journey__card,
+  .journey__surface {
     will-change: auto;
   }
 }

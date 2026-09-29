@@ -1,13 +1,24 @@
 /*
  * ALL FACES — Crown을 누르면 page 위에 여는 전체 project 화면(FLAT PROJECT WORLD).
  * Header / page / Watch / Crown보다 위, Intro(100) / 문의 modal(200)보다 아래.
- * 바탕은 Carbon Black 하나이고 Watch는 보이지 않는다. 주인공은 project 영상이고 글자는 작은 utility label뿐이다.
+ * 바탕은 Carbon Black 하나이고 Watch는 보이지 않는다. project는 원형 object(logo + 이름)이고 영상은 없다.
+ *
+ * overlay는 언제나 정확히 한 화면이다. world가 아무리 커도 overlay 자체는 늘어나지 않고(overflow hidden),
+ * 문서에 세로 scroll을 더하지 않는다. 모바일은 브라우저 UI 높이를 따라가도록 100dvh(없으면 100vh).
  */
 .all-faces {
   position: fixed;
   inset: 0;
   z-index: 60;
+  width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  max-height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
+  max-height: 100dvh;
   overflow: hidden;
+  overscroll-behavior: none;
   background: #08090a;
   color: #f3f4f4;
   opacity: 0;
@@ -36,13 +47,15 @@
 }
 
 /*
- * project 하나. 크기 / 위치는 배치가 정한다(JS). 열릴 때의 motion은 이 element,
- * floating은 안쪽 __float, hover 크기는 그 안의 __frame — 서로 다른 layer라 덮어쓰지 않는다.
+ * project 하나(원 하나). 크기 / 위치는 배치가 정한다(JS). 열릴 때의 motion은 이 element,
+ * floating은 안쪽 __float, hover 크기는 그 안의 __circle — 서로 다른 layer라 덮어쓰지 않는다.
+ * 네모난 box의 모서리는 hover / drag 대상이 아니다 — pointer는 원(__circle)만 받는다.
  */
 .all-faces__project {
   position: absolute;
   margin: 0;
   outline: none;
+  pointer-events: none;
 }
 
 .all-faces__project.is-hovered {
@@ -50,92 +63,75 @@
 }
 
 .all-faces__float {
+  width: 100%;
+  height: 100%;
   transition: opacity 300ms ease;
   will-change: transform;
 }
 
 /* 한 project에 올라가 있으면 나머지는 한 걸음 물러난다. */
 .all-faces__world[data-hovered] .all-faces__project:not(.is-hovered) .all-faces__float {
-  opacity: 0.55;
+  opacity: 0.6;
 }
 
-/* 영상 frame. UI border는 Electric Ice(#186DE5) 하나다. */
-.all-faces__frame {
+/*
+ * 원형 object. Dark material 위에 Electric Ice의 옅은 테두리 하나 — glow / neon orb가 아니다.
+ * 가운데 logo, 그 아래 이름.
+ */
+.all-faces__circle {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 1.2vw, 22px);
+  box-sizing: border-box;
   width: 100%;
-  overflow: hidden;
-  border: 1px solid #186de5;
-  border-radius: 18px;
-  background: #0e1012;
-  transition: transform 300ms cubic-bezier(0.33, 1, 0.68, 1);
+  aspect-ratio: 1 / 1;
+  border: 1px solid rgb(24 109 229 / 0.55);
+  border-radius: 50%;
+  background: rgb(14 16 18 / 0.82);
+  pointer-events: auto;
+  transition:
+    transform 300ms cubic-bezier(0.33, 1, 0.68, 1),
+    border-color 300ms ease,
+    background-color 300ms ease;
 }
 
-.all-faces__project.is-hovered .all-faces__frame {
-  transform: scale(1.025);
+.all-faces__project.is-hovered .all-faces__circle {
+  transform: scale(1.035);
+  border-color: rgb(24 109 229 / 0.85);
+  background: rgb(20 23 26 / 0.88);
 }
 
-.all-faces__project:focus-visible .all-faces__frame {
+.all-faces__project:focus-visible .all-faces__circle {
   outline: 2px solid #186de5;
-  outline-offset: 4px;
+  outline-offset: 6px;
 }
 
 /* Case Study가 연결돼 있을 때만 눌리는 것처럼 보인다. */
-.all-faces[data-selectable] .all-faces__project {
+.all-faces[data-selectable] .all-faces__circle {
   cursor: pointer;
 }
 
-/* 같은 영상 element 두 개가 겹쳐 있다(LoopVideo). */
-.all-faces__media {
-  position: absolute;
-  inset: 0;
-}
-
-.all-faces__media video {
-  position: absolute;
-  inset: 0;
+/* logo는 원을 가득 채우지 않는다(폭 48% / 높이 34% 안). 회전하지 않는다. */
+.all-faces__logo {
   display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: var(--media-focus, 50% 50%);
+  max-width: 48%;
+  max-height: 34%;
+  object-fit: contain;
   pointer-events: none;
-}
-
-/* hover / focus 때만 frame 아래에 이름과 종류. 설명은 두지 않는다. */
-.all-faces__meta {
-  position: absolute;
-  top: calc(100% + 16px);
-  left: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  opacity: 0;
-  transform: translateY(-4px);
-  transition:
-    opacity 260ms ease,
-    transform 260ms cubic-bezier(0.33, 1, 0.68, 1);
-  pointer-events: none;
-}
-
-.all-faces__project.is-hovered .all-faces__meta {
-  opacity: 1;
-  transform: none;
+  user-select: none;
 }
 
 .all-faces__name {
   font-family: 'Anton', sans-serif;
   font-weight: 400;
-  font-size: 22px;
+  font-size: clamp(16px, 1.05vw, 20px);
   line-height: 1;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.04em;
   white-space: nowrap;
-}
-
-.all-faces__type {
-  font: 600 11px/1 'Inter', sans-serif;
-  letter-spacing: 0.18em;
-  color: #777d82;
-  white-space: nowrap;
+  color: #f3f4f4;
 }
 
 /* 위쪽 utility bar. world 위에 떠 있고, 빈 곳은 drag를 막지 않는다. */
@@ -205,19 +201,14 @@
     padding: calc(env(safe-area-inset-top, 0px) + 24px) 20px 0;
   }
 
-  .all-faces__frame {
-    border-radius: 14px;
-  }
-
   .all-faces__name {
-    font-size: 20px;
+    font-size: 15px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .all-faces__frame,
-  .all-faces__float,
-  .all-faces__meta {
+  .all-faces__circle,
+  .all-faces__float {
     transition: none;
   }
 }

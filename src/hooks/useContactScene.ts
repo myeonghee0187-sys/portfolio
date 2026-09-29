@@ -49,8 +49,25 @@ const SPIN_INFLUENCE: ReadonlyArray<readonly [number, number]> = [
 /** 문장 / 링크 등장. 글자 단위 분해 없이 묶음 단위로 짧게 올라온다. */
 const REVEAL = { start: 'top 70%', duration: 0.7, stagger: 0.08 }
 
-/** Light Rays 진입. section이 화면에 들어오면 1.4초 동안 0 -> 0.5. 되감아 나가면 조용히 꺼진다. */
+/**
+ * Light Rays 진입(연출이 꺼진 환경). section이 화면에 들어오면 1.4초 동안 0 -> 0.5. 되감아 나가면 조용히 꺼진다.
+ * 연출이 켜진 환경은 RAYS_HANDOFF를 쓴다.
+ */
 const RAYS = { start: 'top 80%', opacity: 0.5, duration: 1.4, outDuration: 0.6 }
+
+/**
+ * Light Rays 진입(연출이 켜진 환경, scroll에 묶인다). Journey 마지막에 .journey__handoff가 0.35까지 올라와 있고,
+ * Contact 윗변이 화면 아래 끝에 닿는 순간(progress 0) 빛은 같은 0.35에서 출발해 0.35까지 기존 최종값 0.5에 닿는다.
+ * 빛이 새로 켜지는 frame / 밝은 띠가 없다 — Journey 아래 끝의 빛과 Contact 윗변의 빛이 같은 세기로 맞물린다.
+ */
+const RAYS_HANDOFF = { from: 0.35, to: 0.5, end: 0.35 }
+
+/**
+ * Contact 문장 묶음(container) 등장. scroll에 묶여 opacity 0 -> 1, y 24 -> 0.
+ * section이 화면에 들어오기 시작할 때(progress 0.05)부터 절반쯤 올라올 때(0.5)까지 — 한 frame에 나타나지 않는다.
+ * 안쪽 문장 / 링크의 묶음 등장(REVEAL)은 그대로 그 안에서 재생된다.
+ */
+const CONTENT_ENTER = { start: 0.05, end: 0.5, y: 24 }
 
 type Options = {
   /** scroll 연출이 켜져 있는지(= global Crown이 있는지). */
@@ -121,8 +138,8 @@ export default function useContactScene({ interactive, ready, sectionRef }: Opti
         onLeaveBack: () => revealTl.reverse(),
       })
 
-      /* ---------- Light Rays 진입(시간 기반). 빛 자체에는 이동 animation을 더하지 않는다. ---------- */
-      if (rays) {
+      /* ---------- Light Rays 진입(시간 기반, 연출이 꺼진 환경). 빛 자체에는 이동 animation을 더하지 않는다. ---------- */
+      if (rays && !interactive) {
         gsap.set(rays, { opacity: 0 })
         ScrollTrigger.create({
           trigger: section,
@@ -164,6 +181,7 @@ export default function useContactScene({ interactive, ready, sectionRef }: Opti
       const crown = document.querySelector<HTMLElement>('.watch--stage .watch__crown')
       const attachLayer = crown?.querySelector<HTMLElement>('.watch__crown-attach')
       const journeyWorld = document.querySelector<HTMLElement>('.journey__world')
+      const inner = section.querySelector<HTMLElement>('.contact__inner')
       if (!socket || !crown || !attachLayer) return
 
       /** 마지막으로 계산한 결합 정도와 두 중심(QA용). */
@@ -228,6 +246,17 @@ export default function useContactScene({ interactive, ready, sectionRef }: Opti
       })
       if (journeyWorld) {
         tl.fromTo(journeyWorld, { opacity: 1 }, { opacity: JOURNEY_DIM.opacity, ease: 'none', duration: JOURNEY_DIM.end }, 0)
+      }
+      if (rays) {
+        tl.fromTo(rays, { opacity: RAYS_HANDOFF.from }, { opacity: RAYS_HANDOFF.to, ease: 'none', duration: RAYS_HANDOFF.end }, 0)
+      }
+      if (inner) {
+        tl.fromTo(
+          inner,
+          { opacity: 0, y: reduced ? 0 : CONTENT_ENTER.y },
+          { opacity: 1, y: 0, ease: 'none', duration: CONTENT_ENTER.end - CONTENT_ENTER.start },
+          CONTENT_ENTER.start,
+        )
       }
       tl.fromTo(
         watchEnter,

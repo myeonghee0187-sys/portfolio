@@ -1,7 +1,9 @@
 /*
  * GET IN TOUCH modal. 화면 전체를 어둡게 흐리고 가운데에 panel 하나를 띄운다.
- * UI border는 전부 Electric Ice(#186DE5)다. 입력 칸 / SUBJECT는 쉬는 동안 옅고, focus / 선택되면 불투명하다.
- * 입력 오류만 예외로 붉은 선이다(오류 문구와 같은 의미). glow는 두지 않는다.
+ * 이 modal 안에서는 "UI border = Electric Ice(#186DE5)" 규칙보다 아래 규칙이 우선한다.
+ *   panel / 입력 칸 / 버튼   Neutral(Titanium · Frost 계열의 아주 약한 선). hover / focus도 Frost로 조금 선명해질 뿐이다
+ *   SUBJECT                  선택되지 않은 칸은 Neutral, 선택된 칸 하나만 Primary #186DE5
+ * 입력 오류만 예외로 붉은 선이다(오류 문구와 같은 의미). neon glow는 두지 않는다.
  */
 .contact-modal {
   position: fixed;
@@ -28,7 +30,7 @@
   overflow: auto;
   overscroll-behavior: contain;
   padding: 48px;
-  border: 1px solid #186de5;
+  border: 1px solid rgb(212 229 239 / 0.14);
   border-radius: 22px;
   background: #0e1012;
   color: #f3f4f4;
@@ -104,12 +106,18 @@
   color: #d4e5ef;
 }
 
+/* 한국어 label은 영문 utility label의 넓은 자간을 쓰지 않는다. */
+.contact-modal__field .contact-modal__label-ko {
+  font: 600 13px/1.2 'SUIT', sans-serif;
+  letter-spacing: 0.02em;
+}
+
 .contact-modal__field input,
 .contact-modal__field textarea {
   box-sizing: border-box;
   width: 100%;
   padding: 14px 16px;
-  border: 1px solid rgb(24 109 229 / 0.55);
+  border: 1px solid rgb(164 169 173 / 0.26);
   border-radius: 12px;
   background: rgb(243 244 244 / 0.03);
   color: #f3f4f4;
@@ -128,10 +136,15 @@
   color: #6b7176;
 }
 
-.contact-modal__field input:focus-visible,
-.contact-modal__field textarea:focus-visible {
-  border-color: #186de5;
-  box-shadow: 0 0 0 3px rgb(24 109 229 / 0.28);
+.contact-modal__field input:hover,
+.contact-modal__field textarea:hover {
+  border-color: rgb(164 169 173 / 0.36);
+}
+
+/* focus도 Primary Blue가 아니라 Neutral Frost가 조금 선명해질 뿐이다. */
+.contact-modal__field input:focus,
+.contact-modal__field textarea:focus {
+  border-color: rgb(212 229 239 / 0.55);
 }
 
 .contact-modal__field [aria-invalid='true'] {
@@ -180,40 +193,48 @@
   align-items: center;
   min-height: 40px;
   padding: 0 16px;
-  border: 1px solid rgb(24 109 229 / 0.55);
+  border: 1px solid rgb(164 169 173 / 0.25);
   border-radius: 10px;
-  font: 600 12px/1 'Inter', sans-serif;
-  letter-spacing: 0.12em;
+  background: transparent;
+  font: 600 14px/1 'SUIT', sans-serif;
+  letter-spacing: 0.02em;
   color: #a0a7ac;
-  transition: border-color 200ms ease, background-color 200ms ease, color 200ms ease;
+  transition:
+    border-color 200ms ease,
+    background-color 200ms ease,
+    color 200ms ease,
+    box-shadow 200ms ease;
 }
 
 .contact-modal__chip:hover span {
-  border-color: #186de5;
-  color: #f3f4f4;
+  border-color: rgb(212 229 239 / 0.4);
+  color: #d4e5ef;
 }
 
+/* 선택된 칸 하나만 Primary. 넓게 번지는 neon glow 없이 12px의 아주 옅은 빛만 둔다. */
 .contact-modal__chip input:checked + span {
   border-color: #186de5;
-  background: rgb(24 109 229 / 0.14);
+  background: rgb(24 109 229 / 0.1);
+  box-shadow: 0 0 12px rgb(24 109 229 / 0.1);
   color: #f3f4f4;
 }
 
 .contact-modal__chip input:focus-visible + span {
-  outline: 2px solid #186de5;
+  outline: 2px solid rgb(212 229 239 / 0.7);
   outline-offset: 2px;
 }
 
+/* SEND MESSAGE는 form 왼쪽 기준선에 붙는다. 폭은 글자 폭 그대로다(full width 아님). */
 .contact-modal__actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   margin-top: 6px;
 }
 
 .contact-modal__submit {
   min-height: 52px;
   padding: 0 26px;
-  border: 1px solid #186de5;
+  border: 1px solid rgb(212 229 239 / 0.32);
   border-radius: 12px;
   background: none;
   color: #f3f4f4;
@@ -224,12 +245,13 @@
 }
 
 .contact-modal__submit:hover {
-  background: rgb(24 109 229 / 0.1);
+  border-color: rgb(212 229 239 / 0.55);
+  background: rgb(212 229 239 / 0.06);
 }
 
 .contact-modal__submit:focus-visible,
 .contact-modal__close:focus-visible {
-  outline: 2px solid #186de5;
+  outline: 2px solid rgb(212 229 239 / 0.7);
   outline-offset: 3px;
 }
 
