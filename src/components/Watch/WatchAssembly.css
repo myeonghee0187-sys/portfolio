@@ -251,25 +251,40 @@
  * GSAP이 transition 끝에서 만드는 값과 정확히 같은 수치를 쓴다.
  * (time: 148 -> 100, name: 318 -> 142.5, 좌표계는 600 x 760 기준)
  */
-.watch--about .watch__time {
+.watch--about .watch__time,
+.watch--contact .watch__time {
   font-weight: 400;
   color: #777d82;
   transform: translateY(calc(-48 * var(--wu))) scale(0.3125);
 }
 
-.watch--about .watch__name {
+.watch--about .watch__name,
+.watch--contact .watch__name {
   font-weight: 500;
   color: #777d82;
   transform: translateY(calc(-175.5 * var(--wu))) scale(0.5208333);
 }
 
 .watch--about .watch__role,
-.watch--about .watch__meta {
+.watch--about .watch__meta,
+.watch--contact .watch__meta {
   opacity: 0;
 }
 
-.watch--about .watch__title {
+.watch--about .watch__title,
+.watch--contact .watch__title {
   opacity: 1;
+}
+
+/*
+ * Contact는 About watch face를 그대로 쓰되 WEB DESIGNER를 이름 바로 아래에 남긴다.
+ * 이름과 같은 비율(0.52)로 줄이고, 이름 아래 간격도 같은 비율(12 -> 6.25)이다.
+ * Hero 중심 372 -> 170.6 (이름 130 ~ 155 바로 아래 161 ~ 180)
+ */
+.watch--contact .watch__role {
+  font-weight: 500;
+  color: #777d82;
+  transform: translateY(calc(-201.4 * var(--wu))) scale(0.5208333);
 }
 
 /* ---------------- Digital Crown ---------------- */
@@ -293,27 +308,6 @@
 
 /* ---------------- Contact ---------------- */
 
-/*
- * Contact display. 두 단어만 둔다. Hero watch face와 같은 Inter + Frost White.
- * display(검은 영역, y 58 ~ 716)의 가운데에 놓인다.
- */
-.watch__next {
-  position: relative;
-  top: calc(7 * var(--wu));
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: calc(64 * var(--wu));
-  line-height: 1.08;
-  letter-spacing: 0.03em;
-  text-align: center;
-  color: #f3f4f4;
-}
-
-.watch__next span {
-  display: block;
-}
-
 /* Crown이 다시 끼워지는 자리. Hero의 .watch__crown 박스와 같은 좌표·크기다. 보이지 않는다. */
 .watch__crown-socket {
   position: absolute;
@@ -325,9 +319,9 @@
 }
 
 /*
- * Crown이 결합하는 순간 한 번 지나가는 Ice 반사. steel 테두리에만 보인다:
+ * 한 번 지나가는 Frost / Ice 반사(About -> FACES 최대 밝기 / Contact 결합 순간). steel 테두리에만 보인다:
  *   watch_face.png의 실루엣(case가 있는 곳) ∩ display 바깥(stage의 구멍 mask와 같은 모양).
- * 평소에는 opacity 0. 최대 0.22까지만 오르고, glass(display) 위에는 올라가지 않는다.
+ * 평소에는 opacity 0. glass(display) 위에는 올라가지 않는다. 세기는 각 연출이 정한다.
  */
 .watch__reflection {
   position: absolute;

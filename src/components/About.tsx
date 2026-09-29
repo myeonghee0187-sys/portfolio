@@ -87,11 +87,6 @@ export default function About({ inlineWatch }: AboutProps) {
         <div className="about__inner">
           {/* Watch 주변의 차가운 반사. 카드 유리가 흐릴 빛 정보이기도 하다. */}
           <div className="about__ambient" aria-hidden="true" />
-          {/*
-            About -> FACES 경계에서 한 번 밝아지는 Ice Reflection의 About 쪽 절반.
-            FACES 쪽 절반은 FACES canvas가 같은 식으로 project 뒤에 그린다(facesScene의 handoff light).
-          */}
-          <div className="about-faces-transition-light" aria-hidden="true" />
 
           {ABOUT_CARDS.map((card) => (
             <article

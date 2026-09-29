@@ -197,6 +197,8 @@ export default function DigitalCrown({ onOpenAllFaces }: DigitalCrownProps) {
                 </span>
               </span>
               <span className="watch__crown-front-highlight" />
+              {/* 누를 수 있다는 표시. 바깥 테두리에 늘 옅은 Frost / Ice 빛이 있고 hover / focus / cue에서 밝아진다. */}
+              <span className="watch__crown-front-rim" />
             </span>
           </span>
         </button>

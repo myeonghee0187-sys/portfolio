@@ -5,10 +5,20 @@ import { JOURNEY_NODES } from './journeyData'
 import { HANDOFF_VIEWPORTS, JOURNEY_VIEWPORTS, PANEL_TRIGGER_ID, panelTiming } from '../../hooks/panelTiming'
 
 gsap.registerPlugin(ScrollTrigger)
-const LABELS = [0, 0.15, 0.29, 0.43, 0.57, 0.71, 0.88]
+
+/*
+ * journey-master 진행률(0 -> 1) 안에서 빛이 길을 따라 그려지는 구간.
+ * 이 구간에서 빛의 길이는 scroll과 1:1이다(ease 없음) — 처음부터 지금 위치까지 하나로 이어져 있고,
+ * card를 지나도 느려지거나 멈추지 않는다. 앞(0 ~ 0.02)은 첫 card, 뒤(0.88 ~ 1)는 STILL UPDATING에 머무는 시간이다.
+ */
+const LINE_FROM = 0.02
+const LINE_TO = 0.88
+/** 두 card 사이 구간 중 camera가 다음 card로 옮겨 가는 비율(나머지는 지금 card에 머문다). 빛과는 무관하다. */
 const TRAVEL = 0.65
-/** 지금 그려지는 끝(Electric Ice)의 길이. 화면 px. */
-const ACCENT_LENGTH = 160
+/** card가 켜지고 / 물러나는 데 걸리는 진행률. */
+const NODE_RAMP = 0.04
+/** 빛의 앞쪽 끝을 조금 더 밝게 보여 주는 길이(전체 길이 비율). 움직이는 조각이 아니라 이어진 빛의 끝부분이다. */
+const EDGE_RATIO = 0.04
 
 type Options = {
   enabled: boolean
@@ -37,6 +47,9 @@ function buildSmoothPath(points: Point[]): string {
   return d
 }
 
+const clamp01 = gsap.utils.clamp(0, 1)
+const travelEase = gsap.parseEase('power1.inOut')
+
 export default function useJourneyInteraction({ enabled, sectionRef, stageRef, worldRef }: Options) {
   useLayoutEffect(() => {
     const section = sectionRef.current, stage = stageRef.current, world = worldRef.current
@@ -46,30 +59,58 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
     const handoffStart = () => (panels()?.start ?? 0) + panelTiming.facesDistance
     const journeyStart = () => handoffStart() + innerHeight * HANDOFF_VIEWPORTS
     const nodes = JOURNEY_NODES.map(n => world.querySelector<HTMLElement>(`[data-node="${n.id}"]`)!)
-    const drawn = world.querySelector<SVGPathElement>('.journey__path-drawn')!
-    const accent = world.querySelector<SVGPathElement>('.journey__path-accent')!
+    const active = world.querySelector<SVGPathElement>('.journey__path-active')!
+    const edge = world.querySelector<SVGPathElement>('.journey__path-edge')!
     const paths = world.querySelectorAll<SVGPathElement>('.journey__path path')
     const probe = document.createElementNS('http://www.w3.org/2000/svg', 'path')
 
     /*
      * 경로 기하. card 안의 anchor element를 실제로 재서 만든다.
-     * length / stops는 화면 px이다 — non-scaling-stroke에서는 dash가 화면 px로 적용되기 때문이다.
-     *   stops[i] = 경로 시작부터 i번째 card anchor까지의 거리
+     * length / edge는 화면 px이다 — non-scaling-stroke에서는 dash가 화면 px로 적용되기 때문이다.
+     *   marks[i]  빛이 i번째 card anchor에 닿는 journey-master 진행률. 경로 길이에 비례한다 —
+     *             그래서 빛은 한 속도로 흐르고, card는 빛이 자기 자리를 지날 때 켜진다.
+     *   camera[i] i번째 card를 화면 가운데(Header 아래)에 두는 world의 y
      * refresh(초기 mount, 폰트 로드, resize)마다 다시 재고, scroll 중에는 다시 재지 않는다.
      */
-    const geom = { length: 0, stops: [0] as number[] }
-    /*
-     * 길이 어디까지 왔는지를 px가 아니라 anchor 순번(소수)으로 둔다. 예: 2.5 = 2번째와 3번째 anchor 사이 절반.
-     * timeline은 이 값만 움직이고, 화면 px는 그때그때 현재 geom으로 바꾼다 —
-     * resize 뒤 refresh가 이전 상태를 되돌려 놓아도 이전 경로 길이가 남지 않는다.
+    const geom = { length: 0, edge: 0, marks: [LINE_FROM] as number[], camera: [0] as number[] }
+    /** journey-master 진행률. timeline은 이 값 하나만 움직이고, 화면은 render가 그린다. */
+    const journey = { p: 0 }
+    const written = new Map<HTMLElement, string>()
+
+    /**
+     * 진행률 하나로 빛 / camera / card를 모두 그린다. 되감아도 같은 진행률이면 같은 화면이다.
+     *   빛     처음부터 지금 위치까지. 진행률에 1:1(ease 없음)
+     *   camera 빛이 다음 card에 닿기 전 TRAVEL 구간 동안 그 card로 옮겨 간다(빛은 그동안에도 멈추지 않는다)
+     *   card   빛이 자기 anchor에 닿을 때 켜지고, camera가 다음 card로 떠날 때 물러난다
      */
-    const pathState = { reached: 0 }
-    const applyPath = () => {
-      const last = geom.stops.length - 1
-      const i = Math.min(Math.floor(pathState.reached), last)
-      const px = i >= last ? geom.stops[last] : geom.stops[i] + (geom.stops[i + 1] - geom.stops[i]) * (pathState.reached - i)
-      drawn.style.strokeDashoffset = `${geom.length - px}px`
-      accent.style.strokeDashoffset = `${ACCENT_LENGTH - px}px`
+    const render = () => {
+      const p = journey.p
+      const m = geom.marks
+      if (!geom.length || m.length !== nodes.length) return
+
+      const line = clamp01((p - LINE_FROM) / (LINE_TO - LINE_FROM)) * geom.length
+      active.style.strokeDashoffset = `${(geom.length - line).toFixed(2)}px`
+      edge.style.strokeDashoffset = `${(geom.edge - line).toFixed(2)}px`
+
+      let y = geom.camera[0]
+      for (let i = 1; i < m.length; i++) {
+        const start = m[i] - (m[i] - m[i - 1]) * TRAVEL
+        if (p < start) break
+        const t = Math.min(1, (p - start) / (m[i] - start))
+        y = geom.camera[i - 1] + (geom.camera[i] - geom.camera[i - 1]) * travelEase(t)
+      }
+      gsap.set(world, { y })
+
+      nodes.forEach((node, i) => {
+        const nodeIn = i === 0 ? 1 : clamp01((p - (m[i] - NODE_RAMP)) / NODE_RAMP)
+        const leave = i + 1 < m.length ? m[i + 1] - (m[i + 1] - m[i]) * TRAVEL : Infinity
+        const nodeOut = clamp01((p - leave) / NODE_RAMP)
+        const key = `${nodeIn.toFixed(3)} ${nodeOut.toFixed(3)}`
+        if (written.get(node) === key) return
+        written.set(node, key)
+        node.style.setProperty('--node-in', nodeIn.toFixed(3))
+        node.style.setProperty('--node-out', nodeOut.toFixed(3))
+      })
     }
 
     /**
@@ -97,16 +138,21 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       const points = measureAnchors(scale)
       const d = buildSmoothPath(points)
       paths.forEach(p => p.setAttribute('d', d))
-      geom.length = drawn.getTotalLength() * scale
-      geom.stops = points.map((_, i) => {
-        if (i === 0) return 0
+      geom.length = active.getTotalLength() * scale
+      geom.edge = geom.length * EDGE_RATIO
+      geom.marks = points.map((_, i) => {
+        if (i === 0) return LINE_FROM
         probe.setAttribute('d', buildSmoothPath(points.slice(0, i + 1)))
-        return probe.getTotalLength() * scale
+        return LINE_FROM + ((probe.getTotalLength() * scale) / geom.length) * (LINE_TO - LINE_FROM)
       })
+      const header = document.querySelector('.site-header')?.getBoundingClientRect().height ?? 0
+      const unit = stage.clientWidth / 1920
+      geom.camera = JOURNEY_NODES.map(n => header + (stage.clientHeight - header) / 2 - n.position.y * unit)
       // 간격을 길이보다 조금 길게 둬서, 아무것도 그려지지 않았을 때 경로 끝에 길이 0짜리 dash(round cap 점)가 남지 않게 한다.
-      drawn.style.strokeDasharray = `${geom.length}px ${geom.length + 4}px`
-      accent.style.strokeDasharray = `${ACCENT_LENGTH}px ${geom.length + ACCENT_LENGTH}px`
-      applyPath()
+      active.style.strokeDasharray = `${geom.length}px ${geom.length + 4}px`
+      edge.style.strokeDasharray = `${geom.edge}px ${geom.length + geom.edge}px`
+      written.clear()
+      render()
     }
 
     rebuildPath()
@@ -117,15 +163,6 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
     ScrollTrigger.addEventListener('revert', rebuildPath)
 
     const ctx = gsap.context(() => {
-      const unit = () => stage.clientWidth / 1920
-      const cameraY = (i: number) => {
-        const h = document.querySelector('.site-header')?.getBoundingClientRect().height ?? 0
-        return h + (stage.clientHeight - h) / 2 - JOURNEY_NODES[i].position.y * unit()
-      }
-      gsap.set(world, { y: () => cameraY(0) })
-      gsap.set(nodes, { '--node-in': 0, '--node-out': 0 })
-      gsap.set(nodes[0], { '--node-in': 1 })
-
       const handoff = gsap.timeline({ scrollTrigger: {
         id: 'faces-journey-handoff', trigger: section, start: handoffStart, end: journeyStart,
         scrub: true, invalidateOnRefresh: true, refreshPriority: -2,
@@ -139,23 +176,20 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       handoff.fromTo(stage, { '--leading-light': 1 }, { '--leading-light': 0, duration: 0.5, ease: 'none' }, 0.5)
       handoff.set({}, {}, 1)
 
-      const tl = gsap.timeline({ scrollTrigger: {
+      /*
+       * Journey 전체가 진행률 하나다. card마다 tween을 나누지 않는다 —
+       * 나누면 구간마다 가속 / 감속이 생겨 빛이 anchor에서 멈췄다 다시 끌려가는 것처럼 보인다.
+       * scrub 0.5는 camera가 scroll을 부드럽게 따라가게 하는 기존 값이다(빛도 같은 값으로 함께 움직인다).
+       */
+      gsap.timeline({ scrollTrigger: {
         id: 'journey-master', trigger: section, start: journeyStart,
         end: () => journeyStart() + innerHeight * JOURNEY_VIEWPORTS,
         scrub: 0.5, invalidateOnRefresh: true, refreshPriority: -3,
-      } })
-      tl.set({}, {}, 1)
-      JOURNEY_NODES.forEach((n, i) => tl.addLabel(n.label, LABELS[i]))
-      for (let i = 1; i < nodes.length; i++) {
-        const at = LABELS[i], prev = LABELS[i - 1]
-        const duration = (at - prev) * TRAVEL, start = at - duration
-        tl.to(world, { y: () => cameraY(i), ease: 'power1.inOut', duration }, start)
-        // 지나온 길과 끝 조각은 card와 정확히 같은 timeline 위치에 i번째 anchor에 닿는다.
-        tl.to(pathState, { reached: i, ease: 'power1.inOut', duration, onUpdate: applyPath }, start)
-        tl.to(nodes[i], { '--node-in': 1, duration: 0.04, ease: 'none' }, at - 0.04)
-        tl.to(nodes[i - 1], { '--node-out': 1, duration: 0.04, ease: 'none' }, start)
-      }
+        onRefresh: render,
+      } }).fromTo(journey, { p: 0 }, { p: 1, duration: 1, ease: 'none', onUpdate: render, immediateRender: false }, 0)
     })
+    render()
+
     let live = true
     const refreshId = requestAnimationFrame(() => ScrollTrigger.refresh())
     document.fonts.ready.then(() => { if (live) ScrollTrigger.refresh() })
@@ -164,10 +198,15 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       cancelAnimationFrame(refreshId)
       ScrollTrigger.removeEventListener('revert', rebuildPath)
       ctx.revert()
-      for (const p of [drawn, accent]) {
+      for (const p of [active, edge]) {
         p.style.removeProperty('stroke-dasharray')
         p.style.removeProperty('stroke-dashoffset')
       }
+      for (const node of nodes) {
+        node.style.removeProperty('--node-in')
+        node.style.removeProperty('--node-out')
+      }
+      gsap.set(world, { clearProps: 'transform' })
       panelTiming.handoff = 0
     }
   }, [enabled, sectionRef, stageRef, worldRef])

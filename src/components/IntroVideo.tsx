@@ -6,11 +6,8 @@ import {
   type CSSProperties,
 } from 'react'
 import gsap from 'gsap'
-import { CustomEase } from 'gsap/CustomEase'
 import introVideoSrc from '../../assets/vid/opening-watch-final.mp4'
 import './IntroVideo.css'
-
-gsap.registerPlugin(CustomEase)
 
 /** Intro 재생 중 <html>에 붙는 스크롤 잠금 클래스 (index.css에 정의). */
 const SCROLL_LOCK_CLASS = 'intro-scroll-lock'
@@ -23,7 +20,7 @@ const SCROLLBAR_HIDDEN_CLASS = 'intro-scrollbar-hidden'
 
 /**
  * 첫 문구가 두 번째 문구로 바뀌기 시작하는 지점(초).
- * 지금 영상에서는 ending 전환(TRANSITION_START)이 이보다 먼저 시작되어 문구가 먼저 사라진다.
+ * 지금 영상에서는 ending 전환이 이보다 먼저 시작되어 문구가 먼저 사라진다.
  * 문구 구조를 그대로 두기 위해 값만 남겨 둔다.
  */
 const INTRO_TEXT_CHANGE_TIME = 3.9
@@ -42,51 +39,53 @@ const TEXT_SWAP_DELAY_SEC = (TEXT_FADE_MS + TEXT_SWAP_GAP_MS) / 1000
  * 모든 시점은 setTimeout이 아니라 video.currentTime 기준이다.
  * ------------------------------------------------------------------ */
 
-/**
- * 전환 시작 / 끝(영상 시간, 초). 영상은 이 구간에도 멈추지 않고 원래 속도로 재생된다.
- * 새 영상의 실제 frame 기준:
- *   2.5s  display가 켜진다 / 2.7 ~ 3.1s  카메라가 켜진 display 쪽으로 다가간다
- *   3.15 ~ 3.2s  display 빛이 가라앉고 왼쪽 아래에 기계 부품이 비치기 시작 / 3.3s부터 기계·회로 장면
- * 그래서 Watch가 충분히 가까워진 2.95s에 시작하고, 기계 장면이 뚜렷해지는 동안 Carbon Black으로 덮는다.
+/*
+ * 전환 시간은 영상 길이에서 거꾸로 잡는다(video.duration). 영상이 바뀌어도 끝부분에서 같은 길이로 진행된다.
+ *   start = duration - END_MARGIN - TRANSITION_DURATION
+ * 끝을 영상 끝보다 END_MARGIN만큼 앞에 두어, 영상의 ended(이른 종료 경로)보다 전환이 먼저 끝나게 한다.
+ * opening-watch-final.mp4(5.04s)에서는 3.89 -> 4.94s다. 이 구간은 Watch display 유리를 아주 가까이서 보는 장면이다.
  */
-const TRANSITION_START = 2.95
-const TRANSITION_END = 3.85
-const TRANSITION_DURATION = TRANSITION_END - TRANSITION_START
+const TRANSITION_DURATION = 1.05
+const END_MARGIN = 0.1
+/** reduced motion: 확대 없이 Carbon Black fade만 짧게. */
+const TRANSITION_DURATION_REDUCED = 0.45
 
-/** 확대에 쓰는 시간(초)과 배율. 끝까지 가지 않고 약간 먼저 멈춰, 마지막은 색만 수렴한다. */
-const ZOOM_DURATION = 0.8
-/**
- * 확대 ease = CSS 'ease' 곡선. 짧게 가속한 뒤 길게 감속한다.
- * 순수 ease-out(cubic-bezier(0.33, 1, 0.68, 1))은 첫 0.1초에 5.6%를 한 번에 당겨 화면이 튀어 보였다.
+/*
+ * 전환 진행률(0 -> 1) 구간.
+ *   0    ~ 0.2   문구가 사라진다
+ *   0.05 ~ 0.8   Watch display 쪽으로 확대 (1.05s 기준 약 0.79s) — 시작 직후부터 천천히, 끝에 몰리지 않게 power2.inOut
+ *   0    ~ 1     Carbon Black overlay (OVERLAY_KEYS). 초반은 옅게 두어 확대가 먼저 보인다
+ *   0.78 ~ 1     Intro 전체가 사라지며 아래의 Hero가 그대로 드러난다 (약 0.23s)
  */
-const ZOOM_EASE = CustomEase.create('introZoom', '0.25, 0.1, 0.25, 1')
-const ZOOM_SCALE = 1.18
+const ZOOM_FROM = 0.05
+const ZOOM_TO = 0.8
+const ZOOM_EASE = 'power2.inOut'
+const ZOOM_SCALE = 1.17
 /** 좁은 화면은 cover crop 때문에 초점이 이미 화면을 크게 차지한다. 확대를 약하게 한다. */
 const ZOOM_SCALE_NARROW = 1.1
 
 /**
- * 확대 초점. 영상 원본 frame 기준 비율(0~1)이다 — 2.7 ~ 3.2s 켜진 Watch display의 중심
- * (빛나는 display 테두리의 bounding box 가운데, 약 x 49 ~ 50% / y 38 ~ 40%).
+ * 확대 초점. 영상 원본 frame 기준 비율(0~1)이다 — 마지막 1초(3.9 ~ 5.0s) 화면을 채운
+ * Watch display 유리(어두운 dome)의 중심. 오른쪽 위로 치우쳐 있다(약 x 57 ~ 60% / y 34 ~ 37%).
  * 화면 좌표(transform-origin)는 object-fit: cover crop을 계산해 viewport마다 따로 구한다.
  */
-const ZOOM_FOCUS = { x: 0.5, y: 0.39 }
+const ZOOM_FOCUS = { x: 0.58, y: 0.36 }
 
 /** Carbon Black overlay의 opacity keyframe(전환 진행률 → opacity). 뒤로 갈수록 빨리 짙어진다. */
 const OVERLAY_KEYS: ReadonlyArray<readonly [number, number]> = [
   [0, 0],
-  [0.25, 0.1],
-  [0.55, 0.33],
-  [0.8, 0.7],
+  [0.25, 0.06],
+  [0.5, 0.18],
+  [0.7, 0.42],
+  [0.85, 0.76],
   [1, 1],
 ]
 
-/** Intro 전체가 사라지기 시작하는 진행률. 여기서부터 아래의 Hero가 그대로 드러난다. */
-const REVEAL_AT = 0.76
+/** Intro 전체가 사라지기 시작하는 진행률. 그 전까지 Hero는 Intro 아래에 가려져 있다. */
+const REVEAL_AT = 0.78
 
-/** 문구는 전환 시작보다 이만큼(초) 먼저, 이 길이(ms)로 사라진다. */
-const CAPTION_LEAD_SEC = 0.3
-const CAPTION_OUT_MS = 300
-const CAPTION_OUT_TIME = TRANSITION_START - CAPTION_LEAD_SEC
+/** 문구는 전환 시작과 함께 사라진다(전환의 앞 20%). */
+const CAPTION_OUT_MS = 210
 
 /** SKIP / 재생 실패 / 이른 종료: 긴 확대 없이 짧게 Carbon Black으로 닫는다(초). */
 const QUICK_CLOSE_SEC = 0.22
@@ -97,7 +96,7 @@ const QUICK_CLOSE_SEC = 0.22
  * second  : ONE DESIGNER / MANY FACES
  * out     : ending 전환 직전 모두 사라진 상태
  *
- * 전환이 3.9s보다 먼저 시작되므로 지금은 swapping / second까지 가지 않는다(문구 구조는 그대로 둔다).
+ * 문구 교체 시점(3.9s + 0.62s)보다 ending 전환이 먼저 시작되어 지금은 second까지 가지 않는다(문구 구조는 그대로 둔다).
  */
 type CaptionStep = 'first' | 'swapping' | 'second' | 'out'
 
@@ -164,6 +163,12 @@ export default function IntroVideo({ onFinish }: IntroVideoProps) {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const narrow = window.matchMedia('(max-width: 640px)').matches
     const zoomScale = reducedMotion ? 1 : narrow ? ZOOM_SCALE_NARROW : ZOOM_SCALE
+    const transitionDuration = reducedMotion ? TRANSITION_DURATION_REDUCED : TRANSITION_DURATION
+    /** 전환 시작(영상 시간). duration을 알기 전에는 시작하지 않는다. */
+    const transitionStart = () =>
+      Number.isFinite(video.duration) && video.duration > 0
+        ? Math.max(0, video.duration - END_MARGIN - transitionDuration)
+        : Infinity
 
     /** 'playing' → 'ending'(영상 시간에 묶인 전환) / 'closing'(짧은 종료) → 'done' */
     let phase: 'playing' | 'ending' | 'closing' | 'done' = 'playing'
@@ -200,14 +205,14 @@ export default function IntroVideo({ onFinish }: IntroVideoProps) {
       onFinishRef.current()
     }
 
-    // 확대는 전환 앞쪽 ZOOM_DURATION 동안만. 진행률을 직접 넣어 영상 시간과 같이 간다.
+    // 확대는 ZOOM_FROM ~ ZOOM_TO 구간. 진행률을 직접 넣어 영상 시간과 같이 간다.
     const zoom = gsap.fromTo(video, { scale: 1 }, {
-      scale: zoomScale, duration: ZOOM_DURATION, ease: ZOOM_EASE, paused: true, immediateRender: false,
+      scale: zoomScale, duration: 1, ease: ZOOM_EASE, paused: true, immediateRender: false,
     })
     const revealEase = gsap.parseEase('power1.inOut')
 
     const renderEnding = (progress: number) => {
-      zoom.progress(Math.min(1, (progress * TRANSITION_DURATION) / ZOOM_DURATION))
+      zoom.progress(Math.min(1, Math.max(0, (progress - ZOOM_FROM) / (ZOOM_TO - ZOOM_FROM))))
       ending.style.opacity = overlayAt(progress).toFixed(4)
       const reveal = Math.min(1, Math.max(0, (progress - REVEAL_AT) / (1 - REVEAL_AT)))
       intro.style.opacity = (1 - revealEase(reveal)).toFixed(4)
@@ -216,7 +221,7 @@ export default function IntroVideo({ onFinish }: IntroVideoProps) {
 
     const updateCaption = (time: number) => {
       const nextStep: CaptionStep =
-        time >= CAPTION_OUT_TIME
+        time >= transitionStart()
           ? 'out'
           : time >= INTRO_TEXT_CHANGE_TIME + TEXT_SWAP_DELAY_SEC
             ? 'second'
@@ -231,7 +236,7 @@ export default function IntroVideo({ onFinish }: IntroVideoProps) {
       if (phase === 'done' || phase === 'closing') return
       const time = video.currentTime
       updateCaption(time)
-      const progress = (time - TRANSITION_START) / TRANSITION_DURATION
+      const progress = (time - transitionStart()) / transitionDuration
       if (progress <= 0) return
       if (phase === 'playing') {
         phase = 'ending'

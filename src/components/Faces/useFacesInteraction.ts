@@ -186,13 +186,7 @@ export default function useFacesInteraction({
      */
     const ambientState = () => {
       const c = stage.getBoundingClientRect()
-      return {
-        level: sharedAmbient.level,
-        ice: sharedAmbient.ice,
-        iceScale: sharedAmbient.iceScale,
-        cx: c.width / 2,
-        cy: window.innerHeight / 2 - c.top,
-      }
+      return { level: sharedAmbient.level, cx: c.width / 2, cy: window.innerHeight / 2 - c.top }
     }
 
     let active = -1
@@ -297,7 +291,7 @@ export default function useFacesInteraction({
         link.style.setProperty('--display-radius', d.r + 'px')
       }
       const ambient = ambientState()
-      const key = `${current.toFixed(2)} ${interaction.toFixed(3)} ${ambient.ice.toFixed(3)} ${ambient.iceScale.toFixed(3)} ${ambient.level.toFixed(4)} ${ambient.cy.toFixed(1)} ${
+      const key = `${current.toFixed(2)} ${interaction.toFixed(3)} ${ambient.level.toFixed(4)} ${ambient.cy.toFixed(1)} ${
         watch ? `${watch.outer.cx.toFixed(1)} ${watch.outer.cy.toFixed(1)} ${watch.unit.toFixed(4)}` : ''
       }`
       if (key !== lastKey || videoDirty || !canWatchFrames) {

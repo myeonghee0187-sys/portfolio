@@ -1,14 +1,14 @@
 /*
  * Contact = Portfolio의 마지막 장면(ending scene + footer).
  *
- * 한 화면 안에 세 가지만 놓는다.
- *   왼쪽 위       작은 status -> 큰 문장 -> 한 줄 -> 링크 두 개
- *   오른쪽 아래   Apple Watch (마지막 visual, 문장보다 한 단계 아래)
- *   바닥          SONG MYEONG HEE / © 2026
+ *   왼쪽        큰 문장 -> START A CONVERSATION -> 이메일 (화면 세로 가운데)
+ *   오른쪽 가운데 Apple Watch (마지막 visual, 문장보다 한 단계 아래)
+ *   바닥        SONG MYEONG HEE / © 2026
  * 가로 grid는 Header / Hero와 같다(1680 기준 폭, 가운데 정렬).
  */
 .contact {
   --contact-watch-w: clamp(420px, 31vw, 620px);
+  --contact-grid: min(100%, calc(1680 * var(--site-u)));
   --contact-titanium: #a0a7ac;
   --contact-meta: #8d9499;
   position: relative;
@@ -23,32 +23,30 @@
 
 .contact__inner {
   position: relative;
-  width: min(100%, calc(1680 * var(--site-u)));
+  z-index: 1;
+  width: var(--contact-grid);
   min-height: inherit;
   margin: 0 auto;
 }
 
-/* 문장의 윗변이 화면 높이의 약 21% 지점에 온다. */
+/* 문장 묶음을 Header 아래 ~ footer 위 사이의 세로 가운데에 둔다(오른쪽 Watch와 같은 높이). */
 .contact__copy {
-  position: relative;
-  z-index: 1;
-  padding-top: calc(21dvh - 55px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  box-sizing: border-box;
+  min-height: inherit;
+  padding: var(--header-total) 0 96px;
 }
 
-.contact__status {
-  margin: 0 0 40px;
-  font: 500 15px/1 'Inter', sans-serif;
-  letter-spacing: 0.1em;
-  color: var(--contact-titanium);
-}
-
-/* 효과 없이 크기와 여백만으로 화면을 잡는다(gradient / glow / shadow 없음). */
+/* 효과 없이 크기와 여백만으로 화면을 잡는다(gradient / glow / shadow 없음). 줄간격은 실제 line-height 140%. */
 .contact__title {
   margin: 0;
   font-family: 'Anton', sans-serif;
   font-weight: 400;
   font-size: clamp(92px, 7.3vw, 140px);
-  line-height: 0.9;
+  line-height: 1.4;
   letter-spacing: -0.005em;
   color: #f3f4f4;
 }
@@ -58,31 +56,48 @@
   white-space: nowrap;
 }
 
-.contact__note {
-  margin: 36px 0 0;
-  font: 500 20px/1.5 'SUIT', sans-serif;
-  color: var(--contact-titanium);
-  word-break: keep-all;
-}
-
-.contact__links {
+.contact__actions {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
-  margin: 44px 0 0;
-  padding: 0;
-  list-style: none;
+  gap: 18px;
+  margin-top: 32px;
 }
 
-/* 버튼이 아니라 글자 링크. 아주 얇은 밑줄 하나, hover에 Frost White로 조금 밝아진다. */
-.contact__link {
+/* 대화 시작: 얇은 테두리의 사각 버튼 하나. pill / neon 없음. */
+.contact__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 0 28px;
+  border: 1px solid rgb(212 229 239 / 0.32);
+  border-radius: 12px;
+  background: none;
+  color: #f3f4f4;
+  font: 600 17px/1 'Inter', sans-serif;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition:
+    border-color 220ms ease,
+    background-color 220ms ease,
+    transform 220ms ease;
+}
+
+.contact__cta:hover {
+  border-color: rgb(212 229 239 / 0.62);
+  background: rgb(212 229 239 / 0.05);
+  transform: translateY(-1px);
+}
+
+/* 이메일: 글자 링크 하나. 밑줄은 주소에만(화살표까지 이으면 두 줄로 끊겨 보인다). */
+.contact__email {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   min-height: 44px;
-  font: 600 20px/1 'Inter', sans-serif;
-  letter-spacing: 0.1em;
+  font: 500 19px/1 'Inter', sans-serif;
+  letter-spacing: 0.02em;
   color: var(--contact-titanium);
   text-decoration: none;
   transition:
@@ -90,38 +105,39 @@
     transform 220ms ease;
 }
 
-/* 밑줄은 글자에만. 화살표까지 이어 그으면 사이가 끊겨 두 줄로 보인다. */
-.contact__link-label {
+.contact__email-label {
   text-decoration: underline;
   text-decoration-thickness: 1px;
-  text-underline-offset: 8px;
+  text-underline-offset: 7px;
   text-decoration-color: rgb(212 229 239 / 0.22);
   transition: text-decoration-color 220ms ease;
 }
 
-.contact__link:hover {
+.contact__email:hover {
   color: #f3f4f4;
   transform: translateY(-1px);
 }
 
-.contact__link:hover .contact__link-label {
+.contact__email:hover .contact__email-label {
   text-decoration-color: rgb(212 229 239 / 0.55);
 }
 
-.contact__link:focus-visible {
+.contact__cta:focus-visible,
+.contact__email:focus-visible {
   outline: 1px solid rgb(212 229 239 / 0.7);
   outline-offset: 6px;
 }
 
 /*
- * Watch: grid 오른쪽 끝에 맞춘다. Crown은 Watch 박스 밖으로 36 단위 나오므로
- * 화면 오른쪽 끝과 Crown 사이는 약 90px이다. 아래는 footer 위로 여백을 둔다.
+ * Watch: 화면 오른쪽, 세로 가운데. Watch의 가운데가 화면(= 끝까지 올라온 section)의 가운데에 온다.
+ * 위치(translateY)는 이 box, 등장 motion은 안쪽 enter, 3/4 각도는 tilt가 따로 맡는다.
  */
 .contact__watch {
   position: absolute;
-  right: 0;
-  bottom: clamp(80px, 9.26dvh, 120px);
+  top: 50%;
+  right: clamp(72px, 6.25vw, 120px);
   width: var(--contact-watch-w);
+  transform: translateY(-50%);
 }
 
 /* 완전한 정면보다 Crown 쪽이 조금 앞으로 나온 3/4 각도. Crown이 몸체에 붙는 면이 보인다. */
@@ -131,11 +147,13 @@
 
 .contact__footer {
   position: absolute;
-  right: 0;
   bottom: 40px;
-  left: 0;
+  left: 50%;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
+  width: var(--contact-grid);
+  transform: translateX(-50%);
   font: 500 13px/1 'Inter', sans-serif;
   letter-spacing: 0.1em;
   color: var(--contact-meta);
@@ -143,20 +161,12 @@
 
 /*
  * Tablet: 좌우 여백을 줄이고, Watch를 한 단계 작게 둔다.
- * 문장은 최소 92px이라 1024에서도 약 500px 폭이다. Watch가 38vw면 문장과 30px까지 붙어서
- * 여백이 사라지므로 34vw(1024에서 약 70px 간격)로 둔다.
+ * 문장은 최소 92px이라 1024에서도 약 480px 폭이다. Watch가 더 크면 문장과 붙어서 여백이 사라진다.
  */
 @media (max-width: 1024px) {
   .contact {
     --contact-watch-w: 34vw;
-  }
-
-  .contact__inner {
-    width: calc(100% - 96px);
-  }
-
-  .contact__watch {
-    bottom: 72px;
+    --contact-grid: calc(100% - 96px);
   }
 
   .contact__footer {
@@ -164,51 +174,52 @@
   }
 }
 
-/* Mobile: 가로 배치를 줄이지 않고 세로로 쌓는다. status -> 문장 -> 링크 -> Watch -> footer. */
+/* Mobile: 가로 배치를 줄이지 않고 세로로 쌓는다. 문장 -> 대화 시작 -> 이메일 -> Watch -> footer. */
 @media (max-width: 760px) {
   .contact {
     --contact-watch-w: min(85vw, 420px);
-  }
-
-  .contact__inner {
     display: flex;
     flex-direction: column;
-    width: auto;
     padding: calc(var(--header-total) + 40px) 24px 28px;
   }
 
-  .contact__copy {
-    padding-top: 0;
+  .contact__inner {
+    width: auto;
+    min-height: 0;
+    margin: 0;
   }
 
-  .contact__status {
-    margin-bottom: 24px;
-    font-size: 12px;
+  .contact__copy {
+    min-height: 0;
+    padding: 0;
   }
 
   .contact__title {
     font-size: clamp(56px, 16vw, 78px);
   }
 
-  .contact__note {
+  .contact__actions {
     margin-top: 24px;
+    gap: 14px;
+  }
+
+  .contact__cta {
+    min-height: 54px;
+    padding: 0 22px;
+    font-size: 15px;
+  }
+
+  .contact__email {
     font-size: 16px;
-  }
-
-  .contact__links {
-    margin-top: 28px;
-  }
-
-  .contact__link {
-    font-size: 17px;
   }
 
   .contact__watch {
     position: relative;
+    top: auto;
     right: auto;
-    bottom: auto;
     align-self: center;
     margin: 56px 0 0;
+    transform: none;
   }
 
   .contact__watch-tilt {
@@ -217,7 +228,9 @@
 
   .contact__footer {
     position: static;
+    width: auto;
     margin-top: 56px;
+    transform: none;
     font-size: 12px;
   }
 }

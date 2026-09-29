@@ -20,8 +20,15 @@ export default function WatchStage({ onOpenAllFaces }: WatchStageProps) {
      * ALL FACES를 여는 Crown button이 있어서 보조기술에서 닿아야 한다.
      * 레이어 자체는 pointer-events: none이고 Crown button만 auto로 열린다.
      */
-    <div className="watch-stage">
-      <WatchAssembly variant="stage" onOpenAllFaces={onOpenAllFaces} />
-    </div>
+    <>
+      <div className="watch-stage">
+        <WatchAssembly variant="stage" onOpenAllFaces={onOpenAllFaces} />
+      </div>
+      {/*
+        About -> FACES에서 화면 전체의 노출이 잠깐 올라가는 빛(camera flash / 일출).
+        Watch 위에 screen으로 겹쳐 Watch / About / FACES가 함께 빛을 받는다. 세기와 크기는 useScrollScene이 정한다.
+      */}
+      <div className="about-faces-bloom" aria-hidden="true" />
+    </>
   )
 }

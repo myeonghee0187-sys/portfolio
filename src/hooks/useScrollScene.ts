@@ -290,7 +290,6 @@ export default function useScrollScene(enabled: boolean) {
       }
 
       const ambient = inner.querySelector<HTMLElement>('.about__ambient')
-      const light = inner.querySelector<HTMLElement>('.about-faces-transition-light')
       const setAmbientOpacity = ambient
         ? (gsap.quickSetter(ambient, 'opacity') as (v: number) => void)
         : () => {}
@@ -302,15 +301,10 @@ export default function useScrollScene(enabled: boolean) {
        */
       let ambientCards = AMBIENT_REST
       const ambientFade = { value: 1 }
-      /** About -> FACES 경계 Ice Reflection의 opacity / scale. About DOM과 FACES canvas가 같은 값을 쓴다. */
-      const boundaryLight = { value: 0, scale: 0.82 }
       const writeAmbient = () => {
         const level = ambientCards * ambientFade.value
         setAmbientOpacity(level)
         sharedAmbient.level = level
-        sharedAmbient.ice = boundaryLight.value
-        sharedAmbient.iceScale = boundaryLight.scale
-        if (light) light.style.opacity = String(boundaryLight.value)
       }
 
       /** 좌표를 다시 잰다. 매 프레임이 아니라 refresh 때만 부른다. */
@@ -681,11 +675,6 @@ export default function useScrollScene(enabled: boolean) {
           gsap.set(ambient, { xPercent: -50, yPercent: -50, x: 0, y: 0 })
           facesTl.fromTo(ambient, { y: 0 }, { y: () => window.innerHeight, ease: 'none', duration: 1 }, 0)
         }
-        if (light) {
-          // 화면 가운데(Watch 중심)에 머문다 — About stage가 올라가는 만큼 반대로 내려온다.
-          gsap.set(light, { xPercent: -50, yPercent: -50, x: 0, y: 0, scale: boundaryLight.scale })
-          facesTl.fromTo(light, { y: 0 }, { y: () => window.innerHeight, ease: 'none', duration: 1 }, 0)
-        }
         facesTl.fromTo(
           ambientFade,
           { value: 1 },
@@ -696,29 +685,47 @@ export default function useScrollScene(enabled: boolean) {
         // timeline 길이를 scroll 구간 전체(1)에 맞춘다. 위 시간이 곧 구간 안의 비율이 된다.
         facesTl.set({}, {}, 1)
         /*
-         * 경계 Ice Reflection. 새 ScrollTrigger 없이 이 timeline(About -> FACES)의 progress에 그대로 묶인다.
-         *   0    -> 0.25  About 종료 접근   opacity 0 -> 0.32, scale 0.82 -> 0.92
-         *   0.25 -> 0.58  경계 / Watch 확대  opacity -> 1(peak), scale -> 1.12
-         *   0.58 -> 1     FACES 진입 완료   opacity -> 0.32, scale -> 1.32 (FACES optical light로 가라앉는다)
-         * 바탕색은 그대로다. 되감으면 같은 값을 거꾸로 지나간다.
+         * ABOUT -> FACES 노출(camera flash / 일출). 새 ScrollTrigger 없이 이 timeline의 progress에 묶인다.
+         * Watch 둘레의 작은 빛이 아니라 화면 전체의 노출이 잠깐 올라갔다가 FACES의 Carbon Black으로 가라앉는다.
+         *   bloom    화면 전체를 덮는 빛(WatchStage의 .about-faces-bloom, screen blend). 가운데(Watch)에서 퍼진다
+         *   bright   About 장면 / Watch / FACES 장면 자체의 brightness. 빛을 받는 것처럼 함께 밝아진다
+         *   glint    최대 밝기 근처에서만 Watch steel 테두리를 지나가는 Frost / Ice 반사
+         * 진행률: 0.18 시작 -> 0.38 분명히 밝아짐 -> 0.52 최대 -> 0.75 FACES가 보이기 시작 -> 1 Carbon Black.
+         * 되감으면 같은 값을 거꾸로 지나간다. 흰 화면까지는 가지 않는다(최대 opacity 0.75, brightness 1.22).
          */
-        facesTl.fromTo(
-          boundaryLight,
-          { value: 0, scale: 0.82 },
-          { value: 0.32, scale: 0.92, duration: 0.25, ease: 'none', onUpdate: writeAmbient, immediateRender: false },
-          0,
-        )
-        facesTl.to(boundaryLight, { value: 1, scale: 1.12, duration: 0.33, ease: 'sine.inOut', onUpdate: writeAmbient }, 0.25)
-        facesTl.to(boundaryLight, { value: 0.32, scale: 1.32, duration: 0.42, ease: 'sine.inOut', onUpdate: writeAmbient }, 0.58)
-        /*
-         * DOM 쪽 scale은 같은 keyframe·같은 ease의 transform tween으로 둔다(위 y tween과 한 transform에 합쳐진다).
-         * quickSetter('scale')는 transform이 아니라 별도의 CSS scale 속성을 써서 두 번 곱해진다.
-         */
-        if (light) {
-          facesTl.fromTo(light, { scale: 0.82 }, { scale: 0.92, duration: 0.25, ease: 'none', immediateRender: false }, 0)
-          facesTl.to(light, { scale: 1.12, duration: 0.33, ease: 'sine.inOut' }, 0.25)
-          facesTl.to(light, { scale: 1.32, duration: 0.42, ease: 'sine.inOut' }, 0.58)
+        const bloom = document.querySelector<HTMLElement>('.about-faces-bloom')
+        const glint = watch.querySelector<HTMLElement>('.watch__reflection')
+        const lit = [stage, watchLayer, faces.querySelector<HTMLElement>('.faces__scene')]
+        const exposure = { bloom: 0, scale: 0.82, bright: 1, glint: 0, sweep: 120 }
+        const writeExposure = () => {
+          if (bloom) {
+            bloom.style.opacity = exposure.bloom.toFixed(3)
+            bloom.style.visibility = exposure.bloom > 0.001 ? 'visible' : 'hidden'
+            bloom.style.transform = `scale(${exposure.scale.toFixed(3)})`
+          }
+          for (const el of lit) {
+            if (!el) continue
+            // 1이면 filter를 아예 지운다. 남겨 두면 평소에도 layer가 따로 합성된다.
+            if (exposure.bright > 1.001) el.style.filter = `brightness(${exposure.bright.toFixed(3)})`
+            else el.style.removeProperty('filter')
+          }
+          if (glint) {
+            glint.style.opacity = exposure.glint.toFixed(3)
+            glint.style.setProperty('--reflection-x', `${exposure.sweep.toFixed(1)}%`)
+          }
         }
+        const expose = (from: Partial<typeof exposure>, to: Partial<typeof exposure>, duration: number, ease: string, at: number) =>
+          facesTl.fromTo(exposure, from, { ...to, duration, ease, onUpdate: writeExposure, immediateRender: false }, at)
+        expose({ bloom: 0, scale: 0.82 }, { bloom: 0.25, scale: 1 }, 0.2, 'sine.in', 0.18)
+        expose({ bloom: 0.25, scale: 1 }, { bloom: 0.75, scale: 1.28 }, 0.14, 'sine.out', 0.38)
+        expose({ bloom: 0.75 }, { bloom: 0.32 }, 0.23, 'sine.inOut', 0.52)
+        expose({ scale: 1.28 }, { scale: 1.5 }, 0.48, 'none', 0.52)
+        expose({ bloom: 0.32 }, { bloom: 0 }, 0.25, 'sine.in', 0.75)
+        expose({ bright: 1 }, { bright: 1.22 }, 0.34, 'sine.inOut', 0.18)
+        expose({ bright: 1.22 }, { bright: 1 }, 0.28, 'sine.inOut', 0.52)
+        expose({ glint: 0 }, { glint: 0.55 }, 0.07, 'sine.out', 0.45)
+        expose({ glint: 0.55 }, { glint: 0 }, 0.09, 'sine.in', 0.52)
+        expose({ sweep: 120 }, { sweep: -20 }, 0.16, 'none', 0.45)
 
         /*
          * Crown이 정면 controller가 된 직후 딱 한 번 도는 cue.
@@ -756,10 +763,13 @@ export default function useScrollScene(enabled: boolean) {
         ambient?.style.removeProperty('opacity')
         ambient?.style.removeProperty('transform')
         sharedAmbient.level = 0
-        sharedAmbient.ice = 0
-        sharedAmbient.iceScale = 0.82
-        light?.style.removeProperty('opacity')
-        light?.style.removeProperty('transform')
+        // About -> FACES 노출은 tween 대상이 proxy라 직접 쓴 style을 여기서 지운다.
+        const bloom = document.querySelector<HTMLElement>('.about-faces-bloom')
+        for (const prop of ['opacity', 'visibility', 'transform']) bloom?.style.removeProperty(prop)
+        for (const el of [stage, watchLayer, faces?.querySelector<HTMLElement>('.faces__scene')]) el?.style.removeProperty('filter')
+        const glint = watch.querySelector<HTMLElement>('.watch__reflection')
+        glint?.style.removeProperty('opacity')
+        glint?.style.removeProperty('--reflection-x')
         crown?.removeEventListener('animationend', clearCue)
         crown?.classList.remove('watch__crown--controller', 'watch__crown--cue')
         // 방향은 tween이 아니라 applyCrown이 직접 쓴 값이라 여기서 지운다.

@@ -6,6 +6,7 @@
  *     1  About 카드        (.about__card)
  *     2  Hero 콘텐츠       (.hero__inner - 대형 타이포)
  *     3  Watch            <- 카드가 절대 Watch를 덮지 않는다
+ *     4  About -> FACES bloom (평소에는 숨어 있다)
  *    10  Splash Cursor
  *   100  Intro 오버레이
  *
@@ -16,4 +17,30 @@
   inset: 0;
   z-index: 3;
   pointer-events: none;
+}
+
+/*
+ * About -> FACES 노출. 화면보다 조금 크게(inset -10%) 깔고, 가운데(Watch)에서 퍼지는 빛을 screen으로 더한다.
+ * Header(z-index 5) 아래, Watch(3) 위라 Watch / About / FACES가 모두 빛을 받는다.
+ * 평소에는 visibility hidden이라 합성 비용이 없다. opacity / scale은 useScrollScene이 scroll에 맞춰 쓴다.
+ */
+.about-faces-bloom {
+  position: fixed;
+  inset: -10%;
+  z-index: 4;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 50% 52%,
+    rgb(248 250 250 / 0.72) 0%,
+    rgb(229 239 245 / 0.48) 22%,
+    rgb(212 229 239 / 0.28) 48%,
+    rgb(24 109 229 / 0.08) 68%,
+    transparent 88%
+  );
+  filter: blur(28px);
+  mix-blend-mode: screen;
+  transform: scale(0.82);
+  will-change: opacity, transform;
 }

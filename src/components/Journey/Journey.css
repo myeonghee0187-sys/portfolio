@@ -75,20 +75,25 @@
   vector-effect: non-scaling-stroke;
 }
 
-/* 아직 지나지 않은 길 */
+/* 전체 길. 항상 보인다. */
 .journey__path .journey__path-base {
-  stroke: rgb(119 125 130 / 0.18);
+  stroke: rgb(119 125 130 / 0.25);
 }
 
-/* 지나온 길 */
-.journey__path .journey__path-drawn {
-  stroke: rgb(212 229 239 / 0.3);
-}
-
-/* 지금 그려지는 끝(active). 공통 규칙(.journey__path path)보다 우선해야 2.5px이 된다. */
-.journey__path .journey__path-accent {
-  stroke: rgb(24 109 229 / 0.64);
+/*
+ * 처음부터 지금 scroll 위치까지 이어진 빛. 지나온 길은 어두워지지 않는다.
+ * 공통 규칙(.journey__path path)보다 우선해야 2.5px이 된다.
+ */
+.journey__path .journey__path-active {
+  stroke: rgb(212 229 239 / 0.74);
   stroke-width: 2.5px;
+}
+
+/* 빛의 앞쪽 끝(전체 길이의 4%)만 조금 더 밝게. Electric Ice는 아주 옅은 glow에만 쓴다. */
+.journey__path .journey__path-edge {
+  stroke: rgb(243 244 244 / 0.95);
+  stroke-width: 2.5px;
+  filter: drop-shadow(0 0 5px rgb(24 109 229 / 0.16));
 }
 
 .journey__node {

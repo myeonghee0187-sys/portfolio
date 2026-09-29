@@ -4,7 +4,7 @@ import DigitalCrown from './DigitalCrown'
 import './WatchAssembly.css'
 
 /** 프로젝트가 늘어나면 이 값만 수정한다. 화면에는 항상 두 자리로 표시된다. */
-const WORKS_COUNT = 4
+const WORKS_COUNT = 3
 
 /**
  * hero  - Hero 안에 정적으로 놓이는 상태 (scroll scene이 꺼졌을 때)
@@ -62,56 +62,57 @@ export default function WatchAssembly({ variant, onOpenAllFaces, withCrown = tru
       )}
 
       {variant === 'contact' && (
-        <>
-          {/* Contact display. 정보는 넣지 않는다 — 마지막 장면의 한 줄 인사다. */}
-          <div className="watch__face">
-            <p className="watch__next">
-              <span>NEXT</span>
-              <span>FACE</span>
-            </p>
-          </div>
-          {/* Crown이 다시 끼워지는 자리. Hero의 Crown 박스(582, 200, 54 x 80)와 같다. 보이지 않는다. */}
-          <span className="watch__crown-socket" />
-          {/* 결합하는 순간 steel 테두리를 따라 한 번 지나가는 Ice 반사(useContactScene). */}
-          <div className="watch__reflection" />
-        </>
+        /* Crown이 다시 끼워지는 자리. Hero의 Crown 박스(582, 200, 54 x 80)와 같다. 보이지 않는다. */
+        <span className="watch__crown-socket" />
       )}
 
       {/*
-        시계 / 이름 / THE ONE BEHIND THE FACES. Hero·About의 watch face다.
-        FACES로 넘어가면서 이 묶음 전체가 한 번에 빠진다(안쪽 요소들의 Hero -> About morph와 분리).
+        steel 테두리를 따라 한 번 지나가는 Frost / Ice 반사. 평소에는 opacity 0이다.
+          stage    About -> FACES 노출이 가장 밝을 때(useScrollScene)
+          contact  Crown이 다시 결합하는 순간(useContactScene)
       */}
-      {variant !== 'contact' && (
-        <div className="watch__face">
-          <div className="watch__content">
-            <div className="watch__top">
-              {/*
-                time / name은 Hero <-> About에서 살아남는 두 요소다.
-                지우고 다시 만드는 대신 transform(위치·크기)과 color만 바뀐다.
-              */}
-              <p className="watch__time">{currentTime}</p>
-              <div className="watch__info">
-                <p className="watch__name">SONG MYEONG HEE</p>
-                {/* 아래 셋은 Hero 전용. About으로 가면서 사라진다. */}
-                <p className="watch__role">WEB DESIGNER</p>
-              </div>
-            </div>
+      {(variant === 'stage' || variant === 'contact') && <div className="watch__reflection" />}
 
-            <div className="watch__meta">
-              <p className="watch__works">PROJECTS {String(WORKS_COUNT).padStart(2, '0')}</p>
-              <p className="watch__status">
-                <span>OPEN TO WORK</span>
-              </p>
+      {/*
+        시계 / 이름 / WEB DESIGNER / 제목. Hero·About·Contact가 같은 watch face를 쓴다.
+        FACES로 넘어가면서 이 묶음 전체가 한 번에 빠진다(안쪽 요소들의 Hero -> About morph와 분리).
+        Contact는 About의 배치를 그대로 쓰고, 제목만 NEXT FACE다(WatchAssembly.css).
+      */}
+      <div className="watch__face">
+        <div className="watch__content">
+          <div className="watch__top">
+            {/*
+              time / name은 Hero <-> About에서 살아남는 두 요소다.
+              지우고 다시 만드는 대신 transform(위치·크기)과 color만 바뀐다.
+            */}
+            <p className="watch__time">{currentTime}</p>
+            <div className="watch__info">
+              <p className="watch__name">SONG MYEONG HEE</p>
+              {/* Hero와 Contact에 보인다. About으로 가면서 사라진다. */}
+              <p className="watch__role">WEB DESIGNER</p>
             </div>
           </div>
 
-          {/* About 전용. Watch 정중앙에 놓이고 About에 진입하면서 나타난다. */}
-          <p className="watch__title">
-            <span>THE ONE</span>
-            <span>BEHIND THE FACES</span>
-          </p>
+          <div className="watch__meta">
+            <p className="watch__works">PROJECTS {String(WORKS_COUNT).padStart(2, '0')}</p>
+            <p className="watch__status">
+              <span>OPEN TO WORK</span>
+            </p>
+          </div>
         </div>
-      )}
+
+        {/* About / Contact 제목. Watch 정중앙에 놓인다. */}
+        <p className="watch__title">
+          {variant === 'contact' ? (
+            <span>NEXT FACE</span>
+          ) : (
+            <>
+              <span>THE ONE</span>
+              <span>BEHIND THE FACES</span>
+            </>
+          )}
+        </p>
+      </div>
 
       {/*
         Digital Crown. Hero / About에서는 Watch에 붙어 함께 옮겨지고 커진다.

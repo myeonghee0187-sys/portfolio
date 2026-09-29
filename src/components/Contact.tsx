@@ -1,6 +1,8 @@
-import { useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import WatchAssembly from './Watch/WatchAssembly'
+import ContactModal from './ContactModal'
 import useContactScene from '../hooks/useContactScene'
+import { CONTACT_EMAIL } from './contactInfo'
 import './Contact.css'
 
 type ContactProps = {
@@ -10,70 +12,81 @@ type ContactProps = {
   ready: boolean
 }
 
-const EMAIL = 'myeonghee0187@gmail.com'
-const GITHUB = 'https://github.com/myeonghee0187-sys'
-
 /**
  * Portfolio의 마지막 장면.
  *
- * 큰 문장 하나 + 연락 링크 두 개 + 넓은 여백 + 바닥의 작은 footer가 한 화면이다(form 없음).
- * Apple Watch는 오른쪽 아래의 마지막 visual이고, 연출이 켜져 있으면 Journey까지 화면 오른쪽 아래에 있던
- * 같은 Crown이 이 Watch의 socket으로 돌아와 결합한다(useContactScene). 이 Watch는 자기 Crown을 그리지 않는다.
+ * 왼쪽: 큰 문장 하나 + 대화 시작(문의 form을 이 화면 위 modal로 연다) + 이메일.
+ * 오른쪽 가운데: Apple Watch. 연출이 켜져 있으면 Journey까지 화면 오른쪽 아래에 있던 같은 Crown이
+ * 이 Watch의 socket으로 돌아와 결합한다(useContactScene). 이 Watch는 그때 자기 Crown을 그리지 않는다.
+ * 바닥: 작은 footer(모바일에서는 문장 -> 링크 -> Watch -> footer 순서로 쌓인다).
  *
  * data-contact-reveal 값은 등장할 때 올라오는 거리(px)다.
  */
 export default function Contact({ interactive, ready }: ContactProps) {
   const sectionRef = useRef<HTMLElement>(null)
+  const ctaRef = useRef<HTMLButtonElement>(null)
+  const [formOpen, setFormOpen] = useState(false)
   useContactScene({ interactive, ready, sectionRef })
+
+  const closeForm = useCallback(() => {
+    setFormOpen(false)
+    // modal이 닫히면 열었던 버튼으로 focus를 돌려준다.
+    requestAnimationFrame(() => ctaRef.current?.focus())
+  }, [])
 
   return (
     <section ref={sectionRef} id="contact" className="contact" aria-labelledby="contact-title">
       <div className="contact__inner">
         <div className="contact__copy">
-          <p className="contact__status" data-contact-reveal="12">
-            AVAILABLE FOR NEW OPPORTUNITIES
-          </p>
           <h2 id="contact-title" className="contact__title" data-contact-reveal="36">
             <span>LET&rsquo;S CREATE</span>
-            <span>THE NEXT FACE.</span>
+            <span>THE NEXT FACE</span>
           </h2>
-          <p className="contact__note" data-contact-reveal="16">
-            함께 새로운 경험을 만들어가고 싶습니다.
-          </p>
-          <ul className="contact__links" data-contact-reveal="16">
-            <li>
-              <a className="contact__link" href={`mailto:${EMAIL}`} aria-label={`이메일 보내기 ${EMAIL}`}>
-                <span className="contact__link-label">EMAIL</span>
-                <span aria-hidden="true">&#8599;</span>
-              </a>
-            </li>
-            <li>
-              <a
-                className="contact__link"
-                href={GITHUB}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="GitHub 새 창에서 열기"
-              >
-                <span className="contact__link-label">GITHUB</span>
-                <span aria-hidden="true">&#8599;</span>
-              </a>
-            </li>
-          </ul>
+          <div className="contact__actions">
+            <button
+              ref={ctaRef}
+              type="button"
+              className="contact__cta"
+              aria-haspopup="dialog"
+              onClick={() => setFormOpen(true)}
+              data-contact-reveal="16"
+            >
+              START A CONVERSATION <span aria-hidden="true">&#8599;</span>
+            </button>
+            <a
+              className="contact__email"
+              href={`mailto:${CONTACT_EMAIL}`}
+              aria-label={`이메일 보내기 ${CONTACT_EMAIL}`}
+              data-contact-reveal="16"
+            >
+              <span className="contact__email-label">{CONTACT_EMAIL}</span>
+              <span aria-hidden="true">&#8599;</span>
+            </a>
+          </div>
         </div>
+      </div>
 
-        {/* 장식 visual. 등장 motion은 바깥 box, 3/4 각도는 안쪽 box가 맡는다. */}
-        <div className="contact__watch" aria-hidden="true">
+      {/*
+        장식 visual. 세 층이 각자 한 가지만 맡는다.
+          contact__watch        자리(오른쪽 세로 가운데)
+          contact__watch-enter  등장 motion(GSAP)
+          contact__watch-tilt   3/4 각도(CSS)와 결합 순간의 몇 px 이동(useContactScene)
+      */}
+      <div className="contact__watch" aria-hidden="true">
+        <div className="contact__watch-enter">
           <div className="contact__watch-tilt">
             <WatchAssembly variant="contact" withCrown={!interactive} />
           </div>
         </div>
-
-        <footer className="contact__footer">
-          <span>SONG MYEONG HEE</span>
-          <span>&copy; 2026</span>
-        </footer>
       </div>
+
+      {/* 화면 바닥의 작은 footer. 모바일에서는 Watch 다음에 온다. */}
+      <footer className="contact__footer">
+        <span>SONG MYEONG HEE</span>
+        <span>&copy; 2026</span>
+      </footer>
+
+      {formOpen && <ContactModal onClose={closeForm} />}
     </section>
   )
 }

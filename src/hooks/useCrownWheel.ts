@@ -29,6 +29,20 @@ let current = 0
 let rafId = 0
 let lastTime = 0
 
+/**
+ * page scroll을 wheel이 따라가는 scroll로 바꾸는 함수. 없으면 page scroll 그대로다.
+ * Contact에서 Crown이 Watch에 다시 결합할 때, 가까워질수록 회전이 서서히 줄다가 결합하면 그 각도에 멈추게 한다
+ * (useContactScene). scrollY의 순수 함수라 되감으면 같은 각도로 돌아온다.
+ */
+let remap: ((scrollY: number) => number) | null = null
+const wheelScroll = () => (remap ? remap(window.scrollY) : window.scrollY)
+
+export function setCrownScrollRemap(fn: ((scrollY: number) => number) | null) {
+  remap = fn
+  target = wheelScroll() * CROWN_WHEEL_FACTOR
+  if (surfaces.size && !rafId) rafId = requestAnimationFrame(tick)
+}
+
 /** 홈 하나 안에서의 위치(0 이상 1 미만). 표면은 주기적이라 이 값만으로 이음매 없이 계속 굴러간다. */
 const turnOf = (phase: number, pitch: number) => {
   const t = (phase / pitch) % 1
@@ -67,7 +81,7 @@ const tick = (now: number) => {
 }
 
 const onScroll = () => {
-  target = window.scrollY * CROWN_WHEEL_FACTOR
+  target = wheelScroll() * CROWN_WHEEL_FACTOR
   if (!rafId) rafId = requestAnimationFrame(tick)
 }
 
@@ -99,7 +113,7 @@ export default function useCrownWheel(
     }
     if (surfaces.size === 0) {
       // 중간에서 새로고침해도 0에서부터 굴러오지 않고 현재 scroll 위치의 표면으로 바로 시작한다.
-      target = current = window.scrollY * CROWN_WHEEL_FACTOR
+      target = current = wheelScroll() * CROWN_WHEEL_FACTOR
       window.addEventListener('scroll', onScroll, { passive: true })
     }
     surfaces.add(surface)
