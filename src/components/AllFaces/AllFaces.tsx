@@ -1,115 +1,60 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import gsap from 'gsap'
-import { FACE_PROJECTS, type FaceProject } from '../Faces/facesData'
+import { FACE_PROJECTS } from '../Faces/facesData'
 import './AllFaces.css'
 
 /*
  * ALL FACES — Digital Crown을 누르면 열리는 전체 project 화면.
  *
- * React Bits Dome Gallery / Infinite Menu에서 "공간을 끌어 탐색하는 감각"(drag, 관성, 자유로운 배치, 공간감)만 가져오고
- * 구 / dome 곡률 / 무한 복제는 버렸다. 둥글게 말린 gallery를 평평하게 펼친 FLAT PROJECT WORLD 하나 —
- * 화면보다 넓지만 끝이 있는 평면 위에 project 3개(실제 개수 그대로)가 비대칭으로 놓여 아주 느리게 떠 있다.
- * Grid / carousel / 구형 배치가 아니다. Watch는 이 화면에 없다.
+ * project가 3개뿐이라 화면은 완전히 고정된 한 장(100vh / 100dvh)이다. 세 원형 object가 한 화면 안의 정해진 자리에
+ * 비대칭으로 놓이고, 열린 뒤에는 스스로 움직이지 않는다 — world / drag / 관성 / wheel 이동 / floating이 없다.
+ * Grid / carousel이 아니다. Watch는 이 화면에 없다.
  *
  * project는 영상 card가 아니라 원형 object다(가운데 logo + 이름). 이 화면은 영상을 하나도 쓰지 않는다 —
- * FACES section의 project 영상은 그대로다.
+ * FACES section은 같은 FACE_PROJECTS의 media를 그대로 쓴다(데이터는 공용, 그리는 쪽만 다르다).
  *
- *   overlay  언제나 정확히 한 화면(100vh / 100dvh). 문서 scroll은 생기지 않고, 열려 있는 동안 뒤 page는 scroll되지 않는다
- *   world    데스크톱 180vw x 150vh, 모바일 160vw x 150vh(끝이 있다. 가장자리에서 멈추고 되감기지 않는다)
- *   처음     세 원이 모두 첫 화면 안에 온전히 보이는 자리에서 시작한다(page를 내려 찾지 않는다)
- *   drag     빈 곳이든 project 위든 7px 넘게 끌면 world가 따라온다. 그 안에서 떼면 project click이다
- *   inertia  놓은 속도를 이어받아 frame마다 FRICTION만큼 줄어든다(최대 속도 제한)
- *   floating project마다 다른 주기 / 방향 / 시작점으로 x ±6~10px, y ±8~14px. 회전은 없다(logo가 기울어 보이지 않게)
+ *   overlay   언제나 정확히 한 화면. 문서 scroll은 생기지 않고, 열려 있는 동안 뒤 page는 scroll되지 않는다
+ *   자리      CSS가 화면 비율로 정한다(AllFaces.css의 --spot-*). 크기가 바뀌어도 JS로 다시 재지 않는다
+ *   motion    여닫을 때만. 열린 뒤 좌표는 고정이다
+ *   hover     원이 1.035배, 테두리가 조금 선명해지고 나머지 원은 옅어진다
+ *   click     onProjectSelect(짧게 누름 / Enter). Case Study가 아직 없어서 지금은 연결돼 있지 않다
  */
-
-/** 60fps 한 frame마다 남기는 관성 속도의 비율. */
-const FRICTION = 0.93
-/** 관성 속도의 한계(px / 60fps frame). */
-const MAX_VELOCITY = 42
-/** 이만큼(px) 움직이기 전까지는 drag로 보지 않는다. */
-const DRAG_THRESHOLD = 7
-/** 키보드 화살표 한 번에 world가 움직이는 거리(px). */
-const KEY_STEP = 160
 
 /**
- * 첫 화면에서 원이 놓이는 자리(화면 비율 0~1). 원의 bounding box 기준 —
- * left / right 중 하나로 가로를, top / bottom 중 하나로 세로를 정한다.
+ * 원이 놓이는 자리(화면 비율 %). 원의 bounding box 기준 — left / right 중 하나로 가로를, top / bottom 중 하나로 세로를 정한다.
+ * 세 원이 한 줄 / 한 열 / grid로 보이지 않도록 높이를 엇갈린 비대칭 삼각형이다.
+ *   데스크톱  F45 왼쪽 위 / TCHAIKIM 오른쪽, 조금 아래 / JADUYA 가운데 아래
+ *   모바일    왼쪽 위 / 오른쪽 가운데 / 왼쪽 아래로 지그재그(390 x 844에서 세 원이 모두 온전히 보인다)
  */
-type ScreenSpot = { left?: number; right?: number; top?: number; bottom?: number }
+type Spot = { left?: number; right?: number; top?: number; bottom?: number }
 
 type Placement = {
-  /** 데스크톱(1920 x 1080 기준). */
-  desktop: ScreenSpot
-  /** 모바일(390 x 844 기준). */
-  mobile: ScreenSpot
-  /** 열릴 때 출발하는 방향(px). */
+  desktop: Spot
+  mobile: Spot
+  /** 열릴 때 출발하는 방향(px). 들어온 뒤에는 0이다. */
   from: { x: number; y: number }
-  /** floating: 진폭(px), 주기(s), 위상(rad). project마다 다르다. 회전은 없다. */
-  float: { ax: number; ay: number; tx: number; ty: number; px: number; py: number }
 }
 
-/*
- * 첫 화면 배치. 세 원이 한 줄 / 한 열 / grid로 보이지 않도록 높이를 엇갈린 비대칭 삼각형이다.
- *   F45       왼쪽 위        1920에서 left 12% / top 22%
- *   TCHAIKIM  오른쪽, 조금 아래  right 12% / top 31%
- *   JADUYA    가운데 아래     left 43% / bottom 13%
- * 모바일(390 x 844)도 세 원이 모두 온전히 보인다 — 왼쪽 위 / 오른쪽 가운데 / 왼쪽 아래로 지그재그.
- */
 const PLACEMENTS: Record<string, Placement> = {
-  f45: {
-    desktop: { left: 0.12, top: 0.22 },
-    mobile: { left: 0.1, top: 0.2 },
-    from: { x: -44, y: 32 },
-    float: { ax: 8, ay: 12, tx: 6.4, ty: 5.2, px: 0.3, py: 1.9 },
-  },
-  tchaikim: {
-    desktop: { right: 0.12, top: 0.31 },
-    mobile: { right: 0.08, top: 0.42 },
-    from: { x: 52, y: -30 },
-    float: { ax: 7, ay: 10, tx: 7.8, ty: 6.1, px: 2.6, py: 0.4 },
-  },
-  jaduya: {
-    desktop: { left: 0.43, bottom: 0.13 },
-    mobile: { left: 0.16, bottom: 0.12 },
-    from: { x: 10, y: 56 },
-    float: { ax: 9, ay: 13, tx: 5.6, ty: 7.2, px: 4.4, py: 3.1 },
-  },
+  f45: { desktop: { left: 12.5, top: 24 }, mobile: { left: 10, top: 20 }, from: { x: -44, y: 32 } },
+  tchaikim: { desktop: { right: 12.5, top: 33 }, mobile: { right: 8, top: 42 }, from: { x: 52, y: -30 } },
+  jaduya: { desktop: { left: 44, bottom: 14 }, mobile: { left: 16, bottom: 12 }, from: { x: 10, y: 56 } },
 }
 
-const MOBILE_QUERY = '(max-width: 760px)'
-
-const clampNum = (min: number, value: number, max: number) => Math.min(max, Math.max(min, value))
-
-/** 원 지름(px). 데스크톱 clamp(240px, 20vw, 360px), 모바일 clamp(128px, 38vw, 170px). CSS가 아니라 배치가 정한다. */
-const circleSize = (vw: number, mobile: boolean) => (mobile ? clampNum(128, vw * 0.38, 170) : clampNum(240, vw * 0.2, 360))
-
-type Layout = {
-  worldW: number
-  worldH: number
-  rects: { x: number; y: number; w: number; h: number }[]
-  /** 처음 camera(world 안에서 화면 왼쪽 위가 놓이는 자리). */
-  start: { x: number; y: number }
+/** 자리를 CSS 변수로. 쓰지 않는 변(auto)은 비워 둔다. */
+function spotStyle({ desktop, mobile }: Placement) {
+  const style: Record<string, string> = {}
+  for (const [prefix, spot] of [['d', desktop], ['m', mobile]] as const) {
+    for (const side of ['left', 'right', 'top', 'bottom'] as const) {
+      style[`--${prefix}-${side}`] = spot[side] === undefined ? 'auto' : `${spot[side]}%`
+    }
+  }
+  return style as CSSProperties
 }
 
-/** 지금 화면 크기의 배치. */
-const measureLayout = (projects: FaceProject[]) =>
-  layoutFor(projects, document.documentElement.clientWidth, window.innerHeight, window.matchMedia(MOBILE_QUERY).matches)
-
-function layoutFor(projects: FaceProject[], vw: number, vh: number, mobile: boolean): Layout {
-  const worldW = vw * (mobile ? 1.6 : 1.8)
-  const worldH = vh * 1.5
-  // 처음 camera는 world 가운데다. 원은 그 첫 화면 안의 자리(ScreenSpot)에 놓인다 — 세 원이 모두 처음부터 보인다.
-  const start = { x: (worldW - vw) / 2, y: (worldH - vh) / 2 }
-  const size = circleSize(vw, mobile)
-  const rects = projects.map((p) => {
-    const spot = PLACEMENTS[p.id][mobile ? 'mobile' : 'desktop']
-    const x = spot.left !== undefined ? spot.left * vw : vw - (spot.right ?? 0) * vw - size
-    const y = spot.top !== undefined ? spot.top * vh : vh - (spot.bottom ?? 0) * vh - size
-    return { x: start.x + x, y: start.y + y, w: size, h: size }
-  })
-  return { worldW, worldH, rects, start }
-}
+/** 뒤 page를 scroll시키는 키. button 위의 Space / Enter는 막지 않는다. */
+const SCROLL_KEYS = new Set(['PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
 
 type AllFacesProps = {
   /** false가 되면 닫힘 motion을 재생하고 onClosed를 부른다. */
@@ -119,8 +64,8 @@ type AllFacesProps = {
   /** 닫힘 motion이 끝났다. 부모가 이때 unmount한다. */
   onClosed: () => void
   /**
-   * project를 골랐을 때(짧게 누름 / Enter). Case Study 화면이 아직 없어서 지금은 연결하지 않는다 —
-   * 없으면 project는 눌리는 것처럼 보이지 않는다(pointer cursor 없음).
+   * project를 골랐을 때(click / Enter). Case Study 화면이 아직 없어서 지금은 연결하지 않는다 —
+   * 가짜 상세 화면을 만들지 않는다.
    */
   onProjectSelect?: (projectId: string) => void
 }
@@ -128,27 +73,13 @@ type AllFacesProps = {
 export default function AllFaces({ open, onRequestClose, onClosed, onProjectSelect }: AllFacesProps) {
   const projects = FACE_PROJECTS
   const rootRef = useRef<HTMLDivElement>(null)
-  const stageRef = useRef<HTMLDivElement>(null)
-  const worldRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<(HTMLElement | null)[]>([])
-  const floatRefs = useRef<(HTMLElement | null)[]>([])
   // 연 button(Crown). effect가 아니라 첫 render 때 잡는다 — effect는 두 번 돌 수 있고, 그때는 이미 CLOSE에 focus가 있다.
   const returnFocus = useRef<HTMLElement | null>(document.activeElement as HTMLElement | null)
   const [hovered, setHovered] = useState(-1)
-  // 첫 render부터 배치가 있어야 여는 motion이 project를 잡을 수 있다.
-  const [layout, setLayout] = useState<Layout>(() => measureLayout(projects))
-  /** camera = world 안에서 화면 왼쪽 위가 놓이는 자리. 처음에는 배치가 정한 시작 자리다. */
-  const cameraRef = useRef({ x: layout.start.x, y: layout.start.y })
   const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-  /* ---------- 배치: 화면 크기가 바뀌면 다시 잰다. camera는 새 world 안으로만 다시 넣는다. ---------- */
-  useEffect(() => {
-    const onResize = () => setLayout(measureLayout(projects))
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [projects])
 
   /* ---------- 열기 ---------- */
   useLayoutEffect(() => {
@@ -172,7 +103,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
         0.08,
       )
     }
-    // 다 들어온 뒤에는 inline 값을 지운다 — hover의 크기 / 옅어짐은 CSS가 다른 layer에서 맡는다.
+    // 다 들어온 뒤에는 inline 값을 지운다 — 이후 좌표는 CSS 자리 그대로 고정이고, hover는 CSS가 맡는다.
     tl.set(items, { clearProps: 'opacity,transform' })
     return () => {
       tl.kill()
@@ -214,7 +145,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
     }
   }, [open, reduced])
 
-  /* ---------- world 이동(drag / 관성 / wheel / 키보드) + floating ---------- */
+  /* ---------- 키보드 / 뒤 page scroll 막기 ---------- */
   const requestCloseRef = useRef(onRequestClose)
   const selectRef = useRef(onProjectSelect)
   useEffect(() => {
@@ -223,194 +154,19 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
   })
 
   useEffect(() => {
-    const stage = stageRef.current
-    const world = worldRef.current
-    if (!stage || !world) return
-    const cam = cameraRef.current
-    const vw = () => document.documentElement.clientWidth
-    const vh = () => window.innerHeight
-    const bound = () => {
-      const maxX = Math.max(0, layout.worldW - vw())
-      const maxY = Math.max(0, layout.worldH - vh())
-      let hitX = false
-      let hitY = false
-      if (cam.x < 0) { cam.x = 0; hitX = true }
-      if (cam.x > maxX) { cam.x = maxX; hitX = true }
-      if (cam.y < 0) { cam.y = 0; hitY = true }
-      if (cam.y > maxY) { cam.y = maxY; hitY = true }
-      return { hitX, hitY }
-    }
-    const writeCamera = () => {
-      world.style.transform = `translate3d(${(-cam.x).toFixed(2)}px, ${(-cam.y).toFixed(2)}px, 0)`
-    }
-    bound()
-    writeCamera()
-
-    const velocity = { x: 0, y: 0 }
-    let inertia = false
-    let raf = 0
-    let last = 0
-    const floating = !reduced
-
-    const frame = (now: number) => {
-      const frames = last ? Math.min(4, (now - last) / (1000 / 60)) : 1
-      last = now
-      if (inertia) {
-        cam.x += velocity.x * frames
-        cam.y += velocity.y * frames
-        const decay = FRICTION ** frames
-        velocity.x *= decay
-        velocity.y *= decay
-        const { hitX, hitY } = bound()
-        if (hitX) velocity.x = 0
-        if (hitY) velocity.y = 0
-        if (Math.hypot(velocity.x, velocity.y) < 0.05) inertia = false
-        writeCamera()
-      }
-      if (floating) {
-        const t = now / 1000
-        projects.forEach((p, i) => {
-          const el = floatRefs.current[i]
-          if (!el) return
-          const f = PLACEMENTS[p.id].float
-          const x = f.ax * Math.sin((2 * Math.PI * t) / f.tx + f.px)
-          const y = f.ay * Math.sin((2 * Math.PI * t) / f.ty + f.py)
-          el.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0)`
-        })
-      }
-      if (floating || inertia) raf = requestAnimationFrame(frame)
-      else raf = 0
-    }
-    const ensureLoop = () => {
-      if (!raf) {
-        last = 0
-        raf = requestAnimationFrame(frame)
-      }
-    }
-    if (floating) ensureLoop()
-
-    /* drag */
-    let pointerId = -1
-    let downX = 0
-    let downY = 0
-    let lastX = 0
-    let lastY = 0
-    let dragging = false
-    let samples: { t: number; x: number; y: number }[] = []
-    let pressedItem = -1
-
+    const root = rootRef.current
+    if (!root) return
     const itemIndexOf = (target: EventTarget | null) =>
       itemRefs.current.findIndex((el) => el && target instanceof Node && el.contains(target))
 
-    const onPointerDown = (event: PointerEvent) => {
-      if (!event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return
-      pointerId = event.pointerId
-      downX = lastX = event.clientX
-      downY = lastY = event.clientY
-      dragging = false
-      samples = [{ t: performance.now(), x: event.clientX, y: event.clientY }]
-      pressedItem = itemIndexOf(event.target)
-      // 잡는 순간 관성은 멈춘다.
-      inertia = false
-      velocity.x = velocity.y = 0
-    }
-    const onPointerMove = (event: PointerEvent) => {
-      if (event.pointerId !== pointerId) return
-      if (!dragging) {
-        if (Math.hypot(event.clientX - downX, event.clientY - downY) <= DRAG_THRESHOLD) return
-        dragging = true
-        stage.setPointerCapture(pointerId)
-        stage.classList.add('is-dragging')
-      }
-      cam.x -= event.clientX - lastX
-      cam.y -= event.clientY - lastY
-      lastX = event.clientX
-      lastY = event.clientY
-      bound()
-      writeCamera()
-      const now = performance.now()
-      samples.push({ t: now, x: event.clientX, y: event.clientY })
-      while (samples.length > 2 && now - samples[0].t > 90) samples.shift()
-    }
-    const onPointerUp = (event: PointerEvent) => {
-      if (event.pointerId !== pointerId) return
-      pointerId = -1
-      if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId)
-      stage.classList.remove('is-dragging')
-      if (!dragging) {
-        // 7px 안에서 뗐다 = click. Case Study가 연결돼 있을 때만 그 project를 연다.
-        if (event.type === 'pointerup' && pressedItem >= 0) selectRef.current?.(projects[pressedItem].id)
-        // hover가 없는 터치에서는 짧게 누른 project의 이름 / 종류를 보여 준다(빈 곳을 누르면 거둔다).
-        if (event.type === 'pointerup' && event.pointerType !== 'mouse') setHovered(pressedItem)
-        return
-      }
-      dragging = false
-      if (reduced) return
-      // 마지막 90ms의 평균 속도를 이어받는다(px / 60fps frame).
-      const first = samples[0]
-      const lastSample = samples[samples.length - 1]
-      const dt = Math.max(1, lastSample.t - first.t)
-      if (performance.now() - lastSample.t > 80) return // 멈췄다가 놓았다
-      let vx = (-(lastSample.x - first.x) / dt) * (1000 / 60)
-      let vy = (-(lastSample.y - first.y) / dt) * (1000 / 60)
-      const speed = Math.hypot(vx, vy)
-      if (speed > MAX_VELOCITY) {
-        vx *= MAX_VELOCITY / speed
-        vy *= MAX_VELOCITY / speed
-      }
-      velocity.x = vx
-      velocity.y = vy
-      inertia = speed > 0.3
-      if (inertia) ensureLoop()
-    }
-
-    /* wheel(trackpad 두 손가락 / 마우스 휠)도 평면을 민다. 뒤 page는 scroll되지 않는다. */
-    const onWheel = (event: WheelEvent) => {
-      event.preventDefault()
-      const unit = event.deltaMode === 1 ? 32 : event.deltaMode === 2 ? vh() : 1
-      inertia = false
-      cam.x += (event.shiftKey && !event.deltaX ? event.deltaY : event.deltaX) * unit
-      cam.y += (event.shiftKey && !event.deltaX ? 0 : event.deltaY) * unit
-      bound()
-      writeCamera()
-    }
-
-    /* 키보드: ESC 닫기, 화살표로 평면 이동, Tab은 이 화면 안에서만 돈다. 뒤 page scroll 키는 막는다. */
-    const pan = { x: 0, y: 0 }
+    /* ESC 닫기, Enter로 project 고르기, Tab은 이 화면 안에서만 돈다. 뒤 page scroll 키는 막는다. */
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
         requestCloseRef.current()
         return
       }
-      const arrows: Record<string, [number, number]> = {
-        ArrowLeft: [-KEY_STEP, 0],
-        ArrowRight: [KEY_STEP, 0],
-        ArrowUp: [0, -KEY_STEP],
-        ArrowDown: [0, KEY_STEP],
-      }
-      const move = arrows[event.key]
-      if (move) {
-        event.preventDefault()
-        inertia = false
-        pan.x = cam.x
-        pan.y = cam.y
-        gsap.to(pan, {
-          x: cam.x + move[0],
-          y: cam.y + move[1],
-          duration: reduced ? 0 : 0.45,
-          ease: 'power2.out',
-          overwrite: true,
-          onUpdate: () => {
-            cam.x = pan.x
-            cam.y = pan.y
-            bound()
-            writeCamera()
-          },
-        })
-        return
-      }
-      if (['PageUp', 'PageDown', 'Home', 'End'].includes(event.key)) {
+      if (SCROLL_KEYS.has(event.key)) {
         event.preventDefault()
         return
       }
@@ -423,8 +179,8 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
         if (i >= 0) selectRef.current?.(projects[i].id)
         return
       }
-      if (event.key !== 'Tab' || !rootRef.current) return
-      const focusable = [...rootRef.current.querySelectorAll<HTMLElement>('button, [tabindex="0"]')]
+      if (event.key !== 'Tab') return
+      const focusable = [...root.querySelectorAll<HTMLElement>('button, [tabindex="0"]')]
       if (!focusable.length) return
       const firstEl = focusable[0]
       const lastEl = focusable[focusable.length - 1]
@@ -438,44 +194,16 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
     }
 
     // 뒤 page는 어떤 경로로도 scroll되지 않는다(overflow는 건드리지 않는다 — 스크롤바가 사라지며 page가 밀리지 않게).
-    const blockTouch = (event: TouchEvent) => event.preventDefault()
-    const blockWheel = (event: WheelEvent) => {
-      if (!stage.contains(event.target as Node)) event.preventDefault()
-    }
-
-    stage.addEventListener('pointerdown', onPointerDown)
-    stage.addEventListener('pointermove', onPointerMove)
-    stage.addEventListener('pointerup', onPointerUp)
-    stage.addEventListener('pointercancel', onPointerUp)
-    stage.addEventListener('wheel', onWheel, { passive: false })
-    document.addEventListener('wheel', blockWheel, { passive: false, capture: true })
-    document.addEventListener('touchmove', blockTouch, { passive: false, capture: true })
+    const block = (event: Event) => event.preventDefault()
+    document.addEventListener('wheel', block, { passive: false, capture: true })
+    document.addEventListener('touchmove', block, { passive: false, capture: true })
     document.addEventListener('keydown', onKeyDown)
-
     return () => {
-      cancelAnimationFrame(raf)
-      gsap.killTweensOf(pan)
-      stage.removeEventListener('pointerdown', onPointerDown)
-      stage.removeEventListener('pointermove', onPointerMove)
-      stage.removeEventListener('pointerup', onPointerUp)
-      stage.removeEventListener('pointercancel', onPointerUp)
-      stage.removeEventListener('wheel', onWheel)
-      document.removeEventListener('wheel', blockWheel, { capture: true })
-      document.removeEventListener('touchmove', blockTouch, { capture: true })
+      document.removeEventListener('wheel', block, { capture: true })
+      document.removeEventListener('touchmove', block, { capture: true })
       document.removeEventListener('keydown', onKeyDown)
-      stage.classList.remove('is-dragging')
     }
-  }, [layout, projects, reduced])
-
-  // 개발 중 QA용 읽기 전용 상태(배포 build에서는 빠진다).
-  useEffect(() => {
-    if (!import.meta.env.DEV) return
-    const debug = window as unknown as { __allFaces?: () => Record<string, unknown> }
-    debug.__allFaces = () => ({ camera: { ...cameraRef.current }, layout, hovered })
-    return () => {
-      delete debug.__allFaces
-    }
-  }, [layout, hovered])
+  }, [projects])
 
   const count = `${String(projects.length).padStart(2, '0')} PROJECTS`
 
@@ -488,53 +216,37 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
       aria-labelledby="all-faces-title"
       data-selectable={onProjectSelect ? 'true' : undefined}
     >
-      <div ref={stageRef} className="all-faces__stage">
-        <div
-          ref={worldRef}
-          className="all-faces__world"
-          data-hovered={hovered >= 0 ? 'true' : undefined}
-          style={{ width: layout.worldW, height: layout.worldH }}
-        >
-          {projects.map((project, i) => {
-              const r = layout.rects[i]
-              return (
-                <figure
-                  key={project.id}
-                  ref={(el) => {
-                    itemRefs.current[i] = el
-                  }}
-                  className={`all-faces__project${hovered === i ? ' is-hovered' : ''}`}
-                  style={{ left: r.x, top: r.y, width: r.w, height: r.h } as CSSProperties}
-                  tabIndex={0}
-                  aria-label={`${project.title}, ${project.category}`}
-                  onPointerEnter={(e) => e.pointerType === 'mouse' && setHovered(i)}
-                  onPointerLeave={() => setHovered((h) => (h === i ? -1 : h))}
-                  onFocus={() => setHovered(i)}
-                  onBlur={() => setHovered((h) => (h === i ? -1 : h))}
-                >
-                  <div
-                    ref={(el) => {
-                      floatRefs.current[i] = el
-                    }}
-                    className="all-faces__float"
-                  >
-                    {/*
-                      원형 object. 가운데 logo, 그 아래 이름. logo asset이 없는 project는 이름만 가운데에 둔다
-                      (임시 fallback — 글자로 가짜 logo를 만들지 않는다).
-                    */}
-                    <div className="all-faces__circle" data-logo={project.logo ? undefined : 'missing'}>
-                      {project.logo && (
-                        <img className="all-faces__logo" src={project.logo} alt={`${project.title} 로고`} draggable={false} />
-                      )}
-                      <span className="all-faces__name" aria-hidden="true">
-                        {project.title}
-                      </span>
-                    </div>
-                  </div>
-                </figure>
-              )
-          })}
-        </div>
+      <div className="all-faces__stage" data-hovered={hovered >= 0 ? 'true' : undefined}>
+        {projects.map((project, i) => (
+          <figure
+            key={project.id}
+            ref={(el) => {
+              itemRefs.current[i] = el
+            }}
+            className={`all-faces__project${hovered === i ? ' is-hovered' : ''}`}
+            style={spotStyle(PLACEMENTS[project.id])}
+            tabIndex={0}
+            aria-label={`${project.title}, ${project.category}`}
+            onPointerEnter={(e) => e.pointerType === 'mouse' && setHovered(i)}
+            onPointerLeave={() => setHovered((h) => (h === i ? -1 : h))}
+            onFocus={() => setHovered(i)}
+            onBlur={() => setHovered((h) => (h === i ? -1 : h))}
+            onClick={() => onProjectSelect?.(project.id)}
+          >
+            {/*
+              원형 object. 가운데 logo, 그 아래 이름. logo asset이 없는 project는 이름만 가운데에 둔다
+              (임시 fallback — 글자로 가짜 logo를 만들지 않는다).
+            */}
+            <div className="all-faces__circle" data-logo={project.logo ? undefined : 'missing'}>
+              {project.logo && (
+                <img className="all-faces__logo" src={project.logo} alt={`${project.title} 로고`} draggable={false} />
+              )}
+              <span className="all-faces__name" aria-hidden="true">
+                {project.title}
+              </span>
+            </div>
+          </figure>
+        ))}
       </div>
 
       <div ref={barRef} className="all-faces__bar">
