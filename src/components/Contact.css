@@ -24,8 +24,31 @@
 }
 
 /*
+ * Journey -> Contact handoff 빛의 Contact 쪽 절반(연출이 켜진 환경).
+ * Journey 아래 끝에서 0.35까지 올라온 .journey__handoff와 같은 크기 / 같은 색의 ellipse를 윗변에 거울처럼 둔다.
+ * 두 section이 맞닿는 선에서 양쪽 밝기가 같아서 section 경계가 선으로 보이지 않는다.
+ * ::after라 가독성 mask보다 위(같은 z-index 0 안에서 나중)에 그려진다 — mask에 눌려 경계 한쪽만 어두워지지 않는다.
+ * 문장 / Watch(z-index 1)보다는 아래다.
+ */
+.contact[data-scene='interactive']::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 0;
+  height: 100vh;
+  height: 100dvh;
+  background: radial-gradient(ellipse var(--handoff-ellipse) at 50% 0%, var(--handoff-light));
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/*
  * React Bits Light Rays. 문장보다 강하게 보이지 않도록 전체를 0.5로 둔다(진입할 때 0 -> 0.5, useContactScene).
  * 자체 이동 animation은 없다 — 빛줄기가 원본 shader 안에서 천천히 일렁일 뿐이다.
+ * 윗변에서 바로 밝게 시작하면 section 경계가 밝은 선으로 보인다. 위쪽 200px 남짓만 0에서 서서히 드러나게 한다
+ * (그 자리는 끝까지 올라온 Contact에서 Header 바로 아래다).
  */
 .contact-light-rays {
   position: absolute;
@@ -33,6 +56,8 @@
   z-index: 0;
   opacity: 0;
   pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 min(20vh, 220px));
+  mask-image: linear-gradient(to bottom, transparent 0, #000 min(20vh, 220px));
 }
 
 /* 왼쪽 typography 쪽만 가라앉혀 문장 가독성을 지킨다. 오른쪽(Watch 쪽)은 빛이 거의 그대로다. */

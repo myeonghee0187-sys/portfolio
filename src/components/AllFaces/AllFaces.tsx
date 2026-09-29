@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { createPortal } from 'react-dom'
 import gsap from 'gsap'
 import { FACE_PROJECTS, type FaceProject } from '../Faces/facesData'
-import LoopVideo from '../Faces/LoopVideo'
 import './AllFaces.css'
 
 /*
@@ -13,10 +12,15 @@ import './AllFaces.css'
  * 화면보다 넓지만 끝이 있는 평면 위에 project 3개(실제 개수 그대로)가 비대칭으로 놓여 아주 느리게 떠 있다.
  * Grid / carousel / 구형 배치가 아니다. Watch는 이 화면에 없다.
  *
- *   world    데스크톱 180vw x 150vh, 모바일 170vw x 240vh(끝이 있다. 가장자리에서 멈추고 되감기지 않는다)
+ * project는 영상 card가 아니라 원형 object다(가운데 logo + 이름). 이 화면은 영상을 하나도 쓰지 않는다 —
+ * FACES section의 project 영상은 그대로다.
+ *
+ *   overlay  언제나 정확히 한 화면(100vh / 100dvh). 문서 scroll은 생기지 않고, 열려 있는 동안 뒤 page는 scroll되지 않는다
+ *   world    데스크톱 180vw x 150vh, 모바일 160vw x 150vh(끝이 있다. 가장자리에서 멈추고 되감기지 않는다)
+ *   처음     세 원이 모두 첫 화면 안에 온전히 보이는 자리에서 시작한다(page를 내려 찾지 않는다)
  *   drag     빈 곳이든 project 위든 7px 넘게 끌면 world가 따라온다. 그 안에서 떼면 project click이다
  *   inertia  놓은 속도를 이어받아 frame마다 FRICTION만큼 줄어든다(최대 속도 제한)
- *   floating project마다 다른 주기 / 방향 / 시작점으로 x ±6~10px, y ±8~14px, rotate ±0.4~0.7°
+ *   floating project마다 다른 주기 / 방향 / 시작점으로 x ±6~10px, y ±8~14px. 회전은 없다(logo가 기울어 보이지 않게)
  */
 
 /** 60fps 한 frame마다 남기는 관성 속도의 비율. */
@@ -28,50 +32,57 @@ const DRAG_THRESHOLD = 7
 /** 키보드 화살표 한 번에 world가 움직이는 거리(px). */
 const KEY_STEP = 160
 
+/**
+ * 첫 화면에서 원이 놓이는 자리(화면 비율 0~1). 원의 bounding box 기준 —
+ * left / right 중 하나로 가로를, top / bottom 중 하나로 세로를 정한다.
+ */
+type ScreenSpot = { left?: number; right?: number; top?: number; bottom?: number }
+
 type Placement = {
-  /** world 안 중심(비율 0~1). */
-  cx: number
-  cy: number
-  /** 데스크톱 1920 x 1080 기준 폭(px). 화면에 맞춰 함께 줄어든다. */
-  width: number
-  /** 모바일 폭(vw). */
-  mobileWidth: number
-  mobile: { cx: number; cy: number }
-  /** 화면에 보이는 frame 비율(가로 / 세로). 영상은 cover로 채운다. */
-  aspect: number
-  /** 영상 cover 창의 중심(object-position). */
-  focus?: string
+  /** 데스크톱(1920 x 1080 기준). */
+  desktop: ScreenSpot
+  /** 모바일(390 x 844 기준). */
+  mobile: ScreenSpot
   /** 열릴 때 출발하는 방향(px). */
   from: { x: number; y: number }
-  /** floating: 진폭(px / deg), 주기(s), 위상(rad). project마다 다르다. */
-  float: { ax: number; ay: number; ar: number; tx: number; ty: number; tr: number; px: number; py: number; pr: number }
+  /** floating: 진폭(px), 주기(s), 위상(rad). project마다 다르다. 회전은 없다. */
+  float: { ax: number; ay: number; tx: number; ty: number; px: number; py: number }
 }
 
 /*
- * 배치(열었을 때 world 가운데가 화면 가운데). 세 project가 한 줄 / 한 열로 정렬되지 않도록 높이와 크기를 엇갈린다.
- *   F45       왼쪽, 가운데보다 조금 아래
- *   JADUYA    가운데 아래(화면 아래로 조금 걸친다 — 평면이 더 이어진다는 것을 보여 준다)
- *   TCHAIKIM  오른쪽 위
+ * 첫 화면 배치. 세 원이 한 줄 / 한 열 / grid로 보이지 않도록 높이를 엇갈린 비대칭 삼각형이다.
+ *   F45       왼쪽 위        1920에서 left 12% / top 22%
+ *   TCHAIKIM  오른쪽, 조금 아래  right 12% / top 31%
+ *   JADUYA    가운데 아래     left 43% / bottom 13%
+ * 모바일(390 x 844)도 세 원이 모두 온전히 보인다 — 왼쪽 위 / 오른쪽 가운데 / 왼쪽 아래로 지그재그.
  */
 const PLACEMENTS: Record<string, Placement> = {
   f45: {
-    cx: 0.33, cy: 0.47, width: 500, mobileWidth: 78, mobile: { cx: 0.36, cy: 0.19 }, aspect: 4 / 5,
+    desktop: { left: 0.12, top: 0.22 },
+    mobile: { left: 0.1, top: 0.2 },
     from: { x: -44, y: 32 },
-    float: { ax: 8, ay: 12, ar: 0.55, tx: 6.4, ty: 5.2, tr: 7.4, px: 0.3, py: 1.9, pr: 4.1 },
+    float: { ax: 8, ay: 12, tx: 6.4, ty: 5.2, px: 0.3, py: 1.9 },
   },
   tchaikim: {
-    cx: 0.675, cy: 0.43, width: 520, mobileWidth: 80, mobile: { cx: 0.62, cy: 0.5 }, aspect: 4 / 5,
+    desktop: { right: 0.12, top: 0.31 },
+    mobile: { right: 0.08, top: 0.42 },
     from: { x: 52, y: -30 },
-    float: { ax: 7, ay: 10, ar: 0.45, tx: 7.8, ty: 6.1, tr: 5.6, px: 2.6, py: 0.4, pr: 1.2 },
+    float: { ax: 7, ay: 10, tx: 7.8, ty: 6.1, px: 2.6, py: 0.4 },
   },
   jaduya: {
-    cx: 0.5, cy: 0.71, width: 420, mobileWidth: 72, mobile: { cx: 0.4, cy: 0.81 }, aspect: 3 / 5, focus: '50% 46%',
+    desktop: { left: 0.43, bottom: 0.13 },
+    mobile: { left: 0.16, bottom: 0.12 },
     from: { x: 10, y: 56 },
-    float: { ax: 9, ay: 13, ar: 0.65, tx: 5.6, ty: 7.2, tr: 8.0, px: 4.4, py: 3.1, pr: 0.2 },
+    float: { ax: 9, ay: 13, tx: 5.6, ty: 7.2, px: 4.4, py: 3.1 },
   },
 }
 
 const MOBILE_QUERY = '(max-width: 760px)'
+
+const clampNum = (min: number, value: number, max: number) => Math.min(max, Math.max(min, value))
+
+/** 원 지름(px). 데스크톱 clamp(240px, 20vw, 360px), 모바일 clamp(128px, 38vw, 170px). CSS가 아니라 배치가 정한다. */
+const circleSize = (vw: number, mobile: boolean) => (mobile ? clampNum(128, vw * 0.38, 170) : clampNum(240, vw * 0.2, 360))
 
 type Layout = {
   worldW: number
@@ -86,25 +97,17 @@ const measureLayout = (projects: FaceProject[]) =>
   layoutFor(projects, document.documentElement.clientWidth, window.innerHeight, window.matchMedia(MOBILE_QUERY).matches)
 
 function layoutFor(projects: FaceProject[], vw: number, vh: number, mobile: boolean): Layout {
-  const worldW = vw * (mobile ? 1.7 : 1.8)
-  const worldH = vh * (mobile ? 2.4 : 1.5)
-  // 데스크톱 폭은 1920 x 1080 기준값을 화면 크기에 맞춰 0.6 ~ 1.08배로(1440 x 900에서 0.75, 1024 x 768에서 0.6).
-  // 좁은 화면에서도 세 project가 서로 겹치지 않고 처음 화면 안에 거의 다 들어온다.
-  const k = Math.min(1.08, Math.max(0.6, Math.min(vw / 1920, vh / 1080)))
+  const worldW = vw * (mobile ? 1.6 : 1.8)
+  const worldH = vh * 1.5
+  // 처음 camera는 world 가운데다. 원은 그 첫 화면 안의 자리(ScreenSpot)에 놓인다 — 세 원이 모두 처음부터 보인다.
+  const start = { x: (worldW - vw) / 2, y: (worldH - vh) / 2 }
+  const size = circleSize(vw, mobile)
   const rects = projects.map((p) => {
-    const place = PLACEMENTS[p.id]
-    const w = mobile ? (vw * place.mobileWidth) / 100 : place.width * k
-    const h = w / place.aspect
-    const c = mobile ? place.mobile : place
-    return { x: c.cx * worldW - w / 2, y: c.cy * worldH - h / 2, w, h }
+    const spot = PLACEMENTS[p.id][mobile ? 'mobile' : 'desktop']
+    const x = spot.left !== undefined ? spot.left * vw : vw - (spot.right ?? 0) * vw - size
+    const y = spot.top !== undefined ? spot.top * vh : vh - (spot.bottom ?? 0) * vh - size
+    return { x: start.x + x, y: start.y + y, w: size, h: size }
   })
-  let start = { x: (worldW - vw) / 2, y: (worldH - vh) / 2 }
-  if (mobile && rects[0]) {
-    // 모바일은 F45를 화면 가운데 조금 위에 두고 시작한다. 다음 project가 아래에서 살짝 보인다.
-    start = { x: rects[0].x + rects[0].w / 2 - vw / 2, y: rects[0].y + rects[0].h / 2 - vh * 0.46 }
-  }
-  start.x = Math.min(worldW - vw, Math.max(0, start.x))
-  start.y = Math.min(worldH - vh, Math.max(0, start.y))
   return { worldW, worldH, rects, start }
 }
 
@@ -272,8 +275,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
           const f = PLACEMENTS[p.id].float
           const x = f.ax * Math.sin((2 * Math.PI * t) / f.tx + f.px)
           const y = f.ay * Math.sin((2 * Math.PI * t) / f.ty + f.py)
-          const r = f.ar * Math.sin((2 * Math.PI * t) / f.tr + f.pr)
-          el.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) rotate(${r.toFixed(3)}deg)`
+          el.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0)`
         })
       }
       if (floating || inertia) raf = requestAnimationFrame(frame)
@@ -494,7 +496,6 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
           style={{ width: layout.worldW, height: layout.worldH }}
         >
           {projects.map((project, i) => {
-              const place = PLACEMENTS[project.id]
               const r = layout.rects[i]
               return (
                 <figure
@@ -503,7 +504,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
                     itemRefs.current[i] = el
                   }}
                   className={`all-faces__project${hovered === i ? ' is-hovered' : ''}`}
-                  style={{ left: r.x, top: r.y, width: r.w } as CSSProperties}
+                  style={{ left: r.x, top: r.y, width: r.w, height: r.h } as CSSProperties}
                   tabIndex={0}
                   aria-label={`${project.title}, ${project.category}`}
                   onPointerEnter={(e) => e.pointerType === 'mouse' && setHovered(i)}
@@ -517,16 +518,18 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
                     }}
                     className="all-faces__float"
                   >
-                    <div
-                      className="all-faces__frame"
-                      style={{ aspectRatio: String(place.aspect), '--media-focus': place.focus ?? '50% 50%' } as CSSProperties}
-                    >
-                      <LoopVideo className="all-faces__media" src={project.media} playing preload="auto" />
+                    {/*
+                      원형 object. 가운데 logo, 그 아래 이름. logo asset이 없는 project는 이름만 가운데에 둔다
+                      (임시 fallback — 글자로 가짜 logo를 만들지 않는다).
+                    */}
+                    <div className="all-faces__circle" data-logo={project.logo ? undefined : 'missing'}>
+                      {project.logo && (
+                        <img className="all-faces__logo" src={project.logo} alt={`${project.title} 로고`} draggable={false} />
+                      )}
+                      <span className="all-faces__name" aria-hidden="true">
+                        {project.title}
+                      </span>
                     </div>
-                    <figcaption className="all-faces__meta" aria-hidden="true">
-                      <span className="all-faces__name">{project.title}</span>
-                      <span className="all-faces__type">{project.category}</span>
-                    </figcaption>
                   </div>
                 </figure>
               )

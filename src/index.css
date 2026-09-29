@@ -11,6 +11,12 @@
    * 바탕이 아니라 Watch 뒤의 ambient 빛뿐이다.
    */
   --color-carbon-black: #08090a;
+  /*
+   * Journey -> Contact handoff 빛의 모양(색 stop). Journey 아래 끝(.journey__handoff)과 Contact 윗변(.contact::before)이
+   * 같은 크기의 ellipse를 서로 마주 보게 그린다 — 두 section이 맞닿는 선에서 밝기가 양쪽 모두 같아 경계가 보이지 않는다.
+   */
+  --handoff-light: rgb(212 229 239 / 0.3), rgb(212 229 239 / 0.1) 40%, rgb(212 229 239 / 0.025) 68%, transparent 84%;
+  --handoff-ellipse: 30% 64%;
 }
 
 html,

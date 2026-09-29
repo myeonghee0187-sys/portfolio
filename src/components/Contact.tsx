@@ -88,7 +88,13 @@ export default function Contact({ interactive, ready }: ContactProps) {
   useEffect(() => () => window.clearTimeout(copiedTimer.current), [])
 
   return (
-    <section ref={sectionRef} id="contact" className="contact" aria-labelledby="contact-title">
+    <section
+      ref={sectionRef}
+      id="contact"
+      className="contact"
+      data-scene={interactive ? 'interactive' : 'static'}
+      aria-labelledby="contact-title"
+    >
       {/*
         Light Rays(React Bits). 위쪽 가운데에서 내려오는 느리고 옅은 빛. opacity는 진입할 때 0 -> 0.5(useContactScene).
         ALL FACES가 화면을 덮고 있는 동안에는 그리지 않는다.
