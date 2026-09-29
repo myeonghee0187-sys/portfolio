@@ -357,109 +357,71 @@
 }
 
 /*
- * 하루의 시간(14 : 10 / 15 : 00 / 16 : 20 / 17 : 00). line 옆 여백에 크고 희미하게 깔리는 background time marker.
- * 주인공은 Geist 300 시간 글자이고, 보조 graphic은 그 아래의 짧은 선 + 순번(01 ~ 04) 하나뿐이다.
- * (--node-x / --node-y)는 line에서 떨어진 점이고, marker는 그 점에서 line 반대쪽으로 놓인다
- * (right: 점에서 오른쪽으로, left: 점에서 왼쪽으로 — 순번 줄도 line 쪽 가장자리에 맞춘다).
- * 드러남(--time-r, 0 -> 1)은 빛의 진행으로만 정해진다: opacity 0 -> 1, y 12px -> 0. 글자 자체의 색이 이미 아주 옅다(.13).
- * card / line 뒤에 깔린다.
+ * 하루의 시간(14 : 10 / 15 : 00 / 16 : 20 / 17 : 00). 화면 좌 / 우 가장자리에 걸친 editorial background typography.
+ * 매우 크고(Geist 200) 매우 희미하다(.06). 글자 폭의 약 14%는 화면 밖으로 나가 잘린다 — 자리는 useJourneyInteraction이
+ * 정한다(--node-x는 right면 글자의 오른쪽 끝, left면 왼쪽 끝 / --node-y는 글자의 세로 가운데).
+ * underline / tick / index / dot / connector 없이 글자 하나뿐이다. motion은 드러남(--time-r 0 -> 1)의 opacity와
+ * y 20px -> 0뿐이다(scale / rotation / glow 없음). world 안에서 path / card보다 먼저 그려져 그 뒤에 깔린다.
  */
 .journey__time {
   position: absolute;
   left: calc(var(--node-x, 0) * var(--ju));
   top: calc(var(--node-y, 0) * var(--ju));
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
   transform: translateY(-50%);
-  translate: 0 calc((1 - var(--time-r, 0)) * 12px);
+  translate: 0 calc((1 - var(--time-r, 0)) * 20px);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-weight: 200;
+  font-size: clamp(88px, 8vw, 150px);
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+  white-space: nowrap;
+  color: rgb(212 229 239 / 0.06);
   opacity: var(--time-r, 0);
   pointer-events: none;
   user-select: none;
   will-change: opacity, translate;
 }
 
-/* 들어갈 여백이 없는 작은 화면에서는 그 marker만 쉰다(card 위에 겹쳐 적지 않는다). */
-.journey__time[hidden] {
-  display: none;
-}
-
-.journey__time--left {
-  align-items: flex-end;
+.journey__time--right {
   transform: translate(-100%, -50%);
 }
 
-.journey__time-value {
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-  font-weight: 300;
-  font-size: clamp(48px, 4.3vw, 82px);
-  line-height: 1;
-  letter-spacing: -0.03em;
-  white-space: nowrap;
-  color: rgb(212 229 239 / 0.13);
-}
-
-/* 보조 graphic. 시간 아래의 짧은 선과 순번. 시간보다 조금 덜 옅지만 크기가 작아 눈에 띄지 않는다. */
-.journey__time-code {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-inline: 0.2em;
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-  font-weight: 400;
-  font-size: 11px;
-  line-height: 1;
-  letter-spacing: 0.2em;
-  color: rgb(212 229 239 / 0.22);
-}
-
-.journey__time--left .journey__time-code {
-  flex-direction: row-reverse;
-}
-
-.journey__time-rule {
-  width: 40px;
-  height: 1px;
-  background: currentColor;
-}
-
 @media (max-width: 1024px) {
-  .journey__time-value {
-    font-size: clamp(38px, 6vw, 58px);
+  .journey__time {
+    font-size: clamp(72px, 8vw, 100px);
   }
 }
 
 /*
- * 문서형(static — 모바일 / 연출 꺼짐)에는 경로와 빛의 진행이 없다. 시간은 card 사이의 흐름에 놓여(--node-order)
- * card와 겹치지 않고, 가운데 세로선의 side 쪽에 처음부터 보인다.
+ * 문서형(static — 모바일 / 연출 꺼짐)에는 경로와 빛의 진행이 없다. 시간은 card 사이의 흐름에 놓이고(--node-order),
+ * side 쪽 화면 가장자리에 붙어 글자 폭의 12%가 잘린다. card와 겹치지 않는다.
  */
+.journey--static .journey__stage {
+  overflow-x: clip;
+}
+
 .journey--static .journey__time {
   --time-r: 1;
   position: relative;
   top: auto;
   left: auto;
   order: var(--node-order);
-  margin: -28px 0;
+  margin: -24px -20px;
   transform: none;
   translate: none;
+  font-size: clamp(48px, 14vw, 68px);
   will-change: auto;
 }
 
 .journey--static .journey__time--right {
-  align-self: flex-start;
-  margin-left: calc(50% + 16px);
+  align-self: flex-end;
+  translate: 12% 0;
 }
 
 .journey--static .journey__time--left {
-  align-self: flex-end;
-  margin-right: calc(50% + 16px);
-}
-
-.journey--static .journey__time-value {
-  font-size: clamp(32px, 10vw, 42px);
+  align-self: flex-start;
+  translate: -12% 0;
 }
 
 .journey--static .journey__node {

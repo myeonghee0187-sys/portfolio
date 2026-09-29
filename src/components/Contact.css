@@ -119,6 +119,8 @@
 
 /* 대화 시작: 얇은 테두리의 사각 버튼 하나. pill / neon 없음. */
 .contact__cta {
+  /* 문장과 ↗ 사이. ↗는 RotatingWords 안의 token이라 button의 gap 대신 이 값으로 띄운다. */
+  --rotating-trailing-gap: 12px;
   display: inline-flex;
   align-items: center;
   gap: 12px;
