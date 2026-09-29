@@ -50,26 +50,30 @@
   will-change: transform, opacity;
 }
 
-/* The hit shape is exactly the display opening; the case and rim remain inert. */
+/*
+ * Watch display 위의 투명한 링크 hit area. 모양은 display 구멍과 정확히 같고(둥근 모서리까지),
+ * case와 rim은 눌리지 않는다. WebGL canvas 위에 있어 pointer를 직접 받는다.
+ * hover의 밝기 / 1.007배 / rim 반사는 WebGL이 그린다(useFacesInteraction의 interaction). 보이는 글자는 없다.
+ */
 .faces__display-link {
   position: absolute;
   z-index: 1;
   display: block;
   clip-path: inset(0 round var(--display-radius, 90px));
   border-radius: var(--display-radius, 90px);
+  background: transparent;
+  pointer-events: auto;
   cursor: pointer;
-  transition: box-shadow 140ms ease;
   -webkit-user-drag: none;
+  -webkit-tap-highlight-color: transparent;
 }
+/* 두 project의 경계가 지나가는 동안 / 빠른 scroll 중에는 링크가 닫히고 gallery drag 영역으로 돌아간다. */
 .faces__display-link[aria-disabled='true'] { cursor: grab; }
-.faces__display-link[aria-disabled='false']:hover {
-  box-shadow: inset 0 0 0 1px rgb(245 246 246 / 0.38), inset 0 0 16px rgb(212 229 239 / 0.06);
-}
+.faces__stage.is-dragging .faces__display-link { cursor: grabbing; }
 .faces__display-link:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 2px rgb(212 229 239 / 0.85);
+  box-shadow: inset 0 0 0 2px #186de5;
 }
-.faces__display-link:active { box-shadow: inset 0 0 0 1px rgb(212 229 239 / 0.2); }
 
 /* 스크린리더용 프로젝트 목록. 화면에는 plane과 아래 metadata로만 보인다. */
 .faces__sr {
@@ -193,13 +197,24 @@
   scroll-snap-align: center;
 }
 
+/* 같은 영상 element 두 개가 겹쳐 있다(LoopVideo). loop 경계에서만 위의 것이 잠깐 비친다. */
 .faces__visual {
+  position: relative;
   display: block;
   width: 100%;
   height: auto;
   aspect-ratio: var(--aspect);
-  object-fit: cover;
+  overflow: hidden;
   background: #111315;
+}
+
+.faces__visual video {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .faces__slide-meta {

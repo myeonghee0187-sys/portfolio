@@ -172,14 +172,15 @@
   opacity: 0;
 }
 
-/* hover / press가 얹히는 layer. 전환(GSAP)과 상호작용(CSS)이 서로를 덮어쓰지 않는다. */
+/*
+ * hover / press가 얹히는 layer. 전환(GSAP)과 상호작용(CSS)이 서로를 덮어쓰지 않는다.
+ * 250ms power2.out(= cubic-bezier(0.33, 1, 0.68, 1)).
+ */
 .watch__crown-front-fx {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  transition:
-    transform 260ms cubic-bezier(0.33, 1, 0.68, 1),
-    filter 260ms ease;
+  transition: transform 250ms cubic-bezier(0.33, 1, 0.68, 1);
 }
 
 .watch__crown-front-fx > * {
@@ -187,10 +188,16 @@
   border-radius: 50%;
 }
 
-/* scroll 회전(.watch__crown-front-wheel)과 분리된 상호작용 전용 회전 layer. */
+/*
+ * scroll 회전(.watch__crown-front-wheel)과 분리된 상호작용 전용 회전 layer.
+ *   transform  hover(+14°) / 첫 도착 cue
+ *   rotate     누를 때마다 한 번씩 더 도는 dial(+22°, DigitalCrown이 누적해서 쓴다)
+ */
 .watch__crown-front-spin {
   inset: 0;
-  transition: transform 260ms cubic-bezier(0.33, 1, 0.68, 1);
+  transition:
+    transform 250ms cubic-bezier(0.33, 1, 0.68, 1),
+    rotate 520ms cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .watch__crown-global-rotation,
@@ -294,20 +301,18 @@
 }
 
 /*
- * 바깥 테두리(받침 가장자리와 같은 원). FACES부터 늘 보이는 옅은 Frost 선 + 아주 옅은 Ice glow.
- * 누를 수 있는 부품이라는 것을 글자 없이 알린다. 강한 neon / 반복 pulse는 없다.
+ * 바깥 테두리(받침 가장자리와 같은 원). FACES부터 늘 보이는 Electric Ice 선 + 낮은 glow.
+ * 누를 수 있는 부품이라는 것을 글자 없이 알린다. idle에서도 외곽이 분명히 보이고, 반복 pulse는 없다.
  */
 .watch__crown-front-rim {
   inset: -5%;
-  border: 1px solid rgb(212 229 239 / 0.58);
+  border: 1.5px solid #186de5;
   box-shadow:
-    0 0 0 1px rgb(212 229 239 / 0.18),
-    0 0 14px rgb(24 109 229 / 0.16),
-    inset 0 0 8px rgb(212 229 239 / 0.1);
+    0 0 8px rgb(24 109 229 / 0.28),
+    0 0 18px rgb(24 109 229 / 0.32),
+    inset 0 0 8px rgb(24 109 229 / 0.16);
   pointer-events: none;
-  transition:
-    border-color 260ms cubic-bezier(0.33, 1, 0.68, 1),
-    box-shadow 260ms cubic-bezier(0.33, 1, 0.68, 1);
+  transition: box-shadow 250ms cubic-bezier(0.33, 1, 0.68, 1);
 }
 
 
@@ -315,14 +320,13 @@
 
 /*
  * 눈에 보이는 label은 두지 않는다. 누를 수 있다는 것은 재질과 움직임으로만 전한다.
- *   idle   바깥 테두리(rim)에 늘 옅은 Frost 선과 아주 옅은 Ice glow
- *   hover  살짝 떠오르며 커지고, dial이 조금 더 돌고, 테두리 빛이 밝아진다
+ *   idle   바깥 테두리(rim)에 늘 1.5px Electric Ice 선과 낮은 glow
+ *   hover  2px 떠오르며 1.045배, dial +14°, 테두리 glow가 분명히 밝아진다(250ms power2.out)
  *   press  가라앉으며 작아지고 테두리 빛도 조금 가라앉는다(하드웨어 버튼을 누른 느낌). bounce 없음
- *   focus  테두리 바깥의 선명한 2px Frost / Ice ring
+ *   focus  테두리 바깥의 선명한 2px Electric Ice ring
  */
 .watch__crown--controller .watch__crown-front-button:hover .watch__crown-front-fx {
-  transform: translateY(-2px) scale(1.04);
-  filter: brightness(1.08);
+  transform: translateY(-2px) scale(1.045);
 }
 
 .watch__crown--controller .watch__crown-front-button:hover .watch__crown-front-spin {
@@ -330,27 +334,23 @@
 }
 
 .watch__crown--controller .watch__crown-front-button:hover .watch__crown-front-rim {
-  border-color: rgb(243 244 244 / 0.92);
   box-shadow:
-    0 0 0 1px rgb(212 229 239 / 0.45),
-    0 0 22px rgb(24 109 229 / 0.32),
-    0 0 38px rgb(24 109 229 / 0.14),
-    inset 0 0 12px rgb(212 229 239 / 0.18);
+    0 0 10px rgb(24 109 229 / 0.55),
+    0 0 28px rgb(24 109 229 / 0.46),
+    0 0 44px rgb(24 109 229 / 0.18);
 }
 
 .watch__crown--controller .watch__crown-front-button:active .watch__crown-front-fx {
   transform: translateY(1px) scale(0.98);
-  filter: brightness(0.96);
   transition-duration: 90ms;
 }
 
-/* 누르는 동안은 테두리 빛도 조금 가라앉는다. */
+/* 누르는 동안은 테두리 빛도 idle보다 조금 가라앉는다. */
 .watch__crown--controller .watch__crown-front-button:active .watch__crown-front-rim {
-  border-color: rgb(212 229 239 / 0.42);
   box-shadow:
-    0 0 0 1px rgb(212 229 239 / 0.12),
-    0 0 10px rgb(24 109 229 / 0.12),
-    inset 0 0 6px rgb(212 229 239 / 0.08);
+    0 0 6px rgb(24 109 229 / 0.22),
+    0 0 12px rgb(24 109 229 / 0.2),
+    inset 0 0 6px rgb(24 109 229 / 0.12);
   transition-duration: 90ms;
 }
 
@@ -358,87 +358,93 @@
   outline: none;
 }
 
-/* keyboard focus: 테두리 바깥의 선명한 2px Frost / Ice ring. */
+/* keyboard focus: 테두리 바깥의 선명한 2px Electric Ice ring. */
 .watch__crown-front-button:focus-visible .watch__crown-front-rim {
-  outline: 2px solid rgb(212 229 239 / 0.92);
+  outline: 2px solid #186de5;
   outline-offset: 3px;
 }
 
 /*
- * FACES에서 정면으로 다 돌아선 뒤 딱 한 번 도는 cue.
- * 반복 pulse가 아니라 "이건 돌릴 수 있는 것"이라고 한 번 알려주고 끝난다.
+ * About -> FACES에서 정면 controller로 처음 도착했을 때 딱 한 번(750ms).
+ *   scale 1 -> 1.04 -> 1, dial 0 -> 11° -> 0, 테두리 빛 평소 -> 밝게 -> 평소
+ * 반복 pulse가 아니라 "이건 누를 수 있는 것"이라고 한 번 알려주고 끝난다.
  * class를 붙였다 떼는 방식이라 GSAP inline transform이 남지 않는다 — cue가 끝나면 hover가 그대로 동작한다.
  */
 .watch__crown--cue .watch__crown-front-spin {
-  animation: crown-cue-dial 760ms cubic-bezier(0.34, 0.8, 0.3, 1);
+  animation: crown-cue-dial 750ms cubic-bezier(0.34, 0.8, 0.3, 1);
 }
 
 .watch__crown--cue .watch__crown-front-fx {
-  animation: crown-cue-lift 760ms cubic-bezier(0.34, 0.8, 0.3, 1);
+  animation: crown-cue-lift 750ms cubic-bezier(0.34, 0.8, 0.3, 1);
 }
 
-/* 처음 도착했을 때 테두리 빛: 0.45 -> 1 -> 평소(0.58). */
 .watch__crown--cue .watch__crown-front-rim {
-  animation: crown-cue-rim 760ms cubic-bezier(0.34, 0.8, 0.3, 1);
+  animation: crown-cue-rim 750ms cubic-bezier(0.34, 0.8, 0.3, 1);
 }
 
 @keyframes crown-cue-rim {
-  0% {
-    border-color: rgb(212 229 239 / 0.45);
+  0%,
+  100% {
     box-shadow:
-      0 0 0 1px rgb(212 229 239 / 0.12),
-      0 0 10px rgb(24 109 229 / 0.1),
-      inset 0 0 6px rgb(212 229 239 / 0.06);
+      0 0 8px rgb(24 109 229 / 0.28),
+      0 0 18px rgb(24 109 229 / 0.32),
+      inset 0 0 8px rgb(24 109 229 / 0.16);
   }
   42% {
-    border-color: rgb(243 244 244 / 1);
     box-shadow:
-      0 0 0 1px rgb(212 229 239 / 0.5),
-      0 0 24px rgb(24 109 229 / 0.34),
-      inset 0 0 12px rgb(212 229 239 / 0.2);
-  }
-  100% {
-    border-color: rgb(212 229 239 / 0.58);
-    box-shadow:
-      0 0 0 1px rgb(212 229 239 / 0.18),
-      0 0 14px rgb(24 109 229 / 0.16),
-      inset 0 0 8px rgb(212 229 239 / 0.1);
+      0 0 10px rgb(24 109 229 / 0.6),
+      0 0 30px rgb(24 109 229 / 0.5),
+      inset 0 0 10px rgb(24 109 229 / 0.24);
   }
 }
 
 @keyframes crown-cue-dial {
   0% { transform: rotate(0deg); }
-  42% { transform: rotate(10deg); }
+  42% { transform: rotate(11deg); }
   100% { transform: rotate(0deg); }
 }
 
 @keyframes crown-cue-lift {
-  0% { transform: scale(1); filter: brightness(1); }
-  42% { transform: scale(1.035); filter: brightness(1.12); }
-  100% { transform: scale(1); filter: brightness(1); }
+  0% { transform: scale(1); }
+  42% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+/* scroll 연출이 꺼진 화면(모바일 / 터치)에서 Watch 옆 Crown이 ALL FACES를 여는 button이 된다. */
+.watch__crown--static-open .watch__crown-front-button {
+  --crown-d: 100%;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border-radius: calc(12 * var(--wu));
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.watch__crown--static-open .watch__crown-front-button::after {
+  inset: min(0px, calc((100% - 44px) / 2));
+}
+
+.watch__crown--static-open .watch__crown-front-button:focus-visible {
+  outline: 2px solid #186de5;
+  outline-offset: 3px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* 도는 cue는 빼고 밝기만 한 번 오르내린다. press / focus는 그대로 둔다. */
-  .watch__crown--cue .watch__crown-front-spin {
+  /* 움직이는 cue는 빼고 테두리 빛만 한 번 오르내린다. press / focus는 그대로 둔다. */
+  .watch__crown--cue .watch__crown-front-spin,
+  .watch__crown--cue .watch__crown-front-fx {
     animation: none;
   }
 
-  .watch__crown--cue .watch__crown-front-fx {
-    animation: crown-cue-fade 760ms ease;
-  }
-
-  .watch__crown--controller .watch__crown-front-button:hover .watch__crown-front-fx {
-    transform: none;
-    filter: brightness(1.06);
-  }
-
+  .watch__crown--controller .watch__crown-front-button:hover .watch__crown-front-fx,
   .watch__crown--controller .watch__crown-front-button:hover .watch__crown-front-spin {
     transform: none;
   }
 
-  @keyframes crown-cue-fade {
-    0%, 100% { filter: brightness(1); }
-    42% { filter: brightness(1.14); }
+  .watch__crown-front-spin {
+    transition: none;
   }
 }

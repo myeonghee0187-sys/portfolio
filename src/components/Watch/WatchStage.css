@@ -5,9 +5,10 @@
  *     0  Hero Magic Rings (.hero__rings)
  *     1  About 카드        (.about__card)
  *     2  Hero 콘텐츠       (.hero__inner - 대형 타이포)
- *     3  Watch            <- 카드가 절대 Watch를 덮지 않는다
- *     4  About -> FACES bloom (평소에는 숨어 있다)
+ *     3  About -> FACES bloom (평소에는 숨어 있다) / 그 위(같은 3, DOM 순서) Watch
+ *                          <- 카드가 절대 Watch를 덮지 않고, bloom도 Watch display를 덮지 않는다
  *    10  Splash Cursor
+ *    60  ALL FACES
  *   100  Intro 오버레이
  *
  * pointer-events: none이라 Header/CONTACT/링크 클릭을 가로채지 않는다.
@@ -20,14 +21,15 @@
 }
 
 /*
- * About -> FACES 노출. 화면보다 조금 크게(inset -10%) 깔고, 가운데(Watch)에서 퍼지는 빛을 screen으로 더한다.
- * Header(z-index 5) 아래, Watch(3) 위라 Watch / About / FACES가 모두 빛을 받는다.
+ * About -> FACES 노출. 화면보다 조금 크게(inset -10%) 깔고, 가운데(Watch 뒤)에서 퍼지는 빛을 screen으로 더한다.
+ * Watch와 같은 z-index 3이고 DOM에서 먼저 와서 Watch 바로 아래에 깔린다 — About / FACES는 빛을 받고,
+ * Watch display는 덮지 않는다(Watch housing / display 유리는 useScrollScene이 따로 밝힌다).
  * 평소에는 visibility hidden이라 합성 비용이 없다. opacity / scale은 useScrollScene이 scroll에 맞춰 쓴다.
  */
 .about-faces-bloom {
   position: fixed;
   inset: -10%;
-  z-index: 4;
+  z-index: 3;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;

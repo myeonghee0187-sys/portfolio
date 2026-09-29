@@ -115,6 +115,34 @@
   pointer-events: none;
 }
 
+/*
+ * About -> FACES 노출의 display 유리 반사. display 구멍(.watch__glass)과 같은 둥근 사각형 안에만 있다.
+ * 비스듬한 한 줄의 빛이 --display-reflection-x를 따라 지나가고, 세기(opacity)는 useScrollScene이
+ * scroll에 맞춰 0 -> 1 -> 0으로 쓴다(최대 세기 = gradient 정점 0.22). screen이라 검은 화면은 거의 그대로다.
+ */
+.watch-display-transition-reflection {
+  position: absolute;
+  top: calc(64 * var(--wu));
+  left: calc(58 * var(--wu));
+  width: calc(484 * var(--wu));
+  height: calc(646 * var(--wu));
+  border-radius: calc(96 * var(--wu));
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  background: linear-gradient(
+      120deg,
+      transparent 15%,
+      rgb(243 244 244 / 0.08) 38%,
+      rgb(212 229 239 / 0.22) 50%,
+      rgb(243 244 244 / 0.08) 62%,
+      transparent 84%
+    )
+    var(--display-reflection-x, 100%) 0 / 260% 100% no-repeat;
+  mix-blend-mode: screen;
+}
+
 /* ---------------- Hero / About watch face ---------------- */
 
 /* 시계·이름·타이틀 묶음. Watch 박스를 그대로 덮어 안쪽 배치는 이전과 같다. */

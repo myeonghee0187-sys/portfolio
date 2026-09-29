@@ -61,7 +61,7 @@ export default function Hero({ inlineWatch }: HeroProps) {
         */}
         <div className="hero__watch-anchor" aria-hidden="true" />
 
-        {inlineWatch && <WatchAssembly variant="hero" />}
+        {inlineWatch && <WatchAssembly variant="hero" crownOpensAllFaces />}
       </div>
     </section>
   )

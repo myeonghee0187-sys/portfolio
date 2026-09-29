@@ -94,6 +94,6 @@
 
 .site-header__brand:focus-visible,
 .site-header__link:focus-visible {
-  outline: 1px solid rgb(212 229 239 / 0.7);
+  outline: 1px solid #186de5;
   outline-offset: calc(6 * var(--site-u));
 }

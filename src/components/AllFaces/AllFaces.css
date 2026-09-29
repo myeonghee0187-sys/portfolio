@@ -1,0 +1,223 @@
+/*
+ * ALL FACES — Crown을 누르면 page 위에 여는 전체 project 화면(FLAT PROJECT WORLD).
+ * Header / page / Watch / Crown보다 위, Intro(100) / 문의 modal(200)보다 아래.
+ * 바탕은 Carbon Black 하나이고 Watch는 보이지 않는다. 주인공은 project 영상이고 글자는 작은 utility label뿐이다.
+ */
+.all-faces {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  background: #08090a;
+  color: #f3f4f4;
+  opacity: 0;
+}
+
+/* drag를 받는 면(화면 전체). 손가락 / pointer 이동은 전부 world 이동이다(page scroll 없음). */
+.all-faces__stage {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.all-faces__stage.is-dragging {
+  cursor: grabbing;
+}
+
+/* 화면보다 넓은 평면. camera 이동은 transform 하나다(useEffect의 writeCamera). */
+.all-faces__world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
+/*
+ * project 하나. 크기 / 위치는 배치가 정한다(JS). 열릴 때의 motion은 이 element,
+ * floating은 안쪽 __float, hover 크기는 그 안의 __frame — 서로 다른 layer라 덮어쓰지 않는다.
+ */
+.all-faces__project {
+  position: absolute;
+  margin: 0;
+  outline: none;
+}
+
+.all-faces__project.is-hovered {
+  z-index: 2;
+}
+
+.all-faces__float {
+  transition: opacity 300ms ease;
+  will-change: transform;
+}
+
+/* 한 project에 올라가 있으면 나머지는 한 걸음 물러난다. */
+.all-faces__world[data-hovered] .all-faces__project:not(.is-hovered) .all-faces__float {
+  opacity: 0.55;
+}
+
+/* 영상 frame. UI border는 Electric Ice(#186DE5) 하나다. */
+.all-faces__frame {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #186de5;
+  border-radius: 18px;
+  background: #0e1012;
+  transition: transform 300ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.all-faces__project.is-hovered .all-faces__frame {
+  transform: scale(1.025);
+}
+
+.all-faces__project:focus-visible .all-faces__frame {
+  outline: 2px solid #186de5;
+  outline-offset: 4px;
+}
+
+/* Case Study가 연결돼 있을 때만 눌리는 것처럼 보인다. */
+.all-faces[data-selectable] .all-faces__project {
+  cursor: pointer;
+}
+
+/* 같은 영상 element 두 개가 겹쳐 있다(LoopVideo). */
+.all-faces__media {
+  position: absolute;
+  inset: 0;
+}
+
+.all-faces__media video {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--media-focus, 50% 50%);
+  pointer-events: none;
+}
+
+/* hover / focus 때만 frame 아래에 이름과 종류. 설명은 두지 않는다. */
+.all-faces__meta {
+  position: absolute;
+  top: calc(100% + 16px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity 260ms ease,
+    transform 260ms cubic-bezier(0.33, 1, 0.68, 1);
+  pointer-events: none;
+}
+
+.all-faces__project.is-hovered .all-faces__meta {
+  opacity: 1;
+  transform: none;
+}
+
+.all-faces__name {
+  font-family: 'Anton', sans-serif;
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.all-faces__type {
+  font: 600 11px/1 'Inter', sans-serif;
+  letter-spacing: 0.18em;
+  color: #777d82;
+  white-space: nowrap;
+}
+
+/* 위쪽 utility bar. world 위에 떠 있고, 빈 곳은 drag를 막지 않는다. */
+.all-faces__bar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 36px clamp(24px, 6.25vw, 120px) 0;
+  pointer-events: none;
+}
+
+.all-faces__label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  font: 600 13px/1 'Inter', sans-serif;
+  letter-spacing: 0.2em;
+}
+
+.all-faces__count {
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: #777d82;
+}
+
+.all-faces__close {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: -14px -12px 0 0;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: #f3f4f4;
+  font: 600 13px/1 'Inter', sans-serif;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: opacity 200ms ease;
+}
+
+.all-faces__close span {
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.all-faces__close:hover {
+  opacity: 0.68;
+}
+
+.all-faces__close:focus-visible {
+  outline: 1px solid #186de5;
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .all-faces__bar {
+    padding: calc(env(safe-area-inset-top, 0px) + 24px) 20px 0;
+  }
+
+  .all-faces__frame {
+    border-radius: 14px;
+  }
+
+  .all-faces__name {
+    font-size: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .all-faces__frame,
+  .all-faces__float,
+  .all-faces__meta {
+    transition: none;
+  }
+}

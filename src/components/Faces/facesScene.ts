@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import gsap from 'gsap'
 import { FACE_PROJECTS } from './facesData'
+import { LoopBuffer } from './loopBuffer'
 
 /**
  * FACES의 WebGL visual field.
@@ -521,7 +522,8 @@ vec3 displayMedia(vec2 p) {
 
 /* ---------- D. DISPLAY : display rect 기준 cover로 꽉 채워 선명하게 ---------- */
 vec3 displayColor(vec2 p, float dDisp) {
-  float zoom = uDisplayInteraction < 0.0 ? 0.99 : 1.0 + uDisplayInteraction * 0.008;
+  // hover(+1): 1.007배 + 밝기 4%. 누르는 동안(-1): 0.99배로 살짝 가라앉는다.
+  float zoom = uDisplayInteraction < 0.0 ? 0.99 : 1.0 + uDisplayInteraction * 0.007;
   vec3 c = displayMedia(uDisplay.xy + (p - uDisplay.xy) / zoom);
   // 영상 색은 그대로, 대비·밝기만 조금 올린다. 바깥 gallery보다 항상 선명하다.
   c = clamp((c - 0.5) * 1.06 + 0.5, 0.0, 1.0) * 1.04;
@@ -628,7 +630,10 @@ vec3 rimColor(vec2 p, float dOut, float dDisp, float reach) {
   float iceLine = 1.0 - smoothstep(0.0, 0.9, abs(dDisp - 2.0));
   float electricLine = 1.0 - smoothstep(0.0, 0.9, abs(dOut + 2.6));
   glass += mix(TITANIUM, FROST, 0.3 + 0.7 * key) * outerLine * 0.8;
-  glass += ICE * iceLine * (0.08 + 0.3 * key);
+  // display hover: rim의 Ice 반사만 조금 더 맺힌다(선 두께 / 색은 그대로).
+  float hover = max(uDisplayInteraction, 0.0);
+  glass += ICE * iceLine * (0.08 + 0.3 * key) * (1.0 + 0.9 * hover);
+  glass += mix(ICE, FROST, 0.6) * broad * 0.05 * hover;
   glass += ELECTRIC * electricLine * (0.08 + 0.3 * away + 0.2 * uSpeed);
 
   // 안쪽 transition band: display 가장자리에서 rim의 굴절 영상으로 검은 선 없이 넘어간다.
@@ -718,6 +723,32 @@ const ABSORB_FADE = 0.45
 /** velocity가 1일 때 plane의 휨이 더 깊어지는 양(stage 폭 비율). */
 const VELOCITY_CURVE = 0.018
 
+/**
+ * LOOP CROSSFADE(loopBuffer.ts)가 두 element를 섞는 동안에만 쓰는 texture의 긴 변(px).
+ * 섞는 0.2초 동안 display와 gallery가 이 한 장을 읽는다. 원본보다 크게 만들지 않는다.
+ */
+const MIX_MAX_SIDE = 1280
+
+const MIX_VERTEX = /* glsl */ `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+`
+
+/** 같은 영상의 두 element(끝부분 / 처음 부분)를 섞는다. 색은 그대로(sRGB 값끼리) 섞는다. */
+const MIX_FRAGMENT = /* glsl */ `
+precision highp float;
+uniform sampler2D uA;
+uniform sampler2D uB;
+uniform float uMix;
+varying vec2 vUv;
+void main() {
+  gl_FragColor = vec4(mix(texture2D(uA, vUv).rgb, texture2D(uB, vUv).rgb, uMix), 1.0);
+}
+`
+
 /** Watch 모양 하나(rounded rect). canvas CSS px, 위가 0. */
 export type FacesBox = { cx: number; cy: number; hx: number; hy: number; r: number }
 
@@ -757,7 +788,20 @@ export default class FacesScene {
   private bridgeMaterials: THREE.ShaderMaterial[] = []
   private meshes: THREE.Mesh[] = []
   private bridges: THREE.Mesh[] = []
-  private textures: THREE.VideoTexture[] = []
+  /** project마다 두 장(LoopBuffer의 두 element). 평소에는 재생 중인 쪽 한 장을 읽는다. */
+  private textures: [THREE.VideoTexture, THREE.VideoTexture][] = []
+  /** loop 경계에서 두 장을 섞은 결과. 섞는 동안에만 쓰고, 처음 필요할 때 만든다. */
+  private mixTargets: (THREE.WebGLRenderTarget | null)[] = []
+  private mixScene = new THREE.Scene()
+  private mixMaterial = new THREE.ShaderMaterial({
+    vertexShader: MIX_VERTEX,
+    fragmentShader: MIX_FRAGMENT,
+    depthTest: false,
+    depthWrite: false,
+    uniforms: { uA: { value: null }, uB: { value: null }, uMix: { value: 0 } },
+  })
+  /** project마다 shader가 지금 읽는 texture. 바뀔 때만 uniform을 다시 쓴다. */
+  private sources: THREE.Texture[] = []
 
   private compositeScene = new THREE.Scene()
   private compositeGeometry = new THREE.PlaneGeometry(2, 2)
@@ -792,8 +836,11 @@ export default class FacesScene {
   private height = 1
   private pixelRatio = 0
 
-  /** project마다 하나씩. 같은 영상이 바깥 plane / bridge / 굴절 / display 전부에 쓰인다. */
-  readonly videos: HTMLVideoElement[] = []
+  /**
+   * project마다 하나씩. 같은 영상이 바깥 plane / bridge / 굴절 / display 전부에 쓰인다.
+   * 영상 하나가 element 두 개를 갖고, loop 경계에서만 둘을 짧게 섞는다(loopBuffer.ts).
+   */
+  readonly loops: LoopBuffer[] = []
   /** 원본 비율(가로 / 세로). loadedmetadata에서 실제 값으로 바뀐다. */
   readonly aspects = FACE_PROJECTS.map((p) => p.aspect)
 
@@ -809,8 +856,8 @@ export default class FacesScene {
   /** scene 안의 실제 개수(QA용). project마다 plane 2장(wrap된 자리 + 한 바퀴 옆자리), bridge 2장. */
   get counts() {
     return {
-      videos: this.videos.length,
-      textures: this.textures.length,
+      videos: this.loops.length * 2,
+      textures: this.textures.length * 2,
       planes: this.meshes.length,
       bridges: this.bridges.length,
       sceneObjects: this.planesScene.children.length,
@@ -828,15 +875,9 @@ export default class FacesScene {
     this.target.texture.generateMipmaps = false
 
     FACE_PROJECTS.forEach((project, i) => {
-      const video = document.createElement('video')
-      video.src = project.media
-      video.muted = true
-      video.defaultMuted = true
-      video.loop = true
-      video.playsInline = true
-      video.preload = 'metadata'
-      video.setAttribute('muted', '')
-      video.setAttribute('playsinline', '')
+      // FACES에 처음 보이는 F45는 처음부터 받아 둔다. 나머지는 FACES가 가까워질 때 받는다(updatePlayback).
+      const loop = new LoopBuffer(project.media, i === 0 ? 'auto' : 'metadata')
+      const video = loop.videos[0]
       video.addEventListener('loadedmetadata', () => {
         if (!video.videoWidth || !video.videoHeight) return
         const aspect = video.videoWidth / video.videoHeight
@@ -846,12 +887,17 @@ export default class FacesScene {
         }
       })
 
-      const texture = new THREE.VideoTexture(video)
-      texture.minFilter = THREE.LinearFilter
-      texture.magFilter = THREE.LinearFilter
-      texture.generateMipmaps = false
-      texture.wrapS = THREE.ClampToEdgeWrapping
-      texture.wrapT = THREE.ClampToEdgeWrapping
+      const makeTexture = (element: HTMLVideoElement) => {
+        const texture = new THREE.VideoTexture(element)
+        texture.minFilter = THREE.LinearFilter
+        texture.magFilter = THREE.LinearFilter
+        texture.generateMipmaps = false
+        texture.wrapS = THREE.ClampToEdgeWrapping
+        texture.wrapT = THREE.ClampToEdgeWrapping
+        return texture
+      }
+      const pair: [THREE.VideoTexture, THREE.VideoTexture] = [makeTexture(loop.videos[0]), makeTexture(loop.videos[1])]
+      const texture = pair[0]
 
       // 같은 영상의 plane 두 장이 material 하나를 같이 쓴다.
       const material = new THREE.ShaderMaterial({
@@ -867,8 +913,10 @@ export default class FacesScene {
         this.meshes.push(mesh)
       }
 
-      this.videos.push(video)
-      this.textures.push(texture)
+      this.loops.push(loop)
+      this.textures.push(pair)
+      this.mixTargets.push(null)
+      this.sources.push(texture)
       this.planeMaterials.push(material)
     })
 
@@ -881,8 +929,8 @@ export default class FacesScene {
         fragmentShader: BRIDGE_FRAGMENT,
         uniforms: {
           ...this.shared,
-          uMapA: { value: this.textures[i] },
-          uMapB: { value: this.textures[next] },
+          uMapA: { value: this.sources[i] },
+          uMapB: { value: this.sources[next] },
           uWA: { value: 1 },
           uWB: { value: 1 },
           uSagA: { value: 0 },
@@ -907,7 +955,7 @@ export default class FacesScene {
       depthWrite: false,
       uniforms: {
         uScene: { value: this.target.texture },
-        ...Object.fromEntries(this.textures.map((texture, i) => [`uVideo${i}`, { value: texture }])),
+        ...Object.fromEntries(this.sources.map((texture, i) => [`uVideo${i}`, { value: texture }])),
         uSize: { value: new THREE.Vector2(1, 1) },
         uPixelRatio: { value: 1 },
         uWatch: { value: 0 },
@@ -933,6 +981,63 @@ export default class FacesScene {
     const quad = new THREE.Mesh(this.compositeGeometry, this.composite)
     quad.frustumCulled = false
     this.compositeScene.add(quad)
+
+    const mixQuad = new THREE.Mesh(this.compositeGeometry, this.mixMaterial)
+    mixQuad.frustumCulled = false
+    this.mixScene.add(mixQuad)
+  }
+
+  /**
+   * loop 경계를 매 frame 진행한다(loopBuffer.ts). 섞는 정도가 바뀐 project가 있으면 true — 다시 그려야 한다.
+   */
+  tickLoops(now: number) {
+    let changed = false
+    for (const loop of this.loops) if (loop.tick(now)) changed = true
+    return changed
+  }
+
+  /**
+   * project i를 shader가 읽을 texture. 평소에는 재생 중인 element의 VideoTexture 그대로,
+   * loop 경계에서 섞는 동안에만 두 장을 섞은 render target이다.
+   */
+  private sourceFor(i: number): THREE.Texture {
+    const loop = this.loops[i]
+    const [a, b] = this.textures[i]
+    const current = loop.active === 0 ? a : b
+    if (!loop.fading || loop.mix <= 0) return current
+    const video = loop.current
+    let target = this.mixTargets[i]
+    if (!target) {
+      const w = video.videoWidth || 960
+      const h = video.videoHeight || 1200
+      const k = Math.min(1, MIX_MAX_SIDE / Math.max(w, h))
+      target = new THREE.WebGLRenderTarget(Math.round(w * k), Math.round(h * k), { depthBuffer: false })
+      target.texture.minFilter = THREE.LinearFilter
+      target.texture.magFilter = THREE.LinearFilter
+      target.texture.generateMipmaps = false
+      this.mixTargets[i] = target
+    }
+    const u = this.mixMaterial.uniforms
+    u.uA.value = current
+    u.uB.value = current === a ? b : a
+    u.uMix.value = loop.mix
+    this.renderer.setRenderTarget(target)
+    this.renderer.render(this.mixScene, this.camera)
+    return target.texture
+  }
+
+  /** project마다 이번 frame의 texture를 정하고, 바뀐 것만 plane / bridge / display uniform에 다시 건다. */
+  private syncSources() {
+    const n = this.loops.length
+    for (let i = 0; i < n; i++) {
+      const source = this.sourceFor(i)
+      if (source === this.sources[i]) continue
+      this.sources[i] = source
+      this.planeMaterials[i].uniforms.uMap.value = source
+      this.bridgeMaterials[i].uniforms.uMapA.value = source
+      this.bridgeMaterials[(i + n - 1) % n].uniforms.uMapB.value = source
+      this.composite.uniforms[`uVideo${i}`].value = source
+    }
   }
 
   /** canvas 크기가 바뀔 때(refresh). wave도 stage 크기에 맞춰 다시 정한다. */
@@ -1058,6 +1163,8 @@ export default class FacesScene {
      */
     const w = state.watch
     const g = this.shared
+    // loop 경계에서 섞는 중인 project는 섞은 한 장을 먼저 만든다(gallery / display가 같은 그림을 읽는다).
+    this.syncSources()
     if (w) {
       const offset = Math.abs(w.display.cy - this.height / 2)
       g.uAbsorbOn.value = 1 - smoothstep(Math.min(1, Math.max(0, (offset - this.height * 0.02) / (this.height * 0.1))))
@@ -1116,18 +1223,16 @@ export default class FacesScene {
   }
 
   dispose() {
-    for (const video of this.videos) {
-      video.pause()
-      video.removeAttribute('src')
-      video.load()
-    }
+    for (const loop of this.loops) loop.dispose()
     this.geometry.dispose()
     this.bridgeGeometry.dispose()
     this.compositeGeometry.dispose()
     for (const m of this.planeMaterials) m.dispose()
     for (const m of this.bridgeMaterials) m.dispose()
     this.composite.dispose()
-    for (const t of this.textures) t.dispose()
+    this.mixMaterial.dispose()
+    for (const pair of this.textures) for (const t of pair) t.dispose()
+    for (const t of this.mixTargets) t?.dispose()
     this.target.dispose()
     this.renderer.dispose()
   }

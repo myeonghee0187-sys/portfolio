@@ -5,6 +5,7 @@ import { FACE_PROJECTS } from './facesData'
 import FacesScene, { type FacesBox, type FacesWatchGeometry } from './facesScene'
 import { sharedAmbient } from '../../hooks/sharedAmbient'
 import { HANDOFF_VIEWPORTS, JOURNEY_VIEWPORTS, PANEL_TRIGGER_ID, panelTiming } from '../../hooks/panelTiming'
+import { isAllFacesOpen, subscribeAllFaces } from '../AllFaces/allFacesStore'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -22,6 +23,14 @@ const GAP_RATIO = 0.08
  */
 const RAIL_SPEED = 0.76
 const MIN_PIN_VIEWPORTS = 2
+
+/**
+ * FACES pin이 시작된 뒤 rail이 움직이기 전에 F45(01)가 display 가운데에 머무는 scroll 길이(뷰포트 높이 비율).
+ * F45 영상은 display보다 좁아 머무는 구간(HOLD)이 없어서, 이것이 없으면 pin에 들어서자마자 display가
+ * TCHAIKIM 쪽으로 넘어가기 시작했다(첫 project가 TCHAIKIM처럼 읽혔다). About -> FACES가 끝나고
+ * 첫 화면은 반드시 F45다. rail이 한 바퀴 도는 거리(= 속도)는 그대로다.
+ */
+const ENTRY_HOLD_VIEWPORTS = 0.45
 
 /**
  * current가 target을 따라잡는 비율(60fps 한 프레임). 1:1로 붙지 않고 살짝 늦게 따라오는 물성.
@@ -62,8 +71,19 @@ const DISPLAY = { x0: 42.8, y0: 46.9, x1: 556.8, y1: 722.6, r: 112 }
 /** active가 바뀌려면 새 후보가 지금 active보다 plane 간격의 이 비율만큼 더 가까워야 한다. */
 const ACTIVE_HYSTERESIS = 0.04
 
-/** 이만큼(px) 움직이기 전까지는 drag로 보지 않는다. 나중에 project 링크 클릭을 살려 두기 위해서다. */
+/** 이만큼(px) 움직이기 전까지는 drag로 보지 않는다. 그 안에서 떼면 display 링크 click이다. */
 const DRAG_THRESHOLD = 7
+
+/*
+ * Watch display 링크가 열리는 조건. 평소 멈춰 있는 상태에서는 어렵지 않게 눌려야 하고,
+ * 두 project의 경계가 display를 지나가는 동안 / 빠르게 scroll하는 동안에만 닫힌다.
+ *   LINK_SLOT      display 띠가 한 project 자리 가운데에서 이 안(자리 폭 비율)에 있을 때 — 한 project가 display를 채운다
+ *   LINK_SETTLE    rail이 scroll / drag 목표를 거의 따라잡았을 때(stage 폭 비율)
+ *   LINK_MAX_SPEED 세로 scroll 속도(px/s). 멈추면 0.1초 안에 0이 된다
+ */
+const LINK_SLOT = 0.25
+const LINK_SETTLE = 0.03
+const LINK_MAX_SPEED = 1600
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
@@ -80,10 +100,11 @@ type FacesInteractionOptions = {
  * FACES slider.
  *
  * 세로 scroll과 drag의 역할이 다르다.
- *   세로 scroll  = page 진행. pin 동안 project 전체(FACE_PROJECTS)를 정확히 한 바퀴(LOOP_WIDTH) 돈 뒤 pin이 풀린다.
+ *   세로 scroll  = page 진행. pin 초반(ENTRY_HOLD) F45에 머문 뒤 project 전체(FACE_PROJECTS)를
+ *                  정확히 한 바퀴(LOOP_WIDTH) 돌고 Journey로 넘어간다.
  *   drag         = 자유 탐색. 제한 없이 몇 바퀴든 돈다. document scroll은 건드리지 않는다.
  *
- *   scrollOffset = scrollProgress * LOOP_WIDTH        (0 -> LOOP_WIDTH, 한 번만)
+ *   scrollOffset = scrollProgress * LOOP_WIDTH        (0 -> LOOP_WIDTH, 한 번만. 머무는 구간 동안은 0)
  *   dragOffset   = drag로 더한 거리                     (+/- 무한)
  *   target       = scrollOffset + dragOffset
  *   current     += (target - current) * EASE          (살짝 늦게 따라오는 물성)
@@ -204,13 +225,20 @@ export default function useFacesInteraction({
 
     /* ---------- 영상 재생: 화면 근처에 있는 것만 ---------- */
 
+    /** display가 지금 채우고 있는 project(display 띠 위치를 반올림한 자리). 링크는 이 project로 간다. */
+    const shownProject = () => {
+      const n = FACE_PROJECTS.length
+      return ((Math.round(scene.displaySlot) % n) + n) % n
+    }
     const canActivate = () => Boolean(
       trigger?.isActive && window.scrollY <= trigger.start + panelTiming.facesDistance &&
-      panelTiming.handoff < 0.001 && active >= 0 && !dragging &&
-      scene.focus(active, current) >= 0.92 && Math.abs(target() - current) / stageWidth < 0.002 &&
-      Math.abs(trigger.getVelocity()) < 420 && Math.abs(scene.displaySlot - Math.round(scene.displaySlot)) < 0.015
+      panelTiming.handoff < 0.001 && !dragging && !isAllFacesOpen() &&
+      Math.abs(scene.displaySlot - Math.round(scene.displaySlot)) < LINK_SLOT &&
+      Math.abs(target() - current) / stageWidth < LINK_SETTLE &&
+      Math.abs(trigger.getVelocity()) < LINK_MAX_SPEED
     )
     let lastReady: boolean | undefined
+    let lastShown = -1
     const updateLink = () => {
       const ready = canActivate()
       if (link && lastReady !== ready) {
@@ -218,22 +246,24 @@ export default function useFacesInteraction({
         link.tabIndex = ready ? 0 : -1
         lastReady = ready
       }
-      if (link && active >= 0 && link.href !== FACE_PROJECTS[active].liveUrl) link.href = FACE_PROJECTS[active].liveUrl
+      const shown = shownProject()
+      if (link && shown !== lastShown) {
+        link.href = FACE_PROJECTS[shown].liveUrl
+        link.setAttribute('aria-label', `${FACE_PROJECTS[shown].title} 완성 웹사이트 보기`)
+        lastShown = shown
+      }
       if (import.meta.env.DEV) {
-        section.dataset.gallery = JSON.stringify({ current, dragOffset, active, focus: active < 0 ? 0 : scene.focus(active, current), slot: scene.displaySlot, ready, running })
+        section.dataset.gallery = JSON.stringify({ current, dragOffset, active, shown, slot: scene.displaySlot, ready, running })
       }
     }
 
     let running = false
     const updatePlayback = () => {
-      scene.videos.forEach((video, i) => {
-        const shouldPlay = running && scene.isNearView(i, current, PLAY_MARGIN)
-        if (shouldPlay && video.paused) {
-          if (video.preload !== 'auto') video.preload = 'auto'
-          video.play().catch(() => {})
-        } else if (!shouldPlay && !video.paused) {
-          video.pause()
-        }
+      const suspended = isAllFacesOpen()
+      scene.loops.forEach((loop, i) => {
+        const shouldPlay = running && !suspended && scene.isNearView(i, current, PLAY_MARGIN)
+        if (shouldPlay) loop.play()
+        else loop.pause()
       })
     }
 
@@ -246,9 +276,10 @@ export default function useFacesInteraction({
      */
     const canWatchFrames = 'requestVideoFrameCallback' in HTMLVideoElement.prototype
     let videoDirty = true
+    const allVideos = scene.loops.flatMap((loop) => loop.videos)
     const frameHandles: number[] = []
     if (canWatchFrames) {
-      scene.videos.forEach((video, i) => {
+      allVideos.forEach((video, i) => {
         const onFrame = () => {
           videoDirty = true
           frameHandles[i] = video.requestVideoFrameCallback(onFrame)
@@ -291,6 +322,8 @@ export default function useFacesInteraction({
         link.style.setProperty('--display-radius', d.r + 'px')
       }
       const ambient = ambientState()
+      // loop 경계에서 두 element를 섞는 동안에는 매 frame 다시 그린다.
+      if (scene.tickLoops(now)) videoDirty = true
       const key = `${current.toFixed(2)} ${interaction.toFixed(3)} ${ambient.level.toFixed(4)} ${ambient.cy.toFixed(1)} ${
         watch ? `${watch.outer.cx.toFixed(1)} ${watch.outer.cy.toFixed(1)} ${watch.unit.toFixed(4)}` : ''
       }`
@@ -314,7 +347,8 @@ export default function useFacesInteraction({
     }
 
     const start = () => {
-      if (running) return
+      // ALL FACES가 화면 전체를 덮고 있는 동안에는 그리지 않는다. 닫히면 다시 시작한다(아래 subscribe).
+      if (running || isAllFacesOpen()) return
       running = true
       lastTime = 0
       rafId = requestAnimationFrame(frame)
@@ -328,7 +362,13 @@ export default function useFacesInteraction({
       updateLink()
     }
 
-    /* ---------- 세로 scroll = page 진행(정확히 한 바퀴) ---------- */
+    /* ---------- 세로 scroll = page 진행(F45에 잠깐 머문 뒤 정확히 한 바퀴) ---------- */
+
+    /** pin 시작 뒤 rail이 움직이기 전까지의 scroll(px). refresh 때 정한다. */
+    let entryHold = 0
+    const scrollOffsetAt = (scroll: number, start: number) =>
+      clamp((scroll - start - entryHold) / Math.max(1, panelTiming.facesDistance - entryHold), 0, 1) * loopWidth
+    let playback: ScrollTrigger | undefined
 
     const ctx = gsap.context(() => {
       trigger = ScrollTrigger.create({
@@ -337,7 +377,8 @@ export default function useFacesInteraction({
         start: 'top top',
         end: () => {
           measure()
-          panelTiming.facesDistance = Math.max(window.innerHeight * MIN_PIN_VIEWPORTS, loopWidth / RAIL_SPEED)
+          entryHold = window.innerHeight * ENTRY_HOLD_VIEWPORTS
+          panelTiming.facesDistance = entryHold + Math.max(window.innerHeight * MIN_PIN_VIEWPORTS, loopWidth / RAIL_SPEED)
           return `+=${panelTiming.facesDistance + window.innerHeight * (HANDOFF_VIEWPORTS + JOURNEY_VIEWPORTS)}`
         },
         pin: viewport ?? stage,
@@ -346,20 +387,20 @@ export default function useFacesInteraction({
         invalidateOnRefresh: true,
         // About의 pin spacer가 먼저 자리를 잡은 뒤에 계산되어야 한다.
         refreshPriority: -1,
-        // progress 0 -> 1이 정확히 0 -> LOOP_WIDTH. drag와 상관없이 page scroll에는 시작과 끝이 있다.
+        // F45에 머무는 구간 뒤 progress가 정확히 0 -> LOOP_WIDTH. drag와 상관없이 page scroll에는 시작과 끝이 있다.
         onUpdate: (self) => {
-          scrollOffset = clamp((self.scroll() - self.start) / panelTiming.facesDistance, 0, 1) * loopWidth
+          scrollOffset = scrollOffsetAt(self.scroll(), self.start)
           updateLink()
         },
         onRefresh: (self) => {
-          scrollOffset = clamp((self.scroll() - self.start) / panelTiming.facesDistance, 0, 1) * loopWidth
+          scrollOffset = scrollOffsetAt(self.scroll(), self.start)
           if (!running) current = target()
-          if (import.meta.env.DEV) section.dataset.timing = JSON.stringify({ start: self.start, facesEnd: self.start + panelTiming.facesDistance, handoffEnd: self.start + panelTiming.facesDistance + innerHeight * HANDOFF_VIEWPORTS, end: self.end, loopWidth, centers: scene.centers })
+          if (import.meta.env.DEV) section.dataset.timing = JSON.stringify({ start: self.start, entryHold, facesEnd: self.start + panelTiming.facesDistance, handoffEnd: self.start + panelTiming.facesDistance + innerHeight * HANDOFF_VIEWPORTS, end: self.end, loopWidth, centers: scene.centers })
         },
       })
 
       // FACES가 화면에 들어오기 직전부터 나갈 때까지만 그리고, 영상도 그 동안만 재생한다.
-      ScrollTrigger.create({
+      playback = ScrollTrigger.create({
         trigger: section,
         id: 'faces-playback',
         start: () => (trigger?.start ?? 0) - window.innerHeight,
@@ -367,7 +408,23 @@ export default function useFacesInteraction({
         refreshPriority: -2,
         onToggle: (self) => (self.isActive ? start() : stop()),
         onRefresh: (self) => (self.isActive ? start() : stop()),
+        /*
+         * About 쪽으로 완전히 되돌아가 FACES가 화면 밖으로 나가면 drag로 옮겨 둔 위치를 지운다.
+         * 다시 내려왔을 때 첫 화면은 언제나 F45다. 보이지 않는 동안에 바꾸므로 rail이 움직여 보이지 않는다.
+         */
+        onLeaveBack: () => {
+          dragOffset = 0
+          dragCurrent = 0
+          current = target()
+          lastKey = ''
+        },
       })
+    })
+
+    // ALL FACES가 열리면 가려진 FACES는 멈추고(그리기 / 영상), 닫히면 FACES 구간일 때만 다시 시작한다.
+    const unsubscribe = subscribeAllFaces(() => {
+      if (isAllFacesOpen()) stop()
+      else if (playback?.isActive) start()
     })
 
     measure()
@@ -460,7 +517,10 @@ export default function useFacesInteraction({
           ambient: ambientState(),
           focus: FACE_PROJECTS.map((_, i) => +scene.focus(i, current).toFixed(3)),
           display: watch ? { w: watch.display.hx * 2, h: watch.display.hy * 2 } : null,
-          playing: scene.videos.map((v) => !v.paused),
+          playing: scene.loops.map((loop) => !loop.current.paused),
+          loops: scene.loops.map((loop) => ({ active: loop.active, mix: +loop.mix.toFixed(3), t: +loop.current.currentTime.toFixed(3), d: loop.current.duration, paused: loop.videos.map((v) => v.paused) })),
+          shown: shownProject(),
+          entryHold,
           pinStart: trigger?.start ?? 0,
           pinEnd: (trigger?.start ?? 0) + panelTiming.facesDistance,
           panelsEnd: trigger?.end ?? 0,
@@ -475,6 +535,7 @@ export default function useFacesInteraction({
     return () => {
       if (import.meta.env.DEV) delete debug.__faces
       cancelAnimationFrame(refreshId)
+      unsubscribe()
       stop()
       link?.removeEventListener('click', onClick)
       link?.removeEventListener('pointerenter', onEnter)
@@ -490,7 +551,7 @@ export default function useFacesInteraction({
       stage.classList.remove('is-dragging')
       ctx.revert()
       frontWheel?.style.removeProperty('rotate')
-      if (canWatchFrames) scene.videos.forEach((video, i) => video.cancelVideoFrameCallback(frameHandles[i]))
+      if (canWatchFrames) allVideos.forEach((video, i) => video.cancelVideoFrameCallback(frameHandles[i]))
       scene.dispose()
     }
   }, [enabled, sectionRef, stageRef, canvasRef, onActiveChange])

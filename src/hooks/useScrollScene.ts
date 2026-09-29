@@ -636,11 +636,18 @@ export default function useScrollScene(enabled: boolean) {
           },
         })
 
-        // 30~55%: watch face가 한 번에 빠진다. Hero -> About morph가 쓰는 안쪽 요소들과는 다른 element다.
-        facesTl.to(face, { opacity: 0, ease: 'none', duration: 0.25 }, 0.3)
-
-        // 45~70%: display를 덮던 검은 화면이 빠진다. 그 사이 FACES slider가 아래에서 display 안으로 올라온다.
-        facesTl.to(screen, { opacity: 0, ease: 'none', duration: 0.25 }, 0.45)
+        /*
+         * DISPLAY CONTENT. About watch UI는 노출이 가장 밝아지기 직전까지 그대로 있고(1),
+         * 최대 밝기에서만 아주 조금 가라앉는다(0.88). 화면 안의 글자 / texture가 빛 속에서 갑자기 바뀌지 않는다.
+         * FACES canvas가 display 자리를 다 덮은 뒤(80% 이후) About UI가 빠지고 검은 화면도 빠져,
+         * steel case가 WebGL Watch로 이어지는 마지막 구간에 FACES 화면(F45)이 드러난다.
+         *   face    45~52% 1 -> 0.88,  80~93% 0.88 -> 0
+         *   screen  82~94% 1 -> 0
+         * Hero -> About morph가 쓰는 안쪽 요소들과는 다른 element다.
+         */
+        facesTl.fromTo(face, { opacity: 1 }, { opacity: 0.88, ease: 'sine.inOut', duration: 0.07, immediateRender: false }, 0.45)
+        facesTl.fromTo(face, { opacity: 0.88 }, { opacity: 0, ease: 'none', duration: 0.13, immediateRender: false }, 0.8)
+        facesTl.to(screen, { opacity: 0, ease: 'none', duration: 0.12 }, 0.82)
 
         /*
          * 88~98%: steel case(PNG)와 display 유리 그림자가 녹아 없어지고, 그 아래 같은 실루엣으로 그려지던
@@ -687,16 +694,25 @@ export default function useScrollScene(enabled: boolean) {
         /*
          * ABOUT -> FACES 노출(camera flash / 일출). 새 ScrollTrigger 없이 이 timeline의 progress에 묶인다.
          * Watch 둘레의 작은 빛이 아니라 화면 전체의 노출이 잠깐 올라갔다가 FACES의 Carbon Black으로 가라앉는다.
-         *   bloom    화면 전체를 덮는 빛(WatchStage의 .about-faces-bloom, screen blend). 가운데(Watch)에서 퍼진다
-         *   bright   About 장면 / Watch / FACES 장면 자체의 brightness. 빛을 받는 것처럼 함께 밝아진다
+         *   bloom    화면 전체를 덮는 빛(WatchStage의 .about-faces-bloom, screen blend). Watch 뒤에서 퍼진다
+         *   bright   About 장면(card) / Watch housing(steel case, Crown) / FACES 장면의 brightness
          *   glint    최대 밝기 근처에서만 Watch steel 테두리를 지나가는 Frost / Ice 반사
+         *   glass    같은 순간 display 유리 위를 지나가는 한 줄의 반사(.watch-display-transition-reflection)
+         * Watch display(About UI / 검은 화면)는 bloom 아래에도, brightness 대상에도 없다 — 화면 전체가 하얀 사각형처럼
+         * 밝아지지 않고, 유리 위에 빛이 한 번 비쳤다 지나간다.
          * 진행률: 0.18 시작 -> 0.38 분명히 밝아짐 -> 0.52 최대 -> 0.75 FACES가 보이기 시작 -> 1 Carbon Black.
          * 되감으면 같은 값을 거꾸로 지나간다. 흰 화면까지는 가지 않는다(최대 opacity 0.75, brightness 1.22).
          */
         const bloom = document.querySelector<HTMLElement>('.about-faces-bloom')
         const glint = watch.querySelector<HTMLElement>('.watch__reflection')
-        const lit = [stage, watchLayer, faces.querySelector<HTMLElement>('.faces__scene')]
-        const exposure = { bloom: 0, scale: 0.82, bright: 1, glint: 0, sweep: 120 }
+        const glass = watch.querySelector<HTMLElement>('.watch-display-transition-reflection')
+        const lit = [
+          stage,
+          watch.querySelector<HTMLElement>('.watch__case'),
+          crown,
+          faces.querySelector<HTMLElement>('.faces__scene'),
+        ]
+        const exposure = { bloom: 0, scale: 0.82, bright: 1, glint: 0, sweep: 120, glass: 0, glassX: 100 }
         const writeExposure = () => {
           if (bloom) {
             bloom.style.opacity = exposure.bloom.toFixed(3)
@@ -713,6 +729,11 @@ export default function useScrollScene(enabled: boolean) {
             glint.style.opacity = exposure.glint.toFixed(3)
             glint.style.setProperty('--reflection-x', `${exposure.sweep.toFixed(1)}%`)
           }
+          if (glass) {
+            glass.style.opacity = exposure.glass.toFixed(3)
+            glass.style.visibility = exposure.glass > 0.001 ? 'visible' : 'hidden'
+            glass.style.setProperty('--display-reflection-x', `${exposure.glassX.toFixed(1)}%`)
+          }
         }
         const expose = (from: Partial<typeof exposure>, to: Partial<typeof exposure>, duration: number, ease: string, at: number) =>
           facesTl.fromTo(exposure, from, { ...to, duration, ease, onUpdate: writeExposure, immediateRender: false }, at)
@@ -726,6 +747,10 @@ export default function useScrollScene(enabled: boolean) {
         expose({ glint: 0 }, { glint: 0.55 }, 0.07, 'sine.out', 0.45)
         expose({ glint: 0.55 }, { glint: 0 }, 0.09, 'sine.in', 0.52)
         expose({ sweep: 120 }, { sweep: -20 }, 0.16, 'none', 0.45)
+        // display 유리 반사: 44 ~ 62%. 세기 0 -> 1 -> 0(최대 = gradient 정점 0.22), 빛줄기는 왼쪽 위에서 오른쪽 아래로.
+        expose({ glass: 0 }, { glass: 1 }, 0.08, 'sine.out', 0.44)
+        expose({ glass: 1 }, { glass: 0 }, 0.1, 'sine.in', 0.52)
+        expose({ glassX: 100 }, { glassX: 0 }, 0.18, 'none', 0.44)
 
         /*
          * Crown이 정면 controller가 된 직후 딱 한 번 도는 cue.
@@ -766,10 +791,14 @@ export default function useScrollScene(enabled: boolean) {
         // About -> FACES 노출은 tween 대상이 proxy라 직접 쓴 style을 여기서 지운다.
         const bloom = document.querySelector<HTMLElement>('.about-faces-bloom')
         for (const prop of ['opacity', 'visibility', 'transform']) bloom?.style.removeProperty(prop)
-        for (const el of [stage, watchLayer, faces?.querySelector<HTMLElement>('.faces__scene')]) el?.style.removeProperty('filter')
+        for (const el of [stage, watch.querySelector<HTMLElement>('.watch__case'), crown, faces?.querySelector<HTMLElement>('.faces__scene')]) {
+          el?.style.removeProperty('filter')
+        }
         const glint = watch.querySelector<HTMLElement>('.watch__reflection')
         glint?.style.removeProperty('opacity')
         glint?.style.removeProperty('--reflection-x')
+        const glass = watch.querySelector<HTMLElement>('.watch-display-transition-reflection')
+        for (const prop of ['opacity', 'visibility', '--display-reflection-x']) glass?.style.removeProperty(prop)
         crown?.removeEventListener('animationend', clearCue)
         crown?.classList.remove('watch__crown--controller', 'watch__crown--cue')
         // 방향은 tween이 아니라 applyCrown이 직접 쓴 값이라 여기서 지운다.

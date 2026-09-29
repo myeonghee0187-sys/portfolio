@@ -132,10 +132,11 @@
   padding: calc(40 * var(--about-u));
   overflow: hidden;
   /*
-   * 기본 black glass hairline. 색은 흰 빛뿐이다 — Primary Blue는 아래 전용 layer가 따로 맡는다.
-   * (예전에는 여기에 --focus로 파랑을 섞어서, 같은 짝의 두 장이 HOLD에서 동시에 파랗게 켜졌다.)
+   * 기본 hairline. UI border 색은 Portfolio 전체가 Electric Ice(#186DE5) 하나다.
+   * 읽는 중인 한 장(Primary)은 아래 전용 layer가 같은 색을 불투명하게 한 번 더 두른다 —
+   * 기본 선은 옅게 두어 같은 짝의 두 장이 HOLD에서 동시에 켜진 것처럼 보이지 않는다.
    */
-  border: 1px solid rgb(255 255 255 / calc(0.12 * var(--material)));
+  border: 1px solid rgb(24 109 229 / calc(0.4 * var(--material)));
   border-radius: calc(24 * var(--about-u));
   background:
     linear-gradient(
@@ -207,7 +208,7 @@
 .about__card > .about__card-primary {
   position: absolute;
   inset: 0;
-  border: 1px solid rgb(24 109 229 / 0.58);
+  border: 1px solid #186de5;
   border-radius: calc(24 * var(--about-u) - 1px);
   box-shadow: inset 0 0 18px rgb(24 109 229 / 0.08);
   opacity: var(--about-primary-border-opacity);

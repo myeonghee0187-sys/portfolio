@@ -41,26 +41,25 @@ const TEXT_SWAP_DELAY_SEC = (TEXT_FADE_MS + TEXT_SWAP_GAP_MS) / 1000
 
 /*
  * 전환 시간은 영상 길이에서 거꾸로 잡는다(video.duration). 영상이 바뀌어도 끝부분에서 같은 길이로 진행된다.
- *   start = duration - END_MARGIN - TRANSITION_DURATION
- * 끝을 영상 끝보다 END_MARGIN만큼 앞에 두어, 영상의 ended(이른 종료 경로)보다 전환이 먼저 끝나게 한다.
- * opening-watch-final.mp4(5.04s)에서는 3.89 -> 4.94s다. 이 구간은 Watch display 유리를 아주 가까이서 보는 장면이다.
+ *   start = duration - TRANSITION_DURATION
+ * 전환의 끝이 곧 영상의 끝이다. 영상이 끝난 뒤(ended)에도 마지막 frame 그대로 전환을 마저 닫는다.
+ * opening-watch-final.mp4(5.04s)에서는 3.89 -> 5.04s다. 이 구간은 Watch display 유리를 아주 가까이서 보는 장면이다.
  */
-const TRANSITION_DURATION = 1.05
-const END_MARGIN = 0.1
+const TRANSITION_DURATION = 1.15
 /** reduced motion: 확대 없이 Carbon Black fade만 짧게. */
 const TRANSITION_DURATION_REDUCED = 0.45
 
 /*
  * 전환 진행률(0 -> 1) 구간.
  *   0    ~ 0.2   문구가 사라진다
- *   0.05 ~ 0.8   Watch display 쪽으로 확대 (1.05s 기준 약 0.79s) — 시작 직후부터 천천히, 끝에 몰리지 않게 power2.inOut
+ *   0.05 ~ 0.8   Watch display 쪽으로 확대 (1.15s 기준 약 0.86s) — 시작 직후부터 천천히, 끝에 몰리지 않게 power2.inOut
  *   0    ~ 1     Carbon Black overlay (OVERLAY_KEYS). 초반은 옅게 두어 확대가 먼저 보인다
- *   0.78 ~ 1     Intro 전체가 사라지며 아래의 Hero가 그대로 드러난다 (약 0.23s)
+ *   0.8  ~ 1     Intro 전체가 사라지며 아래의 Hero가 그대로 드러난다 (약 0.23s)
  */
 const ZOOM_FROM = 0.05
 const ZOOM_TO = 0.8
 const ZOOM_EASE = 'power2.inOut'
-const ZOOM_SCALE = 1.17
+const ZOOM_SCALE = 1.16
 /** 좁은 화면은 cover crop 때문에 초점이 이미 화면을 크게 차지한다. 확대를 약하게 한다. */
 const ZOOM_SCALE_NARROW = 1.1
 
@@ -71,18 +70,21 @@ const ZOOM_SCALE_NARROW = 1.1
  */
 const ZOOM_FOCUS = { x: 0.58, y: 0.36 }
 
-/** Carbon Black overlay의 opacity keyframe(전환 진행률 → opacity). 뒤로 갈수록 빨리 짙어진다. */
+/**
+ * Carbon Black overlay의 opacity keyframe(전환 진행률 → opacity). 뒤로 갈수록 빨리 짙어진다.
+ * 확대가 먼저 보이고(0.3까지 0.08), Hero가 비치기 전에 화면이 충분히 가라앉는다(0.88에 0.78).
+ */
 const OVERLAY_KEYS: ReadonlyArray<readonly [number, number]> = [
   [0, 0],
-  [0.25, 0.06],
-  [0.5, 0.18],
-  [0.7, 0.42],
-  [0.85, 0.76],
+  [0.3, 0.08],
+  [0.55, 0.24],
+  [0.75, 0.48],
+  [0.88, 0.78],
   [1, 1],
 ]
 
 /** Intro 전체가 사라지기 시작하는 진행률. 그 전까지 Hero는 Intro 아래에 가려져 있다. */
-const REVEAL_AT = 0.78
+const REVEAL_AT = 0.8
 
 /** 문구는 전환 시작과 함께 사라진다(전환의 앞 20%). */
 const CAPTION_OUT_MS = 210
@@ -167,7 +169,7 @@ export default function IntroVideo({ onFinish }: IntroVideoProps) {
     /** 전환 시작(영상 시간). duration을 알기 전에는 시작하지 않는다. */
     const transitionStart = () =>
       Number.isFinite(video.duration) && video.duration > 0
-        ? Math.max(0, video.duration - END_MARGIN - transitionDuration)
+        ? Math.max(0, video.duration - transitionDuration)
         : Infinity
 
     /** 'playing' → 'ending'(영상 시간에 묶인 전환) / 'closing'(짧은 종료) → 'done' */
@@ -186,8 +188,9 @@ export default function IntroVideo({ onFinish }: IntroVideoProps) {
     }
 
     /*
-     * 스크롤 잠금은 Hero가 드러나기 직전에 푼다. 잠금 중에는 스크롤바가 없어 page가 스크롤바 폭만큼 넓은데,
-     * Intro가 완전히 덮고 있을 때 풀어야 Hero가 보이는 동안 좌우로 밀리지 않는다.
+     * 스크롤 잠금은 전환이 시작될 때 푼다(Intro가 아직 화면을 완전히 덮고 있다). 잠금 중에는 스크롤바가 없어
+     * page가 스크롤바 폭만큼 넓은데, 풀면서 page 전체를 한 번 다시 배치한다(약 50 ~ 70ms). 그 비용이
+     * 확대가 거의 움직이지 않는 시작 순간에 치러지고, Hero가 드러나는 동안에는 생기지 않는다.
      * 스크롤바 자체는 Intro가 사라질 때까지 투명하다.
      */
     const unlockScroll = () => {
@@ -216,7 +219,6 @@ export default function IntroVideo({ onFinish }: IntroVideoProps) {
       ending.style.opacity = overlayAt(progress).toFixed(4)
       const reveal = Math.min(1, Math.max(0, (progress - REVEAL_AT) / (1 - REVEAL_AT)))
       intro.style.opacity = (1 - revealEase(reveal)).toFixed(4)
-      if (progress >= REVEAL_AT) unlockScroll()
     }
 
     const updateCaption = (time: number) => {
@@ -234,13 +236,15 @@ export default function IntroVideo({ onFinish }: IntroVideoProps) {
 
     const sync = () => {
       if (phase === 'done' || phase === 'closing') return
-      const time = video.currentTime
+      // 끝난 영상은 마지막 frame에 멈춰 있다. 그 시점은 곧 전환의 끝이다.
+      const time = video.ended ? video.duration : video.currentTime
       updateCaption(time)
       const progress = (time - transitionStart()) / transitionDuration
       if (progress <= 0) return
       if (phase === 'playing') {
         phase = 'ending'
         gsap.set(video, { transformOrigin: focusOrigin() })
+        unlockScroll()
       }
       renderEnding(Math.min(1, progress))
       if (progress >= 1) finish()
@@ -262,8 +266,14 @@ export default function IntroVideo({ onFinish }: IntroVideoProps) {
     }
     quickCloseRef.current = close
 
-    // 전환이 끝나기 전에 영상이 먼저 끝나면(느린 기기 / 재생 속도 차이) 남은 전환을 짧게 마무리한다.
-    const onEnded = () => close()
+    /*
+     * 영상이 끝났다. 전환은 영상 끝에서 함께 끝나므로 보통은 그대로 progress 1까지 그린다.
+     * 전환이 아예 시작되지 않은 채 끝난 경우(duration을 늦게 알았다 등)에만 짧게 닫는다.
+     */
+    const onEnded = () => {
+      if (phase === 'ending') sync()
+      else close()
+    }
 
     // 창이 가려져 RAF가 제한되어도 영상 재생 위치와 문구 / 전환을 동기화한다.
     video.addEventListener('timeupdate', sync)
