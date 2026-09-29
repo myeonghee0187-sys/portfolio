@@ -12,6 +12,11 @@
    */
   --color-carbon-black: #08090a;
   /*
+   * 숫자 / 시간 / index UI 서체(Watch 시간, Crown 시간, Journey 시간, FACE 01, PROJECTS 03, 날짜).
+   * 본문 문장의 쉼표 / 마침표까지 바꾸지 않도록 이 token을 숫자 UI에만 쓴다.
+   */
+  --font-numeric: 'Geist Variable', 'Geist', 'Inter', system-ui, sans-serif;
+  /*
    * Journey -> Contact handoff 빛의 모양(색 stop). Journey 아래 끝(.journey__handoff)과 Contact 윗변(.contact::before)이
    * 같은 크기의 ellipse를 서로 마주 보게 그린다 — 두 section이 맞닿는 선에서 밝기가 양쪽 모두 같아 경계가 보이지 않는다.
    */

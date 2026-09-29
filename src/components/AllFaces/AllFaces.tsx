@@ -2,37 +2,39 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { createPortal } from 'react-dom'
 import gsap from 'gsap'
 import { FACE_PROJECTS } from '../Faces/facesData'
-import { MOBILE_QUERY, randomFloat, randomLayout } from './allFacesLayout'
+import { DESKTOP_PRESETS, MOBILE_PRESETS, MOBILE_QUERY } from './allFacesPresets'
+import { getAllFacesPreset } from './allFacesStore'
 import './AllFaces.css'
 
 /*
- * ALL FACES — Digital Crown을 누르면 열리는 전체 project 화면.
+ * ALL FACES — Digital Crown을 누르면 열리는 전체 project 화면. 세 project를 고르는 "Watch face / dial" 선택 화면이다.
  *
- * 화면(overlay)은 고정된 한 장(100vh / 100dvh)이다 — world / drag / 관성 / wheel 이동 / camera pan이 없다.
- * 대신 세 원형 object가 "공중에 떠 있는 전시 object"처럼 보이도록
- *   1. 열 때(mount)마다 안전 영역 안에서 새 base 자리를 한 번 뽑는다(allFacesLayout.ts). 열려 있는 동안은 다시 뽑지 않는다.
- *      닫으면 unmount되므로 다시 열거나 새로고침하면 배치가 바뀐다.
- *   2. 각 원은 그 base 자리 근처에서만 아주 작게 떠 있다(CSS animation, project마다 다른 진폭 / 주기 / 위상).
- *
- * project는 영상 card가 아니라 원형 object다(원을 꽉 채운 배경 이미지 + 가운데 logo). 이 화면은 영상을 쓰지 않는다 —
- * FACES section은 같은 FACE_PROJECTS의 media를 그대로 쓴다(데이터는 공용, 그리는 쪽만 다르다).
- *
- *   hover  원이 1.03배, 테두리가 조금 선명해지고 나머지 원은 옅어진다(floating과 다른 layer라 서로 덮어쓰지 않는다)
- *   click  onProjectSelect(click / Enter). Case Study가 아직 없어서 지금은 연결돼 있지 않다
+ * 화면(overlay)은 고정된 한 장(100vh / 100dvh)이다 — world / drag / 관성 / floating이 없다.
+ *   구도      미리 설계한 A / B / C 중 하나(allFacesPresets.ts). 여는 동작에서 한 번 고르고(allFacesStore),
+ *             열려 있는 동안은 바뀌지 않는다. 직전 구도는 다시 고르지 않는다.
+ *   dial      이미지 / logo 없이 글자(FACE 01 · project 이름 · 설명 두 줄)와 Watch dial 테두리(눈금 rim)뿐이다.
+ *   motion    dial 위치와 글자는 움직이지 않는다. 바깥 rim만 30~45초에 한 바퀴 아주 느리게 돈다(reduced motion에서는 멈춘다).
+ *   hover     dial이 1.04배, rim이 Electric Ice로 선명해지고 나머지 dial은 옅어진다.
+ *   click     onProjectSelect(click / Enter). Case Study가 아직 없어서 지금은 연결돼 있지 않다(가짜 링크 없음).
+ * 이 화면은 영상 / 이미지를 쓰지 않는다 — FACES section은 같은 FACE_PROJECTS의 media를 그대로 쓴다.
  */
 
-/**
- * 원 지름 대비 logo 폭. Figma node 안의 logo 비율을 원에 맞게 옮겼다(F45는 작은 심볼, TCHAIKIM은 두 줄 wordmark,
- * JADUYA는 캐릭터 + 글자). 원을 답답하게 채우지 않도록 60%를 넘지 않는다.
- */
-const LOGO_WIDTH: Record<string, number> = { f45: 38, tchaikim: 58, jaduya: 54 }
-
-/** 열릴 때 출발하는 방향(px). 들어온 뒤에는 0이다. */
-const ENTER_FROM: Record<string, { x: number; y: number }> = {
-  f45: { x: -44, y: 32 },
-  tchaikim: { x: 52, y: -30 },
-  jaduya: { x: 10, y: 56 },
+/** dial 안의 설명 두 줄(FACES metadata의 category를 dial 폭에 맞게 나눈 것). */
+const DIAL_LINES: Record<string, [string, string]> = {
+  tchaikim: ['FASHION BRAND', 'WEB REDESIGN'],
+  jaduya: ['MOBILE UX/UI', 'PLATFORM'],
+  f45: ['RESPONSIVE WEB', 'REDESIGN'],
 }
+
+/** rim 한 바퀴 시간(s)과 방향. project마다 조금씩 다르다. */
+const RIM: Record<string, { duration: number; reverse?: boolean }> = {
+  tchaikim: { duration: 38 },
+  jaduya: { duration: 44, reverse: true },
+  f45: { duration: 34 },
+}
+
+/** 열릴 때 dial이 출발하는 거리(px, 30~50). 화면 가운데에서 바깥쪽으로 조금 밀린 자리에서 제자리로 온다. */
+const ENTER_DISTANCE = 40
 
 /** 뒤 page를 scroll시키는 키. button 위의 Space / Enter는 막지 않는다. */
 const SCROLL_KEYS = new Set(['PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
@@ -51,6 +53,15 @@ type AllFacesProps = {
   onProjectSelect?: (projectId: string) => void
 }
 
+/** dial 중심에서 화면 가운데 반대쪽을 향한 ENTER_DISTANCE 길이의 출발 offset. */
+function enterOffset(center?: { cx: number; cy: number }) {
+  if (!center) return { x: 0, y: ENTER_DISTANCE }
+  const dx = center.cx - 0.5
+  const dy = center.cy - 0.5
+  const len = Math.hypot(dx, dy) || 1
+  return { x: (dx / len) * ENTER_DISTANCE, y: (dy / len) * ENTER_DISTANCE }
+}
+
 export default function AllFaces({ open, onRequestClose, onClosed, onProjectSelect }: AllFacesProps) {
   const projects = FACE_PROJECTS
   const rootRef = useRef<HTMLDivElement>(null)
@@ -61,17 +72,13 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
   const returnFocus = useRef<HTMLElement | null>(document.activeElement as HTMLElement | null)
   const [hovered, setHovered] = useState(-1)
   /*
-   * 이번에 열린 동안의 배치와 floating 값. 첫 render에서 한 번만 뽑는다(state 초기값) — 열려 있는 동안 창 크기가 바뀌거나
-   * 다시 render되어도 바뀌지 않는다. 닫으면 이 component가 unmount되므로 다음에 열 때 새로 뽑는다.
+   * 이번에 열린 동안의 구도. 구도(A / B / C)는 여는 동작에서 이미 정해졌고(allFacesStore), 여기서는 읽기만 한다.
+   * 데스크톱 / 모바일 좌표는 열 때 한 번 고른다 — 열려 있는 동안 창 크기가 바뀌어도 dial이 다른 자리로 뛰지 않는다.
    */
   const [scene] = useState(() => {
+    const key = getAllFacesPreset()
     const mobile = window.matchMedia(MOBILE_QUERY).matches
-    const vw = document.documentElement.clientWidth
-    const vh = window.innerHeight
-    return {
-      places: randomLayout(projects.map((p) => p.id), vw, vh, mobile),
-      floats: projects.map(() => randomFloat(mobile)),
-    }
+    return { key, centers: (mobile ? MOBILE_PRESETS : DESKTOP_PRESETS)[key] }
   })
   const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -90,10 +97,11 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
         {
           opacity: 0,
           scale: 0.96,
-          x: (i: number) => ENTER_FROM[projects[i].id]?.x ?? 0,
-          y: (i: number) => ENTER_FROM[projects[i].id]?.y ?? 40,
+          // 화면 가운데에서 바깥쪽으로 ENTER_DISTANCE만큼 밀린 자리에서 출발해 구도의 자리에 정착한다.
+          x: (i: number) => enterOffset(scene.centers[projects[i].id]).x,
+          y: (i: number) => enterOffset(scene.centers[projects[i].id]).y,
         },
-        { opacity: 1, scale: 1, x: 0, y: 0, duration: 0.8, ease: 'power3.out', stagger: 0.07 },
+        { opacity: 1, scale: 1, x: 0, y: 0, duration: 0.78, ease: 'power3.out', stagger: 0.07 },
         0.08,
       )
     }
@@ -102,7 +110,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
     return () => {
       tl.kill()
     }
-  }, [projects, reduced])
+  }, [projects, reduced, scene])
 
   /* ---------- 닫기: open이 false가 되면 ---------- */
   const onClosedRef = useRef(onClosed)
@@ -209,23 +217,18 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
       aria-modal="true"
       aria-labelledby="all-faces-title"
       data-selectable={onProjectSelect ? 'true' : undefined}
+      data-preset={scene.key}
     >
       <div className="all-faces__stage" data-hovered={hovered >= 0 ? 'true' : undefined}>
         {projects.map((project, i) => {
-          const place = scene.places[i]
-          const float = scene.floats[i]
+          const center = scene.centers[project.id] ?? { cx: 0.5, cy: 0.5 }
+          const rim = RIM[project.id] ?? { duration: 40 }
+          const [line1, line2] = DIAL_LINES[project.id] ?? [project.category, '']
           const style = {
-            '--cx': place.cx,
-            '--cy': place.cy,
-            '--ax': `${float.ax.toFixed(1)}px`,
-            '--ay': `${float.ay.toFixed(1)}px`,
-            '--rot': `${float.rot.toFixed(2)}deg`,
-            '--breath': float.scale.toFixed(3),
-            '--dx': `${float.dx.toFixed(2)}s`,
-            '--dy': `${float.dy.toFixed(2)}s`,
-            '--px': `${float.px.toFixed(2)}s`,
-            '--py': `${float.py.toFixed(2)}s`,
-            '--logo-w': `${LOGO_WIDTH[project.id] ?? 50}%`,
+            '--cx': center.cx,
+            '--cy': center.cy,
+            '--rim-duration': `${rim.duration}s`,
+            '--rim-direction': rim.reverse ? 'reverse' : 'normal',
           } as CSSProperties
           return (
             <figure
@@ -236,30 +239,25 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
               className={`all-faces__project${hovered === i ? ' is-hovered' : ''}`}
               style={style}
               tabIndex={0}
-              aria-label={`${project.title}, ${project.category}`}
+              aria-label={`FACE ${project.index}, ${project.title}, ${project.category}`}
               onPointerEnter={(e) => e.pointerType === 'mouse' && setHovered(i)}
               onPointerLeave={() => setHovered((h) => (h === i ? -1 : h))}
               onFocus={() => setHovered(i)}
               onBlur={() => setHovered((h) => (h === i ? -1 : h))}
               onClick={() => onProjectSelect?.(project.id)}
             >
-              {/* floating: 가로(drift-x)와 세로 + 회전 + 숨쉬기(drift-y)를 다른 주기로 겹친다. hover 크기는 안쪽 __circle. */}
-              <div className="all-faces__drift-x">
-                <div className="all-faces__drift-y">
-                  {/*
-                    원형 object. 원을 꽉 채운 배경 이미지 위 정중앙에 logo.
-                    asset이 없는 project는 이름만 가운데에 둔다(임시 fallback — 글자로 가짜 logo를 만들지 않는다).
-                  */}
-                  <div className="all-faces__circle" data-visual={project.orbImage ? 'image' : 'text'}>
-                    {project.orbImage && <img className="all-faces__bg" src={project.orbImage} alt="" draggable={false} />}
-                    {project.logo ? (
-                      <img className="all-faces__logo" src={project.logo} alt={`${project.title} 로고`} draggable={false} />
-                    ) : (
-                      <span className="all-faces__name" aria-hidden="true">
-                        {project.title}
-                      </span>
-                    )}
-                  </div>
+              {/*
+                project dial. 층: 몸체(Carbon / Titanium dark) -> 고정 외곽선 -> 도는 눈금 rim -> 글자(돌지 않는다).
+              */}
+              <div className="all-faces__dial" aria-hidden="true">
+                <span className="all-faces__rim" />
+                <div className="all-faces__dial-content">
+                  <span className="all-faces__face">FACE {project.index}</span>
+                  <span className="all-faces__name">{project.title}</span>
+                  <span className="all-faces__desc">
+                    <span>{line1}</span>
+                    {line2 && <span>{line2}</span>}
+                  </span>
                 </div>
               </div>
             </figure>

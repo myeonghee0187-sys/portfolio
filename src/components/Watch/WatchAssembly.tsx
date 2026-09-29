@@ -1,4 +1,4 @@
-import useCurrentTime from '../../hooks/useCurrentTime'
+import { STORY_TIME, WATCH_ROLE } from '../../story/storyTime'
 import watchFaceSrc from '../../../assets/img/watch_face.png'
 import DigitalCrown from './DigitalCrown'
 import './WatchAssembly.css'
@@ -48,8 +48,15 @@ export default function WatchAssembly({
   withCrown = true,
   crownOpensAllFaces = false,
 }: WatchAssemblyProps) {
-  // Hero / About이 같은 source를 쓴다. 값이 새로 만들어지지 않고 그대로 이어진다.
-  const currentTime = useCurrentTime()
+  /*
+   * Watch 시간은 실시간 시계가 아니라 장면마다 정해 둔 storytelling 값이다(story/storyTime.ts).
+   * stage Watch는 Hero -> About을 하나의 element로 이어 가므로 두 값을 겹쳐 두고,
+   * useScrollScene이 morph 도중(크기가 가장 작을 때) 09 : 20 -> 11 : 10으로 바꾼다.
+   */
+  const times =
+    variant === 'stage'
+      ? [STORY_TIME.hero, STORY_TIME.about]
+      : [variant === 'contact' ? STORY_TIME.contact : variant === 'about' ? STORY_TIME.about : STORY_TIME.hero]
 
   return (
     <div className={`watch watch--${variant}`}>
@@ -84,7 +91,7 @@ export default function WatchAssembly({
       {(variant === 'stage' || variant === 'contact') && <div className="watch__reflection" />}
 
       {/*
-        시계 / 이름 / WEB DESIGNER / 제목. Hero·About·Contact가 같은 watch face를 쓴다.
+        시계 / 이름 / PRODUCT DESIGNER / 제목. Hero·About·Contact가 같은 watch face를 쓴다.
         FACES로 넘어가면서 이 묶음 전체가 한 번에 빠진다(안쪽 요소들의 Hero -> About morph와 분리).
         Contact는 About의 배치를 그대로 쓰고, 제목만 NEXT FACE다(WatchAssembly.css).
       */}
@@ -95,16 +102,24 @@ export default function WatchAssembly({
               time / name은 Hero <-> About에서 살아남는 두 요소다.
               지우고 다시 만드는 대신 transform(위치·크기)과 color만 바뀐다.
             */}
-            <p className="watch__time">{currentTime}</p>
+            <p className="watch__time">
+              {times.map((time, i) => (
+                <span key={time} className="watch__time-value" data-step={i}>
+                  {time}
+                </span>
+              ))}
+            </p>
             <div className="watch__info">
               <p className="watch__name">SONG MYEONG HEE</p>
               {/* Hero와 Contact에 보인다. About으로 가면서 사라진다. */}
-              <p className="watch__role">WEB DESIGNER</p>
+              <p className="watch__role">{WATCH_ROLE}</p>
             </div>
           </div>
 
           <div className="watch__meta">
-            <p className="watch__works">PROJECTS {String(WORKS_COUNT).padStart(2, '0')}</p>
+            <p className="watch__works">
+              PROJECTS <span className="watch__num">{String(WORKS_COUNT).padStart(2, '0')}</span>
+            </p>
             <p className="watch__status">
               <span>OPEN TO WORK</span>
             </p>

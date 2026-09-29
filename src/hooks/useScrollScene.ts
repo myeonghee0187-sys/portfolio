@@ -17,7 +17,8 @@ gsap.registerPlugin(ScrollTrigger)
  * name: Hero 중심 318 -> About 중심 142.5,                     48px -> 25px
  */
 const TIME_MORPH = { y: -48, scale: 0.3125 }
-const NAME_MORPH = { y: -175.5, scale: 0.5208333 }
+/** 이름 44px -> About 25px. */
+const NAME_MORPH = { y: -175.5, scale: 0.5681818 }
 
 /** About pinned 구간의 길이. 뷰포트 높이의 3배(= 300vh). */
 const PIN_VIEWPORTS = 3
@@ -242,12 +243,22 @@ export default function useScrollScene(enabled: boolean) {
       )
 
       /*
-       * Figma의 About 서체 굵기(IBM Plex Sans 400 / Inter Medium 500)로 한 번에 바꾼다.
+       * Figma의 About 서체 굵기(Geist 400 / Inter Medium 500)로 한 번에 바꾼다.
        * font-weight는 레이아웃을 다시 계산시키므로 매 프레임 보간하지 않고
        * 이 지점을 지날 때만 전환한다. 되감으면 GSAP이 Hero 값으로 되돌린다.
        */
       watchTl.set(time, { fontWeight: 400 }, 0.62)
       watchTl.set(name, { fontWeight: 500 }, 0.62)
+
+      /*
+       * 시간: Hero 09 : 20 -> About 11 : 10(story/storyTime.ts). 크기가 줄어드는 도중에 짧게 겹쳐 바뀐다.
+       * scroll에 묶인 값이라 되감으면 09 : 20으로 돌아온다.
+       */
+      const [heroTime, aboutTime] = gsap.utils.toArray<HTMLElement>(time.querySelectorAll('.watch__time-value'))
+      if (heroTime && aboutTime) {
+        watchTl.fromTo(heroTime, { opacity: 1 }, { opacity: 0, ease: 'none', duration: 0.08 }, 0.52)
+        watchTl.fromTo(aboutTime, { opacity: 0 }, { opacity: 1, ease: 'none', duration: 0.08 }, 0.56)
+      }
 
       // 58~82%: About 타이틀이 들어온다.
       watchTl.fromTo(title, { opacity: 0 }, { opacity: 1, ease: 'none', duration: 0.24 }, 0.58)
@@ -612,6 +623,8 @@ export default function useScrollScene(enabled: boolean) {
               rotate: 14 * (1 - front),
               autoAlpha: segment(turn, 0.46, 0.68),
             })
+            // 정면으로 다 돌아선 뒤에만 Crown 시간(13 : 30)이 보인다. 돌아서는 도중의 기울기를 따라가지 않는다.
+            crown.classList.toggle('watch__crown--front-settled', front > 0.995)
           }
           // Watch에 다시 결합한 Crown은 부품이다. 눌리지 않는다.
           setController(facesProgress > 0.55 && crownLink.attach < 0.5)
@@ -800,7 +813,7 @@ export default function useScrollScene(enabled: boolean) {
         const glass = watch.querySelector<HTMLElement>('.watch-display-transition-reflection')
         for (const prop of ['opacity', 'visibility', '--display-reflection-x']) glass?.style.removeProperty(prop)
         crown?.removeEventListener('animationend', clearCue)
-        crown?.classList.remove('watch__crown--controller', 'watch__crown--cue')
+        crown?.classList.remove('watch__crown--controller', 'watch__crown--cue', 'watch__crown--front-settled')
         // 방향은 tween이 아니라 applyCrown이 직접 쓴 값이라 여기서 지운다.
         crownLink.refresh = () => {}
         if (crownSide && crownFront) gsap.set([crownSide, crownFront], { clearProps: 'transform,opacity,visibility' })

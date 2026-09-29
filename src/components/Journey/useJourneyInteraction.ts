@@ -1,7 +1,7 @@
 import { useLayoutEffect, type RefObject } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { JOURNEY_NODES } from './journeyData'
+import { JOURNEY_NODES, JOURNEY_TIMES } from './journeyData'
 import { HANDOFF_VIEWPORTS, JOURNEY_VIEWPORTS, PANEL_TRIGGER_ID, panelTiming } from '../../hooks/panelTiming'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -28,6 +28,12 @@ const SMOOTHING = 0.14
  * 화면 아래에서 들어온다. [진행률, opacity] — 0.78까지 0, 0.90에 0.12, 1.00에 0.35.
  * 이어서 Contact의 Light Rays가 0.35에서 출발해 0.5까지 올라간다(useContactScene).
  */
+/**
+ * Journey 시간 글자의 opacity. 빛이 from card를 떠나 구간 가운데에 올 때까지 0 -> .08,
+ * to card에 닿을 때까지 .08 -> .11. 그 뒤로는 .11로 남는다(지나간 시간의 흔적). 되감으면 같은 값을 거꾸로 지난다.
+ */
+const TIME_TRACE = { approach: 0.08, passed: 0.11 }
+
 const CONTACT_AMBIENT: ReadonlyArray<readonly [number, number]> = [
   [0.78, 0],
   [0.9, 0.12],
@@ -154,6 +160,8 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
     const nodes = JOURNEY_NODES.map(n => world.querySelector<HTMLElement>(`[data-node="${n.id}"]`)!)
     const active = world.querySelector<SVGPathElement>('.journey__path-active')!
     const paths = world.querySelectorAll<SVGPathElement>('.journey__path path')
+    const times = [...world.querySelectorAll<HTMLElement>('.journey__time')]
+    const timeWritten = new Map<HTMLElement, string>()
 
     /*
      * 경로 기하. card의 실제 크기를 재서, 경로 쪽 변 안쪽의 점(anchorOf)을 Catmull-Rom 곡선으로 잇는다.
@@ -206,6 +214,18 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
         gsap.set(world, { y: +y })
         lastY = y
       }
+
+      // 하루의 시간. 새 scroll listener 없이 빛의 진행률(p)과 card mark로만 정한다.
+      times.forEach((el, k) => {
+        const t = JOURNEY_TIMES[k]
+        if (!t) return
+        const start = m[t.from]
+        const mid = (m[t.from] + m[t.to]) / 2
+        const opacity = piecewise([[start, 0], [mid, TIME_TRACE.approach], [m[t.to], TIME_TRACE.passed]], p).toFixed(3)
+        if (timeWritten.get(el) === opacity) return
+        timeWritten.set(el, opacity)
+        el.style.setProperty('--time-o', opacity)
+      })
 
       nodes.forEach((node, i) => {
         const nodeIn = i === 0 ? 1 : clamp01((p - (m[i] - NODE_RAMP)) / NODE_RAMP)
@@ -303,6 +323,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
        */
       active.style.strokeDasharray = `${L}px ${L + 4}px`
       written.clear()
+      timeWritten.clear()
       lastY = ''
       lastOffset = ''
       lastAmbient = ''
@@ -339,11 +360,17 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
        * FACES와 Journey는 같은 pin 하나 안에 있다(nested pin 없음). 이 구간에서 pin이 풀리지 않으므로
        * 풀리는 순간의 1 frame jump가 생길 자리가 없다. pin은 Journey가 끝난 뒤 Contact에서만 풀린다.
        */
+      /*
+       * FACES의 Crown 시간(13 : 30)은 FACES 동안만이다. Journey가 올라오기 시작하면 걷히고(Journey는 line 옆 여백의
+       * 14 : 10 -> 17 : 00이 시간을 이어받는다), 되감아 FACES로 돌아가면 다시 보인다. 두 시계가 동시에 다른 시간을 말하지 않는다.
+       */
+      const crownEl = document.querySelector<HTMLElement>('.watch--stage .watch__crown')
+      const syncCrownTime = (progress: number) => crownEl?.classList.toggle('watch__crown--time-hidden', progress > 0.3)
       const handoff = gsap.timeline({ scrollTrigger: {
         id: 'faces-journey-handoff', trigger: section, start: handoffStart, end: journeyStart,
         scrub: 1.15, invalidateOnRefresh: true, refreshPriority: -2,
-        onUpdate: self => { panelTiming.handoff = self.progress },
-        onRefresh: self => { panelTiming.handoff = self.progress },
+        onUpdate: self => { panelTiming.handoff = self.progress; syncCrownTime(self.progress) },
+        onRefresh: self => { panelTiming.handoff = self.progress; syncCrownTime(self.progress) },
       } })
       handoff.fromTo(section, { yPercent: 100, y: 0 }, { yPercent: 0, ease: softLanding, duration: 0.80 }, 0.08)
       if (facesScene) handoff.fromTo(facesScene, { scale: 1, opacity: 1 }, { scale: 0.95, opacity: 0.35, ease: 'none', duration: 0.75 }, 0.15)
@@ -386,6 +413,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       stage.style.removeProperty('--contact-ambient')
       active.style.removeProperty('stroke-dasharray')
       active.style.removeProperty('stroke-dashoffset')
+      for (const el of times) el.style.removeProperty('--time-o')
       for (const node of nodes) {
         node.style.removeProperty('--node-in')
         node.style.removeProperty('--node-out')
@@ -393,6 +421,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       gsap.set(world, { clearProps: 'transform' })
       if (import.meta.env.DEV) delete stage.dataset.line
       panelTiming.handoff = 0
+      document.querySelector('.watch--stage .watch__crown')?.classList.remove('watch__crown--time-hidden')
     }
   }, [enabled, sectionRef, stageRef, worldRef])
 }

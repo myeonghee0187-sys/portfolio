@@ -1,0 +1,40 @@
+.rotating-words {
+  display: inline-flex;
+}
+
+/* 보조기술용 원래 문장. */
+.rotating-words__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 단어 사이 간격은 공백 한 칸(글자 크기 기준)이다. */
+.rotating-words__visual {
+  display: inline-flex;
+  gap: 0.34em;
+}
+
+/* 단어 하나의 칸. 폭 / 높이는 단어 그대로이고, 위아래로 굴러가는 부분은 잘려 보이지 않는다. */
+.rotating-words__word {
+  display: inline-block;
+  height: 1.2em;
+  overflow: hidden;
+  line-height: 1.2;
+}
+
+/* 같은 단어 두 줄. -50%면 아래 줄(같은 단어)이 칸에 들어온다. */
+.rotating-words__track {
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+
+.rotating-words__track > span {
+  display: block;
+  height: 1.2em;
+  white-space: nowrap;
+}

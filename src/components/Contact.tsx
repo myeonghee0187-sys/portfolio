@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import WatchAssembly from './Watch/WatchAssembly'
 import ContactModal from './ContactModal'
+import RotatingWords from './RotatingWords'
 import LightRays from './LightRays/LightRays'
 import useContactScene from '../hooks/useContactScene'
 import { useAllFacesOpen } from './AllFaces/allFacesStore'
@@ -135,7 +136,9 @@ export default function Contact({ interactive, ready }: ContactProps) {
               onClick={() => setFormOpen(true)}
               data-contact-reveal="16"
             >
-              START A CONVERSATION <span aria-hidden="true">&#8599;</span>
+              {/* hover / keyboard focus 때 한 번, 가운데 단어부터 굴러 올라온다(문구는 그대로). */}
+              <RotatingWords text="START A CONVERSATION" />
+              <span aria-hidden="true">&#8599;</span>
             </button>
             {/* 메일 앱으로 가지 않고 주소를 복사한다. 줄 전체가 button이다(Enter / Space도 된다). */}
             <button

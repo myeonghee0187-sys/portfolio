@@ -175,12 +175,29 @@
 }
 
 .watch__time {
+  display: grid;
   margin: 0;
-  font-family: 'IBM Plex Sans', sans-serif;
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
   font-weight: 500;
   font-size: calc(96 * var(--wu));
   line-height: 1;
   text-align: center;
+}
+
+/* 장면별 시간이 같은 자리에 겹친다(stage는 Hero / About 두 값, 나머지는 한 값). 두 번째 값은 morph 도중에 나타난다. */
+.watch__time-value {
+  grid-area: 1 / 1;
+}
+
+.watch__time-value[data-step='1'] {
+  opacity: 0;
+}
+
+/* PROJECTS 03의 숫자. 숫자 UI 서체만 바꾼다. */
+.watch__num {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
 }
 
 .watch__info {
@@ -188,15 +205,24 @@
   flex-direction: column;
   align-items: center;
   gap: calc(12 * var(--wu));
+  box-sizing: border-box;
   width: 100%;
+  /* display 좌우 safe area. 이름이 display 가장자리에 붙지 않는다. */
+  padding-inline: calc(36 * var(--wu));
 }
 
+/*
+ * Hero Watch 이름: Inter ExtraLight 200, 1920에서 44px(Watch 좌표계 --wu 기준이라 화면이 작아지면 Watch와 함께 줄어든다).
+ * 한 줄 유지가 우선이다 — 자간만 조금 좁히고 scale로 줄이지 않는다.
+ */
 .watch__name {
   margin: 0;
   font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: calc(48 * var(--wu));
+  font-weight: 200;
+  font-size: calc(44 * var(--wu));
+  letter-spacing: -0.02em;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .watch__role {
@@ -290,7 +316,8 @@
 .watch--contact .watch__name {
   font-weight: 500;
   color: #777d82;
-  transform: translateY(calc(-175.5 * var(--wu))) scale(0.5208333);
+  /* About 이름은 전과 같은 25px(44 x 0.5681818). */
+  transform: translateY(calc(-175.5 * var(--wu))) scale(0.5681818);
 }
 
 .watch--about .watch__role,
@@ -305,7 +332,7 @@
 }
 
 /*
- * Contact는 About watch face를 그대로 쓰되 WEB DESIGNER를 이름 바로 아래에 남긴다.
+ * Contact는 About watch face를 그대로 쓰되 PRODUCT DESIGNER를 이름 바로 아래에 남긴다.
  * 이름과 같은 비율(0.52)로 줄이고, 이름 아래 간격도 같은 비율(12 -> 6.25)이다.
  * Hero 중심 372 -> 170.6 (이름 130 ~ 155 바로 아래 161 ~ 180)
  */

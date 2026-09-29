@@ -112,20 +112,40 @@ export default function Faces({ interactive, ready }: FacesProps) {
           <div className="faces__scene">
             <canvas ref={canvasRef} className="faces__canvas" aria-hidden="true" />
             {/*
-              Watch display 자리의 실제 DOM hit area. WebGL mesh의 pointer 판정에 기대지 않는다.
-              위치 / 크기는 매 frame display와 같게, href / 이름은 display가 채우고 있는 project로
-              useFacesInteraction이 직접 쓴다(처음 값은 F45). 짧게 누르면 click, 7px 넘게 움직이면 drag다.
+              Watch display 위쪽 safe area의 작은 text CTA. 영상 자체는 visual일 뿐 눌리지 않는다(drag 영역).
+                LIVE SITE ↗    완성된 결과물(새 탭)
+                CASE STUDY ↗   실제 Case Study 경로가 있는 project에만 나타난다(지금은 없다 — 가짜 링크를 만들지 않는다)
+              위치 / 폭은 매 frame display와 같게, href / 이름은 display가 채우고 있는 project로 useFacesInteraction이
+              직접 쓴다(처음 값은 첫 project). project 하나가 display에 자리를 잡았을 때만 눌리고 보인다.
+              짧게 누르면 click, 7px 넘게 움직이면 drag다.
             */}
-            <a
-              className="faces__display-link"
-              href={FACE_PROJECTS[0].liveUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`${FACE_PROJECTS[0].title} 완성 웹사이트 보기`}
-              aria-disabled="true"
-              tabIndex={-1}
-              draggable={false}
-            />
+            <div className="faces__display-cta" data-ready="false">
+              <a
+                className="faces__cta faces__cta--live"
+                href={FACE_PROJECTS[0].liveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${FACE_PROJECTS[0].title} 완성 웹사이트 보기(새 탭)`}
+                aria-disabled="true"
+                tabIndex={-1}
+                draggable={false}
+              >
+                LIVE SITE <span aria-hidden="true">&#8599;</span>
+              </a>
+              {FACE_PROJECTS.some((p) => p.caseStudyPath) && (
+                <a
+                  className="faces__cta faces__cta--case"
+                  href={FACE_PROJECTS[0].caseStudyPath ?? undefined}
+                  aria-label={`${FACE_PROJECTS[0].title} Case Study 보기`}
+                  aria-disabled="true"
+                  tabIndex={-1}
+                  draggable={false}
+                  hidden={!FACE_PROJECTS[0].caseStudyPath}
+                >
+                  CASE STUDY <span aria-hidden="true">&#8599;</span>
+                </a>
+              )}
+            </div>
 
             {/* 화면에는 WebGL plane만 보인다. 프로젝트 목록 자체는 DOM에 그대로 있다. */}
             <ol className="faces__sr">

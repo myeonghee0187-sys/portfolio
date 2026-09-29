@@ -14,12 +14,16 @@
   padding: 24px;
 }
 
+/*
+ * modal 바깥 막: Deep Blue(#0A2C5C) 68% + blur 8px. 뒤 Contact(Watch / Light Rays / 문장)가 아주 희미하게 비치지만
+ * form에 시선이 모일 만큼은 가라앉힌다. modal 자체(surface / 입력 칸 / SUBJECT)는 그대로다.
+ */
 .contact-modal__overlay {
   position: absolute;
   inset: 0;
-  background: rgb(8 9 10 / 0.78);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  background: rgb(10 44 92 / 0.68);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .contact-modal__panel {
