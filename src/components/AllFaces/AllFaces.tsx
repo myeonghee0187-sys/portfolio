@@ -2,55 +2,30 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { createPortal } from 'react-dom'
 import gsap from 'gsap'
 import { FACE_PROJECTS } from '../Faces/facesData'
+import { MOBILE_QUERY, randomFloat, randomLayout } from './allFacesLayout'
 import './AllFaces.css'
 
 /*
  * ALL FACES — Digital Crown을 누르면 열리는 전체 project 화면.
  *
- * project가 3개뿐이라 화면은 완전히 고정된 한 장(100vh / 100dvh)이다. 세 원형 object가 한 화면 안의 정해진 자리에
- * 비대칭으로 놓이고, 열린 뒤에는 스스로 움직이지 않는다 — world / drag / 관성 / wheel 이동 / floating이 없다.
- * Grid / carousel이 아니다. Watch는 이 화면에 없다.
+ * 화면(overlay)은 고정된 한 장(100vh / 100dvh)이다 — world / drag / 관성 / wheel 이동 / camera pan이 없다.
+ * 대신 세 원형 object가 "공중에 떠 있는 전시 object"처럼 보이도록
+ *   1. 열 때(mount)마다 안전 영역 안에서 새 base 자리를 한 번 뽑는다(allFacesLayout.ts). 열려 있는 동안은 다시 뽑지 않는다.
+ *      닫으면 unmount되므로 다시 열거나 새로고침하면 배치가 바뀐다.
+ *   2. 각 원은 그 base 자리 근처에서만 아주 작게 떠 있다(CSS animation, project마다 다른 진폭 / 주기 / 위상).
  *
- * project는 영상 card가 아니라 원형 object다(가운데 logo + 이름). 이 화면은 영상을 하나도 쓰지 않는다 —
+ * project는 영상 card가 아니라 원형 object다(원을 꽉 채운 배경 이미지 + 가운데 logo). 이 화면은 영상을 쓰지 않는다 —
  * FACES section은 같은 FACE_PROJECTS의 media를 그대로 쓴다(데이터는 공용, 그리는 쪽만 다르다).
  *
- *   overlay   언제나 정확히 한 화면. 문서 scroll은 생기지 않고, 열려 있는 동안 뒤 page는 scroll되지 않는다
- *   자리      CSS가 화면 비율로 정한다(AllFaces.css의 --spot-*). 크기가 바뀌어도 JS로 다시 재지 않는다
- *   motion    여닫을 때만. 열린 뒤 좌표는 고정이다
- *   hover     원이 1.035배, 테두리가 조금 선명해지고 나머지 원은 옅어진다
- *   click     onProjectSelect(짧게 누름 / Enter). Case Study가 아직 없어서 지금은 연결돼 있지 않다
+ *   hover  원이 1.03배, 테두리가 조금 선명해지고 나머지 원은 옅어진다(floating과 다른 layer라 서로 덮어쓰지 않는다)
+ *   click  onProjectSelect(click / Enter). Case Study가 아직 없어서 지금은 연결돼 있지 않다
  */
 
-/**
- * 원이 놓이는 자리(화면 비율 %). 원의 bounding box 기준 — left / right 중 하나로 가로를, top / bottom 중 하나로 세로를 정한다.
- * 세 원이 한 줄 / 한 열 / grid로 보이지 않도록 높이를 엇갈린 비대칭 삼각형이다.
- *   데스크톱  F45 왼쪽 위 / TCHAIKIM 오른쪽, 조금 아래 / JADUYA 가운데 아래
- *   모바일    왼쪽 위 / 오른쪽 가운데 / 왼쪽 아래로 지그재그(390 x 844에서 세 원이 모두 온전히 보인다)
- */
-type Spot = { left?: number; right?: number; top?: number; bottom?: number }
-
-type Placement = {
-  desktop: Spot
-  mobile: Spot
-  /** 열릴 때 출발하는 방향(px). 들어온 뒤에는 0이다. */
-  from: { x: number; y: number }
-}
-
-const PLACEMENTS: Record<string, Placement> = {
-  f45: { desktop: { left: 12.5, top: 24 }, mobile: { left: 10, top: 20 }, from: { x: -44, y: 32 } },
-  tchaikim: { desktop: { right: 12.5, top: 33 }, mobile: { right: 8, top: 42 }, from: { x: 52, y: -30 } },
-  jaduya: { desktop: { left: 44, bottom: 14 }, mobile: { left: 16, bottom: 12 }, from: { x: 10, y: 56 } },
-}
-
-/** 자리를 CSS 변수로. 쓰지 않는 변(auto)은 비워 둔다. */
-function spotStyle({ desktop, mobile }: Placement) {
-  const style: Record<string, string> = {}
-  for (const [prefix, spot] of [['d', desktop], ['m', mobile]] as const) {
-    for (const side of ['left', 'right', 'top', 'bottom'] as const) {
-      style[`--${prefix}-${side}`] = spot[side] === undefined ? 'auto' : `${spot[side]}%`
-    }
-  }
-  return style as CSSProperties
+/** 열릴 때 출발하는 방향(px). 들어온 뒤에는 0이다. */
+const ENTER_FROM: Record<string, { x: number; y: number }> = {
+  f45: { x: -44, y: 32 },
+  tchaikim: { x: 52, y: -30 },
+  jaduya: { x: 10, y: 56 },
 }
 
 /** 뒤 page를 scroll시키는 키. button 위의 Space / Enter는 막지 않는다. */
@@ -79,6 +54,19 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
   // 연 button(Crown). effect가 아니라 첫 render 때 잡는다 — effect는 두 번 돌 수 있고, 그때는 이미 CLOSE에 focus가 있다.
   const returnFocus = useRef<HTMLElement | null>(document.activeElement as HTMLElement | null)
   const [hovered, setHovered] = useState(-1)
+  /*
+   * 이번에 열린 동안의 배치와 floating 값. 첫 render에서 한 번만 뽑는다(state 초기값) — 열려 있는 동안 창 크기가 바뀌거나
+   * 다시 render되어도 바뀌지 않는다. 닫으면 이 component가 unmount되므로 다음에 열 때 새로 뽑는다.
+   */
+  const [scene] = useState(() => {
+    const mobile = window.matchMedia(MOBILE_QUERY).matches
+    const vw = document.documentElement.clientWidth
+    const vh = window.innerHeight
+    return {
+      places: randomLayout(projects.map((p) => p.id), vw, vh, mobile),
+      floats: projects.map(() => randomFloat(mobile)),
+    }
+  })
   const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   /* ---------- 열기 ---------- */
@@ -96,8 +84,8 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
         {
           opacity: 0,
           scale: 0.96,
-          x: (i: number) => PLACEMENTS[projects[i].id].from.x,
-          y: (i: number) => PLACEMENTS[projects[i].id].from.y,
+          x: (i: number) => ENTER_FROM[projects[i].id]?.x ?? 0,
+          y: (i: number) => ENTER_FROM[projects[i].id]?.y ?? 40,
         },
         { opacity: 1, scale: 1, x: 0, y: 0, duration: 0.8, ease: 'power3.out', stagger: 0.07 },
         0.08,
@@ -217,36 +205,59 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
       data-selectable={onProjectSelect ? 'true' : undefined}
     >
       <div className="all-faces__stage" data-hovered={hovered >= 0 ? 'true' : undefined}>
-        {projects.map((project, i) => (
-          <figure
-            key={project.id}
-            ref={(el) => {
-              itemRefs.current[i] = el
-            }}
-            className={`all-faces__project${hovered === i ? ' is-hovered' : ''}`}
-            style={spotStyle(PLACEMENTS[project.id])}
-            tabIndex={0}
-            aria-label={`${project.title}, ${project.category}`}
-            onPointerEnter={(e) => e.pointerType === 'mouse' && setHovered(i)}
-            onPointerLeave={() => setHovered((h) => (h === i ? -1 : h))}
-            onFocus={() => setHovered(i)}
-            onBlur={() => setHovered((h) => (h === i ? -1 : h))}
-            onClick={() => onProjectSelect?.(project.id)}
-          >
-            {/*
-              원형 object. 가운데 logo, 그 아래 이름. logo asset이 없는 project는 이름만 가운데에 둔다
-              (임시 fallback — 글자로 가짜 logo를 만들지 않는다).
-            */}
-            <div className="all-faces__circle" data-logo={project.logo ? undefined : 'missing'}>
-              {project.logo && (
-                <img className="all-faces__logo" src={project.logo} alt={`${project.title} 로고`} draggable={false} />
-              )}
-              <span className="all-faces__name" aria-hidden="true">
-                {project.title}
-              </span>
-            </div>
-          </figure>
-        ))}
+        {projects.map((project, i) => {
+          const place = scene.places[i]
+          const float = scene.floats[i]
+          const style = {
+            '--cx': place.cx,
+            '--cy': place.cy,
+            '--ax': `${float.ax.toFixed(1)}px`,
+            '--ay': `${float.ay.toFixed(1)}px`,
+            '--rot': `${float.rot.toFixed(2)}deg`,
+            '--breath': float.scale.toFixed(3),
+            '--dx': `${float.dx.toFixed(2)}s`,
+            '--dy': `${float.dy.toFixed(2)}s`,
+            '--px': `${float.px.toFixed(2)}s`,
+            '--py': `${float.py.toFixed(2)}s`,
+          } as CSSProperties
+          return (
+            <figure
+              key={project.id}
+              ref={(el) => {
+                itemRefs.current[i] = el
+              }}
+              className={`all-faces__project${hovered === i ? ' is-hovered' : ''}`}
+              style={style}
+              tabIndex={0}
+              aria-label={`${project.title}, ${project.category}`}
+              onPointerEnter={(e) => e.pointerType === 'mouse' && setHovered(i)}
+              onPointerLeave={() => setHovered((h) => (h === i ? -1 : h))}
+              onFocus={() => setHovered(i)}
+              onBlur={() => setHovered((h) => (h === i ? -1 : h))}
+              onClick={() => onProjectSelect?.(project.id)}
+            >
+              {/* floating: 가로(drift-x)와 세로 + 회전 + 숨쉬기(drift-y)를 다른 주기로 겹친다. hover 크기는 안쪽 __circle. */}
+              <div className="all-faces__drift-x">
+                <div className="all-faces__drift-y">
+                  {/*
+                    원형 object. 원을 꽉 채운 배경 이미지 위 정중앙에 logo.
+                    asset이 없는 project는 이름만 가운데에 둔다(임시 fallback — 글자로 가짜 logo를 만들지 않는다).
+                  */}
+                  <div className="all-faces__circle" data-visual={project.orbImage ? 'image' : 'text'}>
+                    {project.orbImage && <img className="all-faces__bg" src={project.orbImage} alt="" draggable={false} />}
+                    {project.logo ? (
+                      <img className="all-faces__logo" src={project.logo} alt={`${project.title} 로고`} draggable={false} />
+                    ) : (
+                      <span className="all-faces__name" aria-hidden="true">
+                        {project.title}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </figure>
+          )
+        })}
       </div>
 
       <div ref={barRef} className="all-faces__bar">

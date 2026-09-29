@@ -1,7 +1,7 @@
 /*
  * ALL FACES — Crown을 누르면 page 위에 여는 전체 project 화면(FLAT PROJECT WORLD).
  * Header / page / Watch / Crown보다 위, Intro(100) / 문의 modal(200)보다 아래.
- * 바탕은 Carbon Black 하나이고 Watch는 보이지 않는다. project는 원형 object(logo + 이름)이고 영상은 없다.
+ * 바탕은 Carbon Black 하나이고 Watch는 보이지 않는다. project는 원형 object(꽉 찬 배경 이미지 + 가운데 logo)이고 영상은 없다.
  *
  * overlay는 언제나 정확히 한 화면이다. overlay 자체는 늘어나지 않고(overflow hidden),
  * 문서에 세로 scroll을 더하지 않는다. 모바일은 브라우저 UI 높이를 따라가도록 100dvh(없으면 100vh).
@@ -24,24 +24,23 @@
   opacity: 0;
 }
 
-/* 세 원이 놓이는 면(화면 전체). 움직이지 않는다 — drag / 관성 / floating 없음. */
+/* 세 원이 놓이는 면(화면 전체). 이 면은 움직이지 않는다 — drag / 관성 / camera pan 없음. 원만 자기 자리 근처에서 떠 있다. */
 .all-faces__stage {
   position: absolute;
   inset: 0;
 }
 
 /*
- * project 하나(원 하나). 자리는 화면 비율(--d-* 데스크톱 / --m-* 모바일, AllFaces.tsx의 PLACEMENTS)이고 고정이다.
- * 열릴 때의 motion만 이 element에 잠깐 걸린다(끝나면 지운다). hover 크기는 안쪽 __circle이 맡는다.
+ * project 하나(원 하나). base 자리는 열 때 한 번 뽑은 원 중심(--cx / --cy, 화면 비율, allFacesLayout.ts)이다.
+ * 층: figure(base 자리 + 열릴 때 motion) -> drift-x(가로로 떠 있음) -> drift-y(세로 + 회전 + 숨쉬기) -> circle(hover 크기).
+ * 서로 다른 element라 floating과 hover가 같은 transform을 덮어쓰지 않는다.
  * 네모난 box의 모서리는 hover / click 대상이 아니다 — pointer는 원(__circle)만 받는다.
  */
 .all-faces__project {
   --size: clamp(240px, 20vw, 360px);
   position: absolute;
-  top: var(--d-top);
-  right: var(--d-right);
-  bottom: var(--d-bottom);
-  left: var(--d-left);
+  top: calc(var(--cy) * 100% - var(--size) / 2);
+  left: calc(var(--cx) * 100% - var(--size) / 2);
   width: var(--size);
   height: var(--size);
   margin: 0;
@@ -60,34 +59,100 @@
 }
 
 /*
- * 원형 object. Dark material 위에 Electric Ice의 옅은 테두리 하나 — glow / neon orb가 아니다.
- * 가운데 logo, 그 아래 이름.
+ * idle floating. base 자리를 중심으로 양쪽 끝을 부드럽게(sine) 오가며 멈추지 않는다.
+ * x / y 주기가 달라서 원은 한 선을 오가지 않고 작은 타원을 그리듯 떠 있다. 진폭 / 주기 / 위상은 원마다 다르다.
+ */
+.all-faces__drift-x,
+.all-faces__drift-y {
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+}
+
+.all-faces__drift-x {
+  animation: all-faces-drift-x var(--dx) ease-in-out var(--px) infinite alternate;
+}
+
+.all-faces__drift-y {
+  animation: all-faces-drift-y var(--dy) ease-in-out var(--py) infinite alternate;
+}
+
+@keyframes all-faces-drift-x {
+  from {
+    transform: translate3d(calc(var(--ax) * -1), 0, 0);
+  }
+  to {
+    transform: translate3d(var(--ax), 0, 0);
+  }
+}
+
+@keyframes all-faces-drift-y {
+  from {
+    transform: translate3d(0, calc(var(--ay) * -1), 0) rotate(calc(var(--rot) * -1)) scale(1);
+  }
+  to {
+    transform: translate3d(0, var(--ay), 0) rotate(var(--rot)) scale(var(--breath));
+  }
+}
+
+/*
+ * 원형 object. 원을 꽉 채운 배경 이미지(cover, 빈 여백 없음) 위 정중앙에 logo.
+ * 테두리는 Electric Ice의 옅은 선 하나 — neon orb가 아니다.
  */
 .all-faces__circle {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(14px, 1.2vw, 22px);
+  display: grid;
+  place-items: center;
   box-sizing: border-box;
   width: 100%;
   height: 100%;
+  overflow: hidden;
   border: 1px solid rgb(24 109 229 / 0.55);
   border-radius: 50%;
   background: rgb(14 16 18 / 0.82);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.35);
+  /* overflow + border-radius가 Safari에서도 transform 중에 잘리도록 */
+  isolation: isolate;
   cursor: pointer;
   pointer-events: auto;
   transition:
     transform 280ms cubic-bezier(0.33, 1, 0.68, 1),
     border-color 280ms ease,
+    box-shadow 280ms ease,
     background-color 280ms ease;
 }
 
+/* 배경 이미지: 원 전체를 cover로 채운다. 가장자리 여백이 보이지 않도록 아주 조금 키운다. */
+.all-faces__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.04);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 이미지 위에 아주 약한 막 — 가장자리를 조금 가라앉혀 원이 Carbon 바탕 위에 한 덩어리로 보이게 한다. logo는 가리지 않는다. */
+.all-faces__circle[data-visual='image']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 50%, transparent 52%, rgb(8 9 10 / 0.28) 100%);
+  pointer-events: none;
+}
+
 .all-faces__project.is-hovered .all-faces__circle {
-  transform: scale(1.035);
+  transform: scale(1.03);
   border-color: rgb(24 109 229 / 0.85);
-  background: rgb(20 23 26 / 0.88);
+  box-shadow:
+    0 18px 48px rgb(0 0 0 / 0.35),
+    0 0 22px rgb(24 109 229 / 0.16);
+  background-color: rgb(20 23 26 / 0.88);
 }
 
 .all-faces__project:focus-visible .all-faces__circle {
@@ -95,16 +160,18 @@
   outline-offset: 6px;
 }
 
-/* logo는 원을 가득 채우지 않는다(폭 48% / 높이 34% 안). 회전하지 않는다. */
+/* 가운데 logo. 원을 답답하게 채우지 않는다(폭 52% / 높이 36% 안). 배경 위에서 읽히도록 아주 옅은 그림자만 둔다. */
 .all-faces__logo {
   display: block;
-  max-width: 48%;
-  max-height: 34%;
+  max-width: 52%;
+  max-height: 36%;
   object-fit: contain;
+  filter: drop-shadow(0 2px 10px rgb(0 0 0 / 0.18));
   pointer-events: none;
   user-select: none;
 }
 
+/* logo asset이 없을 때만 쓰는 임시 이름 표시. */
 .all-faces__name {
   font-family: 'Anton', sans-serif;
   font-weight: 400;
@@ -180,10 +247,6 @@
 @media (max-width: 760px) {
   .all-faces__project {
     --size: clamp(128px, 38vw, 170px);
-    top: var(--m-top);
-    right: var(--m-right);
-    bottom: var(--m-bottom);
-    left: var(--m-left);
   }
 
   .all-faces__bar {
@@ -199,5 +262,10 @@
   .all-faces__circle,
   .all-faces__project {
     transition: none;
+  }
+
+  .all-faces__drift-x,
+  .all-faces__drift-y {
+    animation: none;
   }
 }

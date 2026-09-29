@@ -19,9 +19,12 @@ export type FaceProject = {
   liveUrl: string
   caseStudyPath?: string
   /**
-   * 프로젝트 logo 파일(ALL FACES의 원형 object 가운데). repository에 실제 logo asset이 생기면 import해서 넣는다.
-   * 지금은 세 project 모두 asset이 없어서 비어 있고, ALL FACES는 그 자리에 project 이름만 보여 준다(임시 fallback).
+   * ALL FACES 원형 object의 visual(Figma "all faces logo" node에서 가져온 asset).
+   *   orbImage  원을 꽉 채우는 배경 이미지(object-fit: cover)
+   *   logo      그 위 정중앙의 project logo
+   * FACES section은 이 두 값을 쓰지 않는다(media 영상만 쓴다). 없으면 ALL FACES는 project 이름만 가운데에 둔다.
    */
+  orbImage?: string
   logo?: string
   /**
    * 영상의 원본 비율(가로 / 세로). loadedmetadata의 videoWidth / videoHeight로 다시 확인하지만,
