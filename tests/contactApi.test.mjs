@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
-import { Buffer } from 'node:buffer'
-import { readFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
-import { URL } from 'node:url'
+import { URL, pathToFileURL } from 'node:url'
 import ts from 'typescript'
 
 const load = async file => {
@@ -10,11 +11,21 @@ const load = async file => {
   const { outputText } = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } })
   return outputText
 }
-const shared = await load('_contact.ts')
-const lib = await import(`data:text/javascript;base64,${Buffer.from(shared).toString('base64')}`)
-const libUrl = `data:text/javascript;base64,${Buffer.from(shared).toString('base64')}`
-const handlerSource = (await load('contact.ts')).replace("'./_contact'", `'${libUrl}'`)
-const { default: handler } = await import(`data:text/javascript;base64,${Buffer.from(handlerSource).toString('base64')}`)
+
+// Exercise Node's real ESM resolver, as Vercel does, without rewriting imports.
+const buildDir = await mkdtemp(join(tmpdir(), 'portfolio-contact-api-'))
+let lib, handler
+try {
+  await Promise.all([
+    writeFile(join(buildDir, 'package.json'), JSON.stringify({ type: 'module' })),
+    writeFile(join(buildDir, '_contact.js'), await load('_contact.ts')),
+    writeFile(join(buildDir, 'contact.js'), await load('contact.ts')),
+  ])
+  lib = await import(pathToFileURL(join(buildDir, '_contact.js')).href)
+  handler = (await import(pathToFileURL(join(buildDir, 'contact.js')).href)).default
+} finally {
+  await rm(buildDir, { recursive: true, force: true })
+}
 
 const valid = { name: ' 김철수 ', company: 'ABC Company', contact: 'hr@abc.com', subject: 'recruitment', message: '안녕하세요' }
 
