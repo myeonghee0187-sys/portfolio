@@ -60,6 +60,8 @@ function validate(values: Values): Errors {
 type ContactModalProps = {
   /** 닫힘 motion이 끝난 뒤 호출된다. 부모가 이 시점에 modal을 unmount한다. */
   onClose: () => void
+  /** 개발 서버 QA 전용: 전송 없이 성공 화면으로 바로 연다. production build에서는 늘 무시된다(Contact.tsx 참고). */
+  qaSuccessPreview?: boolean
 }
 
 /**
@@ -67,7 +69,7 @@ type ContactModalProps = {
  * 닫기: X / 바깥 click / ESC(성공 상태에서는 CLOSE도). 어느 상태에서 닫든 unmount되므로 다음에 열면 빈 form이다.
  * 열려 있는 동안 뒤 화면은 scroll되지 않고, Tab은 modal 안에서만 돈다.
  */
-export default function ContactModal({ onClose }: ContactModalProps) {
+export default function ContactModal({ onClose, qaSuccessPreview = false }: ContactModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const firstFieldRef = useRef<HTMLInputElement>(null)
@@ -77,7 +79,7 @@ export default function ContactModal({ onClose }: ContactModalProps) {
   const [values, setValues] = useState<Values>(EMPTY)
   const [errors, setErrors] = useState<Errors>({})
   const [submitted, setSubmitted] = useState(false)
-  const [submitState, setSubmitState] = useState<SubmitState>('idle')
+  const [submitState, setSubmitState] = useState<SubmitState>(() => (import.meta.env.DEV && qaSuccessPreview ? 'success' : 'idle'))
   const formRef = useRef<HTMLFormElement>(null)
   // honeypot(사람에게는 보이지 않는 칸). 값이 들어오면 서버가 거절한다.
   const websiteRef = useRef<HTMLInputElement>(null)
@@ -198,22 +200,21 @@ export default function ContactModal({ onClose }: ContactModalProps) {
     if (closingRef.current) return
     // 실제 성공 응답 뒤에만: form이 짧게 사라지고 modal 안이 성공 상태로 바뀐다(자동으로 닫지 않는다).
     const form = formRef.current
-    if (form && !reduced) await gsap.to(form, { opacity: 0, y: -6, duration: 0.22, ease: 'power1.in' })
+    if (form && !reduced) await gsap.to(form, { opacity: 0, y: -10, duration: 0.22, ease: 'power1.in' })
     setSubmitState('success')
   }
 
-  // 성공 상태가 되면 check / 문구가 들어오고, focus는 CLOSE로 옮긴다(보조기술도 성공을 알 수 있게 role="status").
+  // 성공 상태가 되면 MESSAGE SENT가 먼저 서고 설명 / CLOSE가 살짝 뒤따른다. focus는 CLOSE로 옮긴다
+  // (보조기술도 성공을 알 수 있게 role="status"). reduced motion에서는 motion 없이 바로 보인다.
   useLayoutEffect(() => {
     if (submitState !== 'success' || !successRef.current) return
     const root = successRef.current
-    const check = root.querySelector('.contact-modal__success-check')
-    const rest = root.querySelectorAll('.contact-modal__success-title, .contact-modal__success-text, .contact-modal__submit')
+    const title = root.querySelector('.contact-modal__success-title')
+    const rest = root.querySelectorAll('.contact-modal__success-text, .contact-modal__done')
     const tl = gsap.timeline()
-    if (reduced) {
-      tl.fromTo(root, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'none' })
-    } else {
-      tl.fromTo(check, { opacity: 0, scale: 0.82 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'power2.out' }, 0)
-      tl.fromTo(rest, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.32, ease: 'power2.out', stagger: 0.05 }, 0.08)
+    if (!reduced) {
+      tl.fromTo(title, { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.42, ease: 'power3.out' }, 0)
+      tl.fromTo(rest, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.36, ease: 'power2.out', stagger: 0.06 }, 0.14)
     }
     successCloseRef.current?.focus({ preventScroll: true })
     return () => {
@@ -267,28 +268,26 @@ export default function ContactModal({ onClose }: ContactModalProps) {
           </svg>
         </button>
 
-        <h2 id="contact-modal-title" className="contact-modal__title">
-          GET IN TOUCH
-        </h2>
-
         {submitState === 'success' ? (
+          // 성공 상태에서는 GET IN TOUCH 대신 MESSAGE SENT가 이 dialog의 제목이다.
           <div ref={successRef} className="contact-modal__success" role="status" aria-live="polite">
-            <span className="contact-modal__success-check" aria-hidden="true">
-              <svg viewBox="0 0 24 24" focusable="false">
-                <path d="M5 12.5l4.5 4.5L19 7.5" />
-              </svg>
-            </span>
-            <p className="contact-modal__success-title">MESSAGE SENT</p>
-            <p className="contact-modal__success-text">
-              메시지가 전달되었습니다.
+            <h2 id="contact-modal-title" className="contact-modal__success-title">
+              MESSAGE
               <br />
-              확인 후 회신드리겠습니다.
-            </p>
-            <button ref={successCloseRef} type="button" className="contact-modal__submit" onClick={requestClose}>
-              CLOSE<span className="contact-modal__submit-arrow" aria-hidden="true">&#8599;</span>
+              SENT
+            </h2>
+            <p className="contact-modal__success-text">확인 후 회신드리겠습니다.</p>
+            <button ref={successCloseRef} type="button" className="contact-modal__done" onClick={requestClose}>
+              <span>
+                CLOSE<span className="contact-modal__done-arrow" aria-hidden="true">&#8594;</span>
+              </span>
             </button>
           </div>
         ) : (
+        <>
+        <h2 id="contact-modal-title" className="contact-modal__title">
+          GET IN TOUCH
+        </h2>
         <form ref={formRef} className="contact-modal__form" noValidate onSubmit={submit}>
           <div className="contact-modal__row">
             <div className="contact-modal__field">
@@ -398,6 +397,7 @@ export default function ContactModal({ onClose }: ContactModalProps) {
           </p>
 
         </form>
+        </>
         )}
       </div>
     </div>,
