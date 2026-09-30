@@ -132,26 +132,27 @@ export const JOURNEY_NODES: JourneyNode[] = [
 export const JOURNEY_WORLD_HEIGHT = 5300
 
 /**
- * Journey의 시간(story/storyTime.ts). 따로 선 시계가 아니라 line에 붙은 작은 time marker다 —
- * 빛이 그 구간을 지나가며 남기는 흔적처럼, line 옆 여백에 아주 옅게 적힌다(opacity 최대 .12).
- *   from / to   marker가 붙는 line 구간(JOURNEY_NODES index). 빛이 from card를 떠나면 나타나기 시작한다
- *   side        line의 어느 쪽에 적히는지. 자리는 좌표로 적지 않는다 — 실제 경로를 재서, 그 구간 중
- *               card에서 떨어진 여백의 한 점을 고르고 line에서 MARKER_GAP만큼 떨어뜨린다(useJourneyInteraction)
+ * Journey의 시계(story/storyTime.ts). Journey 전체에 시계는 하나뿐이다 — line 위를 따라 이동하다가
+ * 아래 card에 line이 닿는 자리(card 테두리 바로 앞)에 잠깐 정박하고, 그 card가 물러나면 다음 정박지로 다시 출발한다.
+ * 바늘은 이동하는 동안 이어서 돌아간다(13 : 30 -> 14 : 10 -> 15 : 00 -> 16 : 20 -> 17 : 00).
+ *   node    정박하는 card(JOURNEY_NODES index). 첫 정박(0)은 출발점이다 — FROM FIGMA TO WEB에서 line이 나오는 자리
+ *   time    그 자리의 시간. 출발점은 FACES Crown의 13 : 30에서 이어받는다
+ *   label   정박하는 동안 시계 옆에 시간 글자를 보여 줄지(출발점은 바늘만)
  */
-export type JourneyTime = {
+export type JourneyClockStop = {
+  node: number
   time: string
-  from: number
-  to: number
-  side: 'left' | 'right'
+  label: boolean
 }
 
-export const JOURNEY_TIMES: JourneyTime[] = [
-  // FROM FIGMA TO WEB -> FIGMA DESIGN, line 오른쪽
-  { time: STORY_TIME.journey[0], from: 0, to: 1, side: 'right' },
-  // FIGMA DESIGN -> FRONT - END, line 왼쪽
-  { time: STORY_TIME.journey[1], from: 1, to: 3, side: 'left' },
-  // FRONT - END -> WORKING WITH AI, line 오른쪽
-  { time: STORY_TIME.journey[2], from: 3, to: 5, side: 'right' },
-  // WORKING WITH AI -> STILL UPDATING, line 왼쪽
-  { time: STORY_TIME.journey[3], from: 5, to: 6, side: 'left' },
+export const JOURNEY_CLOCK: JourneyClockStop[] = [
+  { node: 0, time: STORY_TIME.faces, label: false },
+  // FIGMA DESIGN
+  { node: 1, time: STORY_TIME.journey[0], label: true },
+  // FRONT - END
+  { node: 3, time: STORY_TIME.journey[1], label: true },
+  // WORKING WITH AI
+  { node: 5, time: STORY_TIME.journey[2], label: true },
+  // STILL UPDATING
+  { node: 6, time: STORY_TIME.journey[3], label: true },
 ]

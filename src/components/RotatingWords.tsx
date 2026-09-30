@@ -3,24 +3,21 @@ import gsap from 'gsap'
 import './RotatingWords.css'
 
 /**
- * React Bits "Rotating Text"(splitBy words / staggerFrom center / loop false)의 motion language만 가져온 글자.
- * 문구는 바뀌지 않는다 — 문장 전체(단어들 + 뒤따르는 기호, 예: ↗)가 거의 동시에 한 번 뒤집히며 굴러 올라와 정착한다.
+ * React Bits "Rotating Text"(loop false)의 motion language만 가져온 글자. 문구는 바뀌지 않는다 —
+ * 문장 전체(단어들 + 뒤따르는 기호, 예: ↗)가 하나의 텍스트 유닛으로 한 번 뒤집히며 굴러 올라와 정착한다.
  *
- *   token     단어마다 하나 + trailing(↗ 같은 기호) 하나. 모두 같은 timeline, 같은 값으로 움직인다
- *   split     token마다 overflow hidden 칸 하나, 그 안에 같은 글자 두 줄(나가는 줄 / 들어오는 줄)
- *   motion    두 줄이 함께 한 칸 올라가고(yPercent 0 -> -50), 들어오는 줄은 rotateX 40deg -> 0, 나가는 줄은 0 -> -40deg.
- *             모든 token이 같은 방향 / 같은 값이다
- *   stagger   왼쪽부터 15ms씩(START 0 / A 15 / CONVERSATION 30 / ↗ 45ms). 가운데부터 퍼지지 않는다 —
- *             첫 / 마지막 token의 시작과 끝 차이가 모두 45ms라 눈에는 한 문장이 한 번에 도는 것으로 보인다
- *   timing    token 하나 405ms, 문장 전체 450ms
+ *   unit      문장 한 줄이 하나의 칸(overflow hidden)과 하나의 원근을 쓴다. 단어마다 따로 잘리거나 따로 기울지 않는다 —
+ *             START / A / CONVERSATION / ↗가 같은 면에서 같은 시간에 같은 값으로 움직인다
+ *   motion    같은 문장 두 줄(나가는 줄 / 들어오는 줄)이 함께 한 칸 올라가고(yPercent 0 -> -50),
+ *             들어오는 줄은 rotateX 40deg -> 0, 나가는 줄은 0 -> -40deg. 450ms, power3.out
  *   trigger   가장 가까운 button / a에 mouse(또는 pen)가 들어오거나 keyboard focus가 올 때 한 번. 같은 hover 동안 반복 없음.
  *             나갔다가 다시 들어오면 다시 한 번. touch는 hover를 흉내 내지 않는다
  *   leave     재생 중에 pointer가 나가면 남은 부분만 빠르게(3배) 끝내고 정착한다 — 거꾸로 되돌리지 않는다
- *   layout    칸의 폭 / 높이는 단어 그대로이고 transform만 움직여 button 폭 / 높이가 바뀌지 않는다
+ *   settle    끝나면(또는 중간에 멈추면) transform / opacity를 모두 지워 언제나 원래 문장이 선명하게 남는다
+ *   layout    칸의 폭 / 높이는 문장 그대로이고 transform만 움직여 button 폭 / 높이가 바뀌지 않는다. button 자체는 돌지 않는다
  * 보조기술은 원래 문장 한 번만 읽는다. reduced motion에서는 기울거나 구르지 않고 opacity만 아주 짧게 바뀐다.
  */
-const STAGGER = 0.015
-const TOTAL = 0.45
+const DURATION = 0.45
 const TILT = 40
 
 type Props = {
@@ -32,21 +29,21 @@ type Props = {
 export default function RotatingWords({ text, trailing }: Props) {
   const ref = useRef<HTMLSpanElement>(null)
   const words = text.split(' ')
-  const tokens = trailing ? [...words, trailing] : words
 
   useEffect(() => {
     const root = ref.current
     const trigger = root?.closest<HTMLElement>('button, a')
     if (!root || !trigger) return
     const visual = root.querySelector<HTMLElement>('.rotating-words__visual')
-    const tracks = root.querySelectorAll<HTMLElement>('.rotating-words__track')
-    const outgoing = root.querySelectorAll<HTMLElement>('.rotating-words__line--out')
-    const incoming = root.querySelectorAll<HTMLElement>('.rotating-words__line--in')
+    const track = root.querySelector<HTMLElement>('.rotating-words__track')
+    const outgoing = root.querySelector<HTMLElement>('.rotating-words__line--out')
+    const incoming = root.querySelector<HTMLElement>('.rotating-words__line--in')
+    if (!visual || !track || !outgoing || !incoming) return
     let tl: gsap.core.Timeline | null = null
 
     const reset = () => {
-      gsap.set([...tracks, ...outgoing, ...incoming], { clearProps: 'transform' })
-      if (visual) gsap.set(visual, { clearProps: 'opacity' })
+      gsap.set([track, outgoing, incoming], { clearProps: 'transform' })
+      gsap.set(visual, { clearProps: 'opacity' })
     }
 
     const play = () => {
@@ -58,13 +55,10 @@ export default function RotatingWords({ text, trailing }: Props) {
         tl.fromTo(visual, { opacity: 0.6 }, { opacity: 1, duration: 0.3, ease: 'power1.out' })
         return
       }
-      // 가장 늦게 출발하는 token(마지막)도 TOTAL 안에 끝난다.
-      const duration = TOTAL - STAGGER * (tokens.length - 1)
-      const stagger = { each: STAGGER, from: 'start' } as const
       const ease = 'power3.out'
-      tl.fromTo(tracks, { yPercent: 0 }, { yPercent: -50, duration, ease, stagger }, 0)
-        .fromTo(outgoing, { rotateX: 0 }, { rotateX: -TILT, duration, ease, stagger }, 0)
-        .fromTo(incoming, { rotateX: TILT }, { rotateX: 0, duration, ease, stagger }, 0)
+      tl.fromTo(track, { yPercent: 0 }, { yPercent: -50, duration: DURATION, ease }, 0)
+        .fromTo(outgoing, { rotateX: 0 }, { rotateX: -TILT, duration: DURATION, ease }, 0)
+        .fromTo(incoming, { rotateX: TILT }, { rotateX: 0, duration: DURATION, ease }, 0)
     }
     const onEnter = (event: PointerEvent) => {
       if (event.pointerType === 'mouse' || event.pointerType === 'pen') play()
@@ -86,23 +80,28 @@ export default function RotatingWords({ text, trailing }: Props) {
       tl?.kill()
       reset()
     }
-  }, [tokens.length])
+  }, [])
+
+  // 한 줄의 문장. 단어와 기호는 token span이지만 한 줄 안에서 함께 움직인다(간격만 token 사이에 둔다).
+  const line = (kind: 'out' | 'in') => (
+    <span className={`rotating-words__line rotating-words__line--${kind}`}>
+      {words.map((word, i) => (
+        <span key={`${word}-${i}`} className="rotating-words__token">
+          {word}
+        </span>
+      ))}
+      {trailing && <span className="rotating-words__token rotating-words__token--trailing">{trailing}</span>}
+    </span>
+  )
 
   return (
     <span ref={ref} className="rotating-words">
       <span className="rotating-words__sr">{text}</span>
       <span className="rotating-words__visual" aria-hidden="true">
-        {tokens.map((token, i) => (
-          <span
-            key={`${token}-${i}`}
-            className={`rotating-words__word${trailing && i === tokens.length - 1 ? ' rotating-words__word--trailing' : ''}`}
-          >
-            <span className="rotating-words__track">
-              <span className="rotating-words__line rotating-words__line--out">{token}</span>
-              <span className="rotating-words__line rotating-words__line--in">{token}</span>
-            </span>
-          </span>
-        ))}
+        <span className="rotating-words__track">
+          {line('out')}
+          {line('in')}
+        </span>
       </span>
     </span>
   )

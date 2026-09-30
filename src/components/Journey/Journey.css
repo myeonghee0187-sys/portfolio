@@ -89,12 +89,12 @@
 }
 
 /*
- * 처음부터 지금 scroll 위치까지 하나로 이어진 빛. 색은 정확히 #D4E5EF 하나이고, 지나온 길은 어두워지지 않는다.
+ * 처음부터 지금 scroll 위치까지 하나로 이어진 빛. 색은 primary(#186DE5) 하나이고, 지나온 길은 어두워지지 않는다.
  * 짧은 빛 조각이 움직이는 방식이 아니다 — 마지막에는 첫 card부터 STILL UPDATING까지 한 줄이 된다.
  * 공통 규칙(.journey__path path)보다 우선해야 2.5px이 된다.
  */
 .journey__path .journey__path-active {
-  stroke: #d4e5ef;
+  stroke: #186de5;
   stroke-width: 2.5px;
 }
 
@@ -357,73 +357,93 @@
 }
 
 /*
- * 하루의 시간(14 : 10 / 15 : 00 / 16 : 20 / 17 : 00). 화면 좌 / 우 가장자리에 걸친 editorial background typography.
- * 매우 크고(Geist 200) 매우 희미하다(.06). 글자 폭의 약 14%는 화면 밖으로 나가 잘린다 — 자리는 useJourneyInteraction이
- * 정한다(--node-x는 right면 글자의 오른쪽 끝, left면 왼쪽 끝 / --node-y는 글자의 세로 가운데).
- * underline / tick / index / dot / connector 없이 글자 하나뿐이다. motion은 드러남(--time-r 0 -> 1)의 opacity와
- * y 20px -> 0뿐이다(scale / rotation / glow 없음). world 안에서 path / card보다 먼저 그려져 그 뒤에 깔린다.
+ * Journey의 시계 하나(journeyData.JOURNEY_CLOCK). line 위의 한 점(자리는 JS가 transform으로 옮긴다)을 중심으로 한
+ * 작은 원형 clock marker — Carbon 면, 얇은 Ice 외곽선, 12 / 3 / 6 / 9의 짧은 Titanium 눈금, 시침과 분침(초침 없음).
+ * 둘레의 Carbon 띠(box-shadow)가 line을 살짝 끊어 시계가 line 위에 얹힌 것처럼 보이게 한다.
+ * 정박하는 동안(--dock 0 -> 1) 외곽선이 조금 선명해지고 primary 테 하나가 옅게 켜지며, 옆에 시간 글자가 나타난다(--label-o).
  */
-.journey__time {
+.journey__clock {
+  --clock-size: clamp(30px, 1.9vw, 36px);
+  --dock: 0;
+  --label-o: 0;
   position: absolute;
-  left: calc(var(--node-x, 0) * var(--ju));
-  top: calc(var(--node-y, 0) * var(--ju));
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.journey__clock-face {
+  position: absolute;
+  top: calc(var(--clock-size) / -2);
+  left: calc(var(--clock-size) / -2);
+  box-sizing: border-box;
+  width: var(--clock-size);
+  height: var(--clock-size);
+  border: 1px solid rgb(212 229 239 / calc(0.5 + 0.35 * var(--dock)));
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 32%, #171a1e 0%, #0d0f11 60%, #08090a 100%);
+  box-shadow: 0 0 0 3px var(--color-carbon-black), 0 0 0 4px rgb(24 109 229 / calc(0.4 * var(--dock)));
+}
+
+/* 12 / 3 / 6 / 9의 짧은 눈금. 숫자판은 없다. */
+.journey__clock-face::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from -2deg, rgb(164 169 173 / 0.7) 0 4deg, transparent 4deg 90deg);
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 4px), #000 calc(100% - 4px));
+  mask: radial-gradient(closest-side, transparent calc(100% - 4px), #000 calc(100% - 4px));
+}
+
+/* 바늘. 가운데에서 위(12시)로 뻗은 막대를 JS가 rotate한다. */
+.journey__clock-hand {
+  position: absolute;
+  bottom: 50%;
+  left: 50%;
+  border-radius: 1px;
+  transform-origin: 50% 100%;
+  transform: translateX(-50%);
+}
+
+.journey__clock-hand--hour {
+  width: 1.6px;
+  height: 24%;
+  background: #d4e5ef;
+}
+
+.journey__clock-hand--minute {
+  width: 1px;
+  height: 34%;
+  background: #f3f4f4;
+}
+
+/* 정박한 시간. 시계 옆, card 반대쪽(data-side)에 한 줄. */
+.journey__clock-label {
+  position: absolute;
+  top: 0;
+  left: calc(var(--clock-size) / 2 + 14px);
   transform: translateY(-50%);
-  translate: 0 calc((1 - var(--time-r, 0)) * 20px);
   font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
-  font-weight: 200;
-  font-size: clamp(88px, 8vw, 150px);
-  line-height: 0.9;
-  letter-spacing: -0.045em;
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.08em;
   white-space: nowrap;
-  color: rgb(212 229 239 / 0.06);
-  opacity: var(--time-r, 0);
-  pointer-events: none;
-  user-select: none;
-  will-change: opacity, translate;
+  color: #d4e5ef;
+  opacity: calc(0.85 * var(--label-o));
 }
 
-.journey__time--right {
-  transform: translate(-100%, -50%);
-}
-
-@media (max-width: 1024px) {
-  .journey__time {
-    font-size: clamp(72px, 8vw, 100px);
-  }
-}
-
-/*
- * 문서형(static — 모바일 / 연출 꺼짐)에는 경로와 빛의 진행이 없다. 시간은 card 사이의 흐름에 놓이고(--node-order),
- * side 쪽 화면 가장자리에 붙어 글자 폭의 12%가 잘린다. card와 겹치지 않는다.
- */
-.journey--static .journey__stage {
-  overflow-x: clip;
-}
-
-.journey--static .journey__time {
-  --time-r: 1;
-  position: relative;
-  top: auto;
+.journey__clock[data-side='left'] .journey__clock-label {
+  right: calc(var(--clock-size) / 2 + 14px);
   left: auto;
-  order: var(--node-order);
-  margin: -24px -20px;
-  transform: none;
-  translate: none;
-  font-size: clamp(48px, 14vw, 68px);
-  will-change: auto;
 }
 
-.journey--static .journey__time--right {
-  align-self: flex-end;
-  translate: 12% 0;
-}
-
-.journey--static .journey__time--left {
-  align-self: flex-start;
-  translate: -12% 0;
-}
-
-.journey--static .journey__node {
-  order: var(--node-order);
+/* 문서형(static — 모바일 / 연출 꺼짐)에는 line의 진행이 없다. 시계도 없다. */
+.journey--static .journey__clock {
+  display: none;
 }

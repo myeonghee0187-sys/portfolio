@@ -1,5 +1,5 @@
 import { useRef, type CSSProperties } from 'react'
-import { JOURNEY_NODES, JOURNEY_TIMES, JOURNEY_WORLD_HEIGHT } from './journeyData'
+import { JOURNEY_NODES, JOURNEY_WORLD_HEIGHT } from './journeyData'
 import useJourneyInteraction from './useJourneyInteraction'
 import './Journey.css'
 
@@ -22,35 +22,32 @@ export default function Journey({ interactive, ready }: JourneyProps) {
         <div ref={worldRef} className="journey__world" style={{ '--world-h': JOURNEY_WORLD_HEIGHT } as CSSProperties}>
           {/*
             경로는 하나다. 두 path가 같은 d(모든 card를 잇는 하나의 문자열)를 쓴다 —
-            아주 옅은 전체 길과, 처음부터 지금 위치까지 이어진 #D4E5EF 한 줄.
+            아주 옅은 전체 길과, 처음부터 지금 위치까지 이어진 primary(#186DE5) 한 줄.
             d는 card의 실제 크기를 재서, card 변에 들어오고 나가는 점으로 만든다(useJourneyInteraction).
             card 안쪽 구간은 불투명한 surface 아래로 지나간다.
           */}
-          {/*
-            하루의 시간(14 : 10 -> 17 : 00). 화면 좌 / 우 가장자리에 크고 아주 희미하게 깔리는 배경 글자(editorial background
-            typography)다 — line / card에 연결하지 않고, 자리(--node-x / --node-y)만으로 그 구간과 이어진다(useJourneyInteraction).
-            빛이 그 구간에 오면 드러난다(--time-r). 문서형(static)에서는 card 사이 흐름에 놓인다(--node-order).
-            path / card보다 먼저 그려져 그 뒤에 깔린다. 보조기술에는 읽히지 않는다.
-          */}
-          {JOURNEY_TIMES.map((t) => (
-            <div
-              key={t.time}
-              className={`journey__time journey__time--${t.side}`}
-              style={{ '--node-order': t.from * 2 + 1 } as CSSProperties}
-              aria-hidden="true"
-            >
-              {t.time}
-            </div>
-          ))}
           <svg className="journey__path" viewBox={`0 0 1920 ${JOURNEY_WORLD_HEIGHT}`} preserveAspectRatio="xMidYMin meet" aria-hidden="true" focusable="false">
             <path className="journey__path-base" />
             <path className="journey__path-active" />
           </svg>
+          {/*
+            Journey의 시계 하나. line 위를 따라 이동하다가 FIGMA DESIGN / FRONT - END / WORKING WITH AI / STILL UPDATING에
+            line이 닿는 자리에서 잠깐 정박한다(14 : 10 / 15 : 00 / 16 : 20 / 17 : 00). 자리 / 바늘 / 시간 글자는
+            useJourneyInteraction이 journey-master 진행률 하나로 정한다. 층: 경로 -> 시계 -> card — card를 지날 때는 line처럼
+            card 뒤로 지나간다. 초침 / 숫자판 없이 시침과 분침, 네 방향의 짧은 눈금뿐이다. 보조기술에는 읽히지 않는다.
+          */}
+          <div className="journey__clock" aria-hidden="true">
+            <span className="journey__clock-face">
+              <span className="journey__clock-hand journey__clock-hand--hour" />
+              <span className="journey__clock-hand journey__clock-hand--minute" />
+            </span>
+            <span className="journey__clock-label" />
+          </div>
           {JOURNEY_NODES.map((node, i) => {
             const Title = i === 0 ? 'h2' : 'h3'
             return (
               <article key={node.id} className="journey__node" data-node={node.id}
-                style={{ '--node-x': node.position.x, '--node-y': node.position.y, '--node-order': i * 2 } as CSSProperties}>
+                style={{ '--node-x': node.position.x, '--node-y': node.position.y } as CSSProperties}>
                 <div className={i === 0 ? 'journey__intro-entry' : undefined}>
                   {/*
                     card 바탕. 경로 위, card 테두리 / 글자 아래에 놓이는 불투명한 면이다(opacity / blur 없음).
