@@ -1,8 +1,9 @@
 /*
  * GET IN TOUCH modal. 화면 전체를 어둡게 흐리고 가운데에 panel 하나를 띄운다.
  * 이 modal 안에서는 "UI border = Electric Ice(#186DE5)" 규칙보다 아래 규칙이 우선한다.
- *   panel / 입력 칸 / 버튼   Neutral(Titanium · Frost 계열의 아주 약한 선). hover / focus도 Frost로 조금 선명해질 뿐이다
- *   SUBJECT                  선택되지 않은 칸은 Neutral, 선택된 칸 하나만 Primary #186DE5
+ *   panel / 버튼             Neutral(Titanium · Frost 계열의 아주 약한 선). hover에서 Frost로 조금 선명해진다
+ *   입력 칸                  평소 Neutral, hover Frost, 입력 중(focus)인 칸 하나만 Primary #186DE5 — 빠져나가면 Neutral로 돌아간다
+ *   SUBJECT                  선택되지 않은 칸은 Neutral, 선택된 칸 하나만 Primary #186DE5(선택이 유지되는 동안 계속)
  * 입력 오류만 예외로 붉은 선이다(오류 문구와 같은 의미). neon glow는 두지 않는다.
  */
 .contact-modal {
@@ -142,13 +143,17 @@
 
 .contact-modal__field input:hover,
 .contact-modal__field textarea:hover {
-  border-color: rgb(164 169 173 / 0.36);
+  border-color: rgb(212 229 239 / 0.46);
 }
 
-/* focus도 Primary Blue가 아니라 Neutral Frost가 조금 선명해질 뿐이다. */
+/*
+ * 입력 중인 칸 하나만 Primary — SUBJECT 선택 칸과 같은 Electric Ice 언어다. neon glow 없이 1px 테와 14px의 아주 옅은 빛만.
+ * 마우스 click과 keyboard Tab 모두 같은 표시다(:focus). 빠져나가면(blur) Neutral로 돌아간다.
+ */
 .contact-modal__field input:focus,
 .contact-modal__field textarea:focus {
-  border-color: rgb(212 229 239 / 0.55);
+  border-color: #186de5;
+  box-shadow: 0 0 0 1px rgb(24 109 229 / 0.12), 0 0 14px rgb(24 109 229 / 0.08);
 }
 
 .contact-modal__field [aria-invalid='true'] {
@@ -248,9 +253,136 @@
   transition: border-color 200ms ease, background-color 200ms ease;
 }
 
-.contact-modal__submit:hover {
+.contact-modal__submit:hover:not(:disabled) {
   border-color: rgb(212 229 239 / 0.55);
   background: rgb(212 229 239 / 0.06);
+}
+
+/* 전송 중. 중복 전송을 막고(disabled), 글자만 SENDING으로 바뀐다. 과한 loader는 두지 않는다. */
+.contact-modal__submit:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
+.contact-modal__submit-arrow {
+  margin-left: 8px;
+  letter-spacing: 0;
+}
+
+/* 전송 중 표시: 아주 작은 점 세 개가 차례로 옅어졌다 돌아온다. */
+.contact-modal__sending-dots {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+.contact-modal__sending-dots i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: contact-modal-dot 1s ease-in-out infinite;
+}
+
+.contact-modal__sending-dots i:nth-child(2) { animation-delay: 0.15s; }
+.contact-modal__sending-dots i:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes contact-modal-dot {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+/* 전송 실패. 입력은 그대로 두고, 버튼 아래 작은 한 줄. 붉은 상자 없이 옅은 rose 글자만.
+ * 비어 있을 때도 live region으로 DOM에 남되, form의 간격(22px)을 차지하지 않는다. */
+.contact-modal__send-error:empty {
+  margin-top: -22px;
+}
+
+.contact-modal__send-error {
+  margin: 0;
+  font: 500 14px/1.6 'SUIT', sans-serif;
+  color: #d9a0a0;
+}
+
+/*
+ * 전송 성공 — modal 안이 성공 상태로 바뀐다(자동으로 닫지 않는다). form은 짧게 사라지고,
+ * 작은 check(0.82 -> 1), MESSAGE SENT(Frost White), 보조 문구(Titanium), CLOSE가 차례로 선다.
+ */
+.contact-modal__success {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 8px 0 4px;
+}
+
+.contact-modal__success-check {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 6px;
+  border: 1px solid #186de5;
+  border-radius: 50%;
+  color: #d4e5ef;
+}
+
+.contact-modal__success-check svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.contact-modal__success-title {
+  margin: 0;
+  font: 600 16px/1 'Inter', sans-serif;
+  letter-spacing: 0.14em;
+  color: #f3f4f4;
+}
+
+.contact-modal__success-text {
+  margin: 0;
+  font: 500 15px/1.65 'SUIT', sans-serif;
+  color: #a0a7ac;
+}
+
+.contact-modal__success .contact-modal__submit {
+  margin-top: 14px;
+}
+
+/* 성공 순간 panel 위쪽 가장자리에 한 번 지나가는 아주 옅은 Ice 반사(반복 없음). */
+.contact-modal__panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 22px;
+  left: 22px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #d4e5ef 35%, #186de5 65%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.contact-modal__panel[data-state='success']::before {
+  animation: contact-modal-reflect 600ms ease-out 1;
+}
+
+@keyframes contact-modal-reflect {
+  0% { opacity: 0; }
+  40% { opacity: 0.22; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contact-modal__sending-dots i,
+  .contact-modal__panel[data-state='success']::before {
+    animation: none;
+  }
 }
 
 .contact-modal__submit:focus-visible,
