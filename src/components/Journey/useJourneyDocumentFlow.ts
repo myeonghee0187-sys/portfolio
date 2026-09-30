@@ -4,6 +4,7 @@ import useMediaQuery from '../../hooks/useMediaQuery'
 import { JOURNEY_CLOCK } from './journeyData'
 import { createJourneyFlow } from './journeyFlow'
 import { longSCurve, pathDistanceAtY } from './journeyPath'
+import { journeyAmbientAt } from '../../hooks/journeyLighting'
 
 /** Document layout keeps its card order/gaps; one shared path clears the card edges. */
 export default function useJourneyDocumentFlow(enabled: boolean, worldRef: RefObject<HTMLDivElement | null>) {
@@ -15,6 +16,7 @@ export default function useJourneyDocumentFlow(enabled: boolean, worldRef: RefOb
     const svg = world.querySelector<SVGSVGElement>('.journey__path')!
     const active = svg.querySelector<SVGPathElement>('.journey__path-active')!
     const nodes = [...world.querySelectorAll<HTMLElement>('.journey__node')]
+    const stage = world.parentElement!
     const flow = createJourneyFlow(world, active)
     const originalViewBox = svg.getAttribute('viewBox')!
     let height = 0
@@ -23,6 +25,7 @@ export default function useJourneyDocumentFlow(enabled: boolean, worldRef: RefOb
     const render = (value: number) => {
       progress = value
       flow.render(progress, reducedMotion)
+      stage.style.setProperty('--contact-ambient', journeyAmbientAt(progress).toFixed(4))
     }
     const measure = () => {
       const bounds = world.getBoundingClientRect()
@@ -88,6 +91,7 @@ export default function useJourneyDocumentFlow(enabled: boolean, worldRef: RefOb
       ScrollTrigger.removeEventListener('revert', measure)
       trigger?.kill()
       flow.clear()
+      stage.style.removeProperty('--contact-ambient')
       svg.setAttribute('viewBox', originalViewBox)
       svg.style.removeProperty('height')
       if (import.meta.env.DEV) delete world.parentElement!.dataset.line

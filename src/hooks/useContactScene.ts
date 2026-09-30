@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { crownLink } from './crownLink'
 import { setCrownScrollRemap } from './useCrownWheel'
+import { CONTACT_ENTRY_LIGHT } from './journeyLighting'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -50,17 +51,11 @@ const SPIN_INFLUENCE: ReadonlyArray<readonly [number, number]> = [
 const REVEAL = { start: 'top 70%', duration: 0.7, stagger: 0.08 }
 
 /**
- * Light Rays 진입(연출이 꺼진 환경). section이 화면에 들어오면 1.4초 동안 0 -> 0.5. 되감아 나가면 조용히 꺼진다.
- * 연출이 켜진 환경은 RAYS_HANDOFF를 쓴다.
- */
-const RAYS = { start: 'top 80%', opacity: 0.5, duration: 1.4, outDuration: 0.6 }
-
-/**
- * Light Rays 진입(연출이 켜진 환경, scroll에 묶인다). Journey 마지막에 .journey__handoff가 0.35까지 올라와 있고,
- * Contact 윗변이 화면 아래 끝에 닿는 순간(progress 0) 빛은 같은 0.35에서 출발해 0.35까지 기존 최종값 0.5에 닿는다.
+ * Light Rays 진입은 모든 화면에서 scroll에 묶인다. Journey의 마지막 배경값 0.38에서 이어져,
+ * Contact progress 0.35에 기존 최종 opacity 0.5에 닿는다.
  * 빛이 새로 켜지는 frame / 밝은 띠가 없다 — Journey 아래 끝의 빛과 Contact 윗변의 빛이 같은 세기로 맞물린다.
  */
-const RAYS_HANDOFF = { from: 0.35, to: 0.5, end: 0.35 }
+const RAYS_HANDOFF = { from: CONTACT_ENTRY_LIGHT, to: 0.5, end: 0.35 }
 
 /**
  * Contact 문장 묶음(container) 등장. scroll에 묶여 opacity 0 -> 1, y 24 -> 0.
@@ -138,19 +133,15 @@ export default function useContactScene({ interactive, ready, sectionRef }: Opti
         onLeaveBack: () => revealTl.reverse(),
       })
 
-      /* ---------- Light Rays 진입(시간 기반, 연출이 꺼진 환경). 빛 자체에는 이동 animation을 더하지 않는다. ---------- */
+      /* Document layout uses the same reversible handoff, without a time-based fade. */
       if (rays && !interactive) {
-        gsap.set(rays, { opacity: 0 })
-        ScrollTrigger.create({
-          trigger: section,
-          start: RAYS.start,
-          refreshPriority: -4,
-          onEnter: () => gsap.to(rays, { opacity: RAYS.opacity, duration: RAYS.duration, ease: 'power2.out', overwrite: true }),
-          onLeaveBack: () => gsap.to(rays, { opacity: 0, duration: RAYS.outDuration, ease: 'power1.out', overwrite: true }),
-          onRefresh: (self) => {
-            if (self.progress > 0 && !gsap.isTweening(rays)) gsap.set(rays, { opacity: RAYS.opacity })
-          },
-        })
+        const light = gsap.timeline({ scrollTrigger: {
+          id: 'contact-light-handoff', trigger: section,
+          start: 'top bottom', end: 'bottom bottom', scrub: true,
+          invalidateOnRefresh: true, refreshPriority: -4,
+        } })
+        light.fromTo(rays, { opacity: RAYS_HANDOFF.from }, { opacity: RAYS_HANDOFF.to, duration: RAYS_HANDOFF.end, ease: 'none' }, 0)
+        light.set({}, {}, 1)
       }
 
       if (!interactive) {

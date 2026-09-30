@@ -631,6 +631,9 @@ export default function useScrollScene(enabled: boolean) {
         }
         crownLink.refresh = applyCrown
 
+        // ScrollTrigger restores proxy tweens with callbacks suppressed on refresh.
+        // Reconcile their direct DOM writes explicitly, in the original owner.
+        let syncExposure = () => {}
         const facesTl = gsap.timeline({
           scrollTrigger: {
             trigger: faces,
@@ -641,10 +644,12 @@ export default function useScrollScene(enabled: boolean) {
             onUpdate: (self) => {
               facesProgress = self.progress
               applyCrown()
+              syncExposure()
             },
             onRefresh: (self) => {
               facesProgress = self.progress
               applyCrown()
+              syncExposure()
             },
           },
         })
@@ -727,24 +732,28 @@ export default function useScrollScene(enabled: boolean) {
         ]
         const exposure = { bloom: 0, scale: 0.82, bright: 1, glint: 0, sweep: 120, glass: 0, glassX: 100 }
         const writeExposure = () => {
+          const inTransition = facesTl.progress() > 0 && facesTl.progress() < 1
+          const bloomOpacity = inTransition ? exposure.bloom : 0
+          const brightness = inTransition ? exposure.bright : 1
           if (bloom) {
-            bloom.style.opacity = exposure.bloom.toFixed(3)
-            bloom.style.visibility = exposure.bloom > 0.001 ? 'visible' : 'hidden'
+            bloom.style.opacity = bloomOpacity.toFixed(3)
+            bloom.style.visibility = bloomOpacity > 0.001 ? 'visible' : 'hidden'
             bloom.style.transform = `scale(${exposure.scale.toFixed(3)})`
           }
           for (const el of lit) {
             if (!el) continue
             // 1이면 filter를 아예 지운다. 남겨 두면 평소에도 layer가 따로 합성된다.
-            if (exposure.bright > 1.001) el.style.filter = `brightness(${exposure.bright.toFixed(3)})`
+            if (brightness > 1.001) el.style.filter = `brightness(${brightness.toFixed(3)})`
             else el.style.removeProperty('filter')
           }
           if (glint) {
-            glint.style.opacity = exposure.glint.toFixed(3)
+            glint.style.opacity = (inTransition ? exposure.glint : 0).toFixed(3)
             glint.style.setProperty('--reflection-x', `${exposure.sweep.toFixed(1)}%`)
           }
           if (glass) {
-            glass.style.opacity = exposure.glass.toFixed(3)
-            glass.style.visibility = exposure.glass > 0.001 ? 'visible' : 'hidden'
+            const glassOpacity = inTransition ? exposure.glass : 0
+            glass.style.opacity = glassOpacity.toFixed(3)
+            glass.style.visibility = glassOpacity > 0.001 ? 'visible' : 'hidden'
             glass.style.setProperty('--display-reflection-x', `${exposure.glassX.toFixed(1)}%`)
           }
         }
@@ -764,6 +773,9 @@ export default function useScrollScene(enabled: boolean) {
         expose({ glass: 0 }, { glass: 1 }, 0.08, 'sine.out', 0.44)
         expose({ glass: 1 }, { glass: 0 }, 0.1, 'sine.in', 0.52)
         expose({ glassX: 100 }, { glassX: 0 }, 0.18, 'none', 0.44)
+        syncExposure = writeExposure
+        facesTl.eventCallback('onUpdate', writeExposure)
+        writeExposure()
 
         /*
          * Crown이 정면 controller가 된 직후 딱 한 번 도는 cue.
