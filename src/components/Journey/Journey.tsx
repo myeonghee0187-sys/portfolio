@@ -1,5 +1,6 @@
 import { useRef, type CSSProperties } from 'react'
 import { JOURNEY_NODES, JOURNEY_WORLD_HEIGHT } from './journeyData'
+import { STORY_TIME } from '../../story/storyTime'
 import useJourneyInteraction from './useJourneyInteraction'
 import './Journey.css'
 
@@ -30,19 +31,6 @@ export default function Journey({ interactive, ready }: JourneyProps) {
             <path className="journey__path-base" />
             <path className="journey__path-active" />
           </svg>
-          {/*
-            Journey의 시계 하나. line 위를 따라 이동하다가 FIGMA DESIGN / FRONT - END / WORKING WITH AI / STILL UPDATING에
-            line이 닿는 자리에서 잠깐 정박한다(14 : 10 / 15 : 00 / 16 : 20 / 17 : 00). 자리 / 바늘 / 시간 글자는
-            useJourneyInteraction이 journey-master 진행률 하나로 정한다. 층: 경로 -> 시계 -> card — card를 지날 때는 line처럼
-            card 뒤로 지나간다. 초침 / 숫자판 없이 시침과 분침, 네 방향의 짧은 눈금뿐이다. 보조기술에는 읽히지 않는다.
-          */}
-          <div className="journey__clock" aria-hidden="true">
-            <span className="journey__clock-face">
-              <span className="journey__clock-hand journey__clock-hand--hour" />
-              <span className="journey__clock-hand journey__clock-hand--minute" />
-            </span>
-            <span className="journey__clock-label" />
-          </div>
           {JOURNEY_NODES.map((node, i) => {
             const Title = i === 0 ? 'h2' : 'h3'
             return (
@@ -77,6 +65,19 @@ export default function Journey({ interactive, ready }: JourneyProps) {
               </article>
             )
           })}
+          {/*
+            Journey의 Time Marker 하나. line을 따라 시작부터 끝까지 이동하며 각 단계의 시간을 잇는다 — 안의 디지털 시간은
+            한 번도 비지 않는다(이동하는 동안에도 분 단위로 이어서 흐른다). card 위에 그려지지만 card 안으로는 들어가지 않는다:
+            line이 card 밑으로 지나가는 구간에서는 card 가장자리 바깥을 따라 돈다. 자리 / 시간은 useJourneyInteraction이
+            journey-master 진행률 하나로 정한다. 보조기술에는 읽히지 않는다(시간은 장식이고 card 글자가 본문이다).
+          */}
+          <div className="journey__marker" aria-hidden="true">
+            <span className="journey__marker-glass">
+              <span className="journey__marker-hand journey__marker-hand--hour" />
+              <span className="journey__marker-hand journey__marker-hand--minute" />
+              <span className="journey__marker-time">{STORY_TIME.journey[0].replace(/\s/g, '')}</span>
+            </span>
+          </div>
         </div>
       </div>
     </section>
