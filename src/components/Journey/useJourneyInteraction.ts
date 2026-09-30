@@ -423,7 +423,8 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
         const pt = active.getPointAtLength(s)
         let depart = i + 1 < m.length ? m[i] + (m[i + 1] - m[i]) * DOCK_HOLD : Infinity
         // camera가 먼저 떠나 정박한 시계가 화면 가장자리에 닿기 전에(card 밑으로 들어가는 시간까지 남기고) 출발한다.
-        for (let q = m[i]; q < depart; q += 0.002) {
+        // 마지막 정박지는 떠나지 않는다(depart = Infinity) — 그때는 재지 않는다.
+        for (let q = m[i]; Number.isFinite(depart) && q < depart; q += 0.002) {
           const y = pt.y * scale + geom.camera(q)
           if (y < header + DOCK_MARGIN || y > stage.clientHeight - DOCK_MARGIN) {
             depart = Math.max(m[i], q - DIVE)
