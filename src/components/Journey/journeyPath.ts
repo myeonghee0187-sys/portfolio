@@ -14,7 +14,8 @@ export function leadInSCurve(points: readonly [PathPoint, PathPoint, PathPoint, 
   return cubicPath([points[0], { ...points[0], y: points[0].y + leadIn }, ...points.slice(1)])
 }
 
-function cubicPath(points: readonly PathPoint[]) {
+/** Cubic spans through the points, every knot with a vertical tangent (no side kinks). */
+export function cubicPath(points: readonly PathPoint[]) {
   const f = (value: number) => value.toFixed(3)
   let d = `M ${f(points[0].x)} ${f(points[0].y)}`
   for (let i = 1; i < points.length; i++) {
@@ -28,7 +29,7 @@ function cubicPath(points: readonly PathPoint[]) {
  * Offsets are measured in SVG units and applied at refresh, never while scrolling.
  * The route is designed once across three broad spans, not projected around cards.
  */
-export function journeySCurve(boxes: readonly JourneyPathBox[], clearance: number, opening: { centerGap: number; leadIn: number }) {
+export function journeySCurve(boxes: readonly JourneyPathBox[], clearance: number, opening: { startInset: number; leadIn: number }) {
   const offsets = boxes.map(() => 0)
   for (const [left, right] of [[1, 2], [4, 5]]) {
     const gap = boxes[right].x - boxes[right].hw - boxes[left].x - boxes[left].hw
@@ -39,7 +40,9 @@ export function journeySCurve(boxes: readonly JourneyPathBox[], clearance: numbe
   const placed = boxes.map((box, i) => ({ ...box, x: box.x + offsets[i] }))
   const intro = placed[0], visual = placed[2], ai = placed[5], last = placed[6]
   const points = [
-    { x: intro.x, y: intro.y + intro.hh + opening.centerGap },
+    // Starts at the first card's bottom-center (a hair inside it). The part under the card is
+    // masked by the card footprint, so the visible line leaves the card border with no gap.
+    { x: intro.x, y: intro.y + intro.hh - opening.startInset },
     { x: visual.x - visual.hw - clearance - 12, y: visual.y },
     { x: ai.x - ai.hw - clearance - 26, y: ai.y + 260 },
     { x: last.x, y: last.y - last.hh / 2 },

@@ -3,8 +3,13 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import useMediaQuery from '../../hooks/useMediaQuery'
 import { JOURNEY_CLOCK } from './journeyData'
 import { createJourneyFlow } from './journeyFlow'
-import { leadInSCurve, pathDistanceAtY } from './journeyPath'
+import { cubicPath, pathDistanceAtY } from './journeyPath'
 import { journeyAmbientAt } from '../../hooks/journeyLighting'
+
+/** First visible line from the first card's bottom edge to the gutter (px). */
+const LEAD_IN = 90
+/** The clock starts this far along the visible line (px), never on a fixed y. */
+const CLOCK_START = 90
 
 /** Document layout keeps its card order/gaps; one shared path clears the card edges. */
 export default function useJourneyDocumentFlow(enabled: boolean, worldRef: RefObject<HTMLDivElement | null>) {
@@ -43,17 +48,21 @@ export default function useJourneyDocumentFlow(enabled: boolean, worldRef: RefOb
       const left = radius + 4
       const right = Math.min(...boxes.map(box => box.x - box.hw)) - radius - 4
       const x = (left + right) / 2
-      const firstY = boxes[0].y + boxes[0].hh + radius + 20
+      // The line leaves the first card at its bottom edge (starting just inside its lower-left
+      // corner, hidden by the opaque card), steps into the gutter over LEAD_IN and then runs
+      // the three broad spans. The clock starts CLOCK_START along the visible line.
+      const first = boxes[0]
+      const start = { x: first.x - first.hw + 4, y: first.y + first.hh - 2 }
+      const firstY = first.y + first.hh + LEAD_IN
       const lastY = boxes[boxes.length - 1].y
       const span = lastY - firstY
-      const d = leadInSCurve([
-        { x, y: firstY }, { x: right, y: firstY + span / 3 },
+      const d = cubicPath([
+        start, { x, y: firstY }, { x: right, y: firstY + span / 3 },
         { x: left, y: firstY + span * 2 / 3 }, { x, y: lastY },
-      ], 80)
+      ])
       svg.querySelectorAll('path').forEach(path => path.setAttribute('d', d))
       const total = active.getTotalLength()
-      // Unlike the former card-crossing route, both endpoints are already clear.
-      const from = 0, to = 1
+      const from = Math.min(1, (2 + CLOCK_START) / total), to = 1
       startY = active.getPointAtLength(from * total).y
       endY = active.getPointAtLength(to * total).y
       const milestones = JOURNEY_CLOCK.map(stop => ({

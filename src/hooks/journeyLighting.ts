@@ -1,7 +1,7 @@
 /** Shared boundary value: Journey's last ambient frame and Contact's first rays. */
-export const CONTACT_ENTRY_LIGHT = 0.38
+export const CONTACT_ENTRY_LIGHT = 0.35
 
-const STOPS = [[0.78, 0], [0.88, 0.08], [0.96, 0.22], [1, CONTACT_ENTRY_LIGHT]] as const
+const STOPS = [[0.8, 0], [0.9, 0.08], [0.97, 0.22], [1, CONTACT_ENTRY_LIGHT]] as const
 
 /** Scroll-only background light; the main Journey stays exactly Carbon Black. */
 export function journeyAmbientAt(progress: number) {
