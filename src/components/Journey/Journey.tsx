@@ -25,13 +25,27 @@ export default function Journey({ interactive, ready }: JourneyProps) {
           {/*
             경로는 하나다. 두 path가 같은 d(모든 card를 잇는 하나의 문자열)를 쓴다 —
             아주 옅은 전체 길과, 처음부터 지금 위치까지 이어진 #D4E5EF 한 줄.
-            d는 실제 card 크기와 시계 반지름을 반영한 세 개의 긴 S-curve로 만든다.
+            d는 첫 card 아래 20px의 시계 외곽 여백, 80px lead-in, 세 개의 긴 S-curve로 만든다.
             두 path와 시계가 같은 geometry를 사용하며, card마다 작은 우회 곡선을 추가하지 않는다.
           */}
-          <svg className="journey__path" viewBox={`0 0 1920 ${JOURNEY_WORLD_HEIGHT}`} preserveAspectRatio="xMidYMin meet" aria-hidden="true" focusable="false">
-            <path className="journey__path-base" />
-            <path className="journey__path-active" />
-          </svg>
+          <div className="journey__flow-entry" aria-hidden="true">
+            <svg className="journey__path" viewBox={`0 0 1920 ${JOURNEY_WORLD_HEIGHT}`} preserveAspectRatio="xMidYMin meet" aria-hidden="true" focusable="false">
+              <path className="journey__path-base" />
+              <path className="journey__path-active" />
+            </svg>
+            {/* One persistent clock follows the shared line outside card surfaces. */}
+            <div className="journey__marker" aria-hidden="true">
+              <span className="journey__marker-glass">
+                {Array.from({ length: 12 }, (_, tick) => (
+                  <span key={tick} className={`journey__marker-tick${tick % 3 === 0 ? ' journey__marker-tick--major' : ''}`}
+                    style={{ '--tick-angle': `${tick * 30}deg` } as CSSProperties} />
+                ))}
+                <span className="journey__marker-hand journey__marker-hand--hour" />
+                <span className="journey__marker-hand journey__marker-hand--minute" />
+                <span className="journey__marker-pin" />
+              </span>
+            </div>
+          </div>
           {JOURNEY_NODES.map((node, i) => {
             const Title = i === 0 ? 'h2' : 'h3'
             return (
@@ -66,18 +80,7 @@ export default function Journey({ interactive, ready }: JourneyProps) {
               </article>
             )
           })}
-          {/* One persistent clock follows the shared line outside card surfaces. */}
-          <div className="journey__marker" aria-hidden="true">
-            <span className="journey__marker-glass">
-              {Array.from({ length: 12 }, (_, tick) => (
-                <span key={tick} className={`journey__marker-tick${tick % 3 === 0 ? ' journey__marker-tick--major' : ''}`}
-                  style={{ '--tick-angle': `${tick * 30}deg` } as CSSProperties} />
-              ))}
-              <span className="journey__marker-hand journey__marker-hand--hour" />
-              <span className="journey__marker-hand journey__marker-hand--minute" />
-              <span className="journey__marker-pin" />
-            </span>
-          </div>
+
         </div>
       </div>
     </section>

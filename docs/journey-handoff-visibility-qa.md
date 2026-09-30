@@ -1,5 +1,7 @@
 # FACES → Journey visibility QA
 
+Historical record: the whole-path/clock visibility gate below was canceled by the subsequent continuity request. Current behavior and validation are documented in [Journey line continuity QA](journey-line-continuity-qa.md).
+
 ## Cause and ownership
 
 The former handoff timeline faded the SVG root (both base and active paths) and clock together with the first card from handoff progress 0.62 to 1. The first card's entry wrapper was still translucent, so the already-visible line showed through its surface. Separately, flow progress0 mapped to the exposed path range.from and drew that entire prefix before the clock moved.

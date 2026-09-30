@@ -39,12 +39,6 @@ export function pathEntryDistance(path: PathSampler, box: PathBox, radius: numbe
 
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
 
-/** Use the existing opening 2% to reveal; never leak across the handoff boundary. */
-export function journeyFlowVisibility(progress: number, target = progress, handoffComplete = true, reducedMotion = false) {
-  if (!handoffComplete || target <= 0 || progress <= 0) return 0
-  return reducedMotion ? 1 : clamp01(Math.min(progress, target) / 0.02)
-}
-
 /** A reversible C1 mapping. Milestone speed is 40% of mid-segment speed
  * (0.5 / 1.25), without a hold, snap or time-based pause. */
 export function mapJourneyFlow(progress: number, milestones: readonly FlowMilestone[], reducedMotion = false) {
@@ -78,7 +72,7 @@ export function createJourneyFlow(world: HTMLElement, active: SVGPathElement) {
   const marker = world.querySelector<HTMLElement>('.journey__marker')!
   const hour = marker.querySelector<HTMLElement>('.journey__marker-hand--hour')!
   const minute = marker.querySelector<HTMLElement>('.journey__marker-hand--minute')!
-  let total = 0, scale = 1, lastProgress = -1, lastReveal = -1
+  let total = 0, scale = 1, lastProgress = -1
   let matrix: DOMMatrix | null = null
   let milestones: FlowMilestone[] = []
   let pathMilestones: FlowMilestone[] = []
@@ -98,24 +92,17 @@ export function createJourneyFlow(world: HTMLElement, active: SVGPathElement) {
         progress: clamp01((stop.progress - range.from) / (range.to - range.from)),
       }))
       lastProgress = -1
-      lastReveal = -1
       const length = total * scale
       active.style.strokeDasharray = `${length}px ${length + 4}px`
       active.style.strokeDashoffset = `${length}px`
       active.style.visibility = 'hidden'
     },
-    render(scrollProgress: number, reducedMotion = false, reveal = 1) {
+    render(scrollProgress: number, reducedMotion = false) {
       if (!total || !milestones.length) return
       const journeyFlowProgress = mapJourneyFlow(scrollProgress, milestones, reducedMotion)
       const pathProgress = range.from + (range.to - range.from) * journeyFlowProgress
-      const opacity = clamp01(reveal)
-      if (journeyFlowProgress === lastProgress && opacity === lastReveal) return pathProgress
+      if (journeyFlowProgress === lastProgress) return pathProgress
       lastProgress = journeyFlowProgress
-      if (opacity !== lastReveal) {
-        world.style.setProperty('--journey-flow-opacity', opacity.toFixed(4))
-        world.dataset.flowState = opacity > 0 ? 'active' : 'pre-active'
-      }
-      lastReveal = opacity
       const point = active.getPointAtLength(total * pathProgress)
       const x = matrix ? point.x * matrix.a + point.y * matrix.c + matrix.e : point.x
       const y = matrix ? point.x * matrix.b + point.y * matrix.d + matrix.f : point.y
@@ -123,9 +110,8 @@ export function createJourneyFlow(world: HTMLElement, active: SVGPathElement) {
       // All four writes consume this exact progress in the same frame. No DOM measurements.
       const length = total * scale
       const drawn = length * (pathProgress - range.from)
-      const painted = opacity > 0 && drawn > 0
-      // Start drawing at the clock's exposed start, without changing path geometry.
-      // A zero-length round cap can still paint a dot, so hide the active stroke too.
+      const painted = drawn > 0
+      // A zero-length active stroke has no round-cap dot. The base and clock stay visible.
       active.style.visibility = painted ? 'visible' : 'hidden'
       active.style.strokeDasharray = `${painted ? drawn : length}px ${length + 4}px`
       active.style.strokeDashoffset = `${painted ? -length * range.from : length}px`
@@ -142,8 +128,6 @@ export function createJourneyFlow(world: HTMLElement, active: SVGPathElement) {
       active.style.removeProperty('stroke-dasharray')
       active.style.removeProperty('stroke-dashoffset')
       active.style.removeProperty('visibility')
-      world.style.removeProperty('--journey-flow-opacity')
-      delete world.dataset.flowState
       marker.style.removeProperty('transform')
       hour.style.removeProperty('transform')
       minute.style.removeProperty('transform')
