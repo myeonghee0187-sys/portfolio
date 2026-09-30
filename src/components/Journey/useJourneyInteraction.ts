@@ -5,6 +5,7 @@ import { JOURNEY_CLOCK, JOURNEY_NODES } from './journeyData'
 import { createJourneyFlow, pathEntryDistance, pathExitDistance } from './journeyFlow'
 import { journeySCurve, pathDistanceAtY } from './journeyPath'
 import { HANDOFF_VIEWPORTS, JOURNEY_VIEWPORTS, PANEL_TRIGGER_ID, panelTiming } from '../../hooks/panelTiming'
+import { journeyAmbientAt } from '../../hooks/journeyLighting'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -20,17 +21,6 @@ const NODE_LEAVE = 0.5
  * wheel 한 칸의 계단만 녹이고, 멈추면 바로 선다. anchor snap / card pause / 되감김 없음.
  */
 const SMOOTHING = 0.14
-
-/**
- * Journey -> Contact handoff. Journey는 끝까지 어둡고, 마지막 구간에서만 Contact 쪽 빛(.journey__handoff)이
- * 화면 아래에서 들어온다. [진행률, opacity] — 0.78까지 0, 0.90에 0.12, 1.00에 0.35.
- * 이어서 Contact의 Light Rays가 0.35에서 출발해 0.5까지 올라간다(useContactScene).
- */
-const CONTACT_AMBIENT: ReadonlyArray<readonly [number, number]> = [
-  [0.78, 0],
-  [0.9, 0.12],
-  [1, 0.35],
-]
 
 type Options = {
   enabled: boolean
@@ -84,17 +74,6 @@ function buildSmoothPath(points: Point[]): string {
     d += ` C ${f(p0.x + t0.x / 3)} ${f(p0.y + t0.y / 3)}, ${f(p1.x - t1.x / 3)} ${f(p1.y - t1.y / 3)}, ${f(p1.x)} ${f(p1.y)}`
   }
   return d
-}
-
-/** 진행률 -> 값(구간마다 선형). 첫 점 앞 / 마지막 점 뒤는 양 끝 값. */
-function piecewise(stops: ReadonlyArray<readonly [number, number]>, p: number) {
-  if (p <= stops[0][0]) return stops[0][1]
-  for (let i = 1; i < stops.length; i++) {
-    const [p0, v0] = stops[i - 1]
-    const [p1, v1] = stops[i]
-    if (p <= p1) return v0 + ((v1 - v0) * (p - p0)) / (p1 - p0)
-  }
-  return stops[stops.length - 1][1]
 }
 
 /**
@@ -174,7 +153,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       const flowP = LINE_FROM + journeyFlowProgress * (LINE_TO - LINE_FROM)
 
       // Contact 쪽 빛. 화면에 그리는 진행률을 그대로 따라가므로 빛 / camera와 같은 frame에 움직인다.
-      const ambient = piecewise(CONTACT_AMBIENT, p).toFixed(3)
+      const ambient = journeyAmbientAt(p).toFixed(4)
       if (ambient !== lastAmbient) {
         stage.style.setProperty('--contact-ambient', ambient)
         lastAmbient = ambient
@@ -359,7 +338,6 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       handoff.fromTo('.journey__intro-entry', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.38, ease: 'none' }, 0.62)
       // 경로도 첫 card와 함께 들어온다 — card가 아직 옅고 28px 아래에 있을 때 그 surface 너머로 선 끝이 비치지 않는다.
       handoff.fromTo([world.querySelector('.journey__path'), marker], { opacity: 0 }, { opacity: 1, duration: 0.38, ease: 'none' }, 0.62)
-      handoff.fromTo(stage, { '--leading-light': 1 }, { '--leading-light': 0, duration: 0.5, ease: 'none' }, 0.5)
       handoff.set({}, {}, 1)
 
       /*

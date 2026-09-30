@@ -20,6 +20,7 @@
 }
 
 .journey__stage {
+  isolation: isolate;
   container-type: size;
   position: relative;
   width: 100%;
@@ -34,28 +35,21 @@
 
 /*
  * Journey -> Contact handoff 빛. Journey는 Carbon Black 그대로이고(전체에 깔린 frost gradient 없음),
- * 이 층만 마지막 구간에서 --contact-ambient(0 -> 0.35)로 켜진다. Contact Light Rays가 시작되는 자리(화면 아래
+ * 이 층만 마지막 구간에서 --contact-ambient(0 -> 0.38)로 켜진다. Contact Light Rays가 시작되는 자리(화면 아래
  * 가운데)에서 위로 옅어지는 빛이라, 이어서 올라오는 Contact의 빛과 같은 자리 / 같은 세기로 맞물린다.
  */
 .journey__handoff {
   position: absolute;
   inset: 0;
+  z-index: 0;
   pointer-events: none;
   background: radial-gradient(ellipse var(--handoff-ellipse) at 50% 100%, var(--handoff-light));
   opacity: var(--contact-ambient, 0);
 }
 
-.journey__stage::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(ellipse at 50% 0%, rgb(212 229 239 / 0.075), transparent 65%);
-  opacity: var(--leading-light, 0);
-}
-
 .journey__world {
   position: absolute;
+  z-index: 1;
   top: 0;
   left: 0;
   width: calc(1920 * var(--ju));
@@ -288,9 +282,13 @@
   --ju: 1px;
 }
 
-.journey--static .journey__surface,
-.journey--static .journey__handoff {
+.journey--static .journey__surface {
   display: none;
+}
+
+.journey--static .journey__handoff {
+  top: auto;
+  height: 100dvh;
 }
 
 .journey--static .journey__world {
