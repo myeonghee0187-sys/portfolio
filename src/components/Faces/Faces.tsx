@@ -125,7 +125,7 @@ export default function Faces({ interactive, ready }: FacesProps) {
                 href={FACE_PROJECTS[0].liveUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`${FACE_PROJECTS[0].title} 완성 웹사이트 보기(새 탭)`}
+                aria-label={`${FACE_PROJECTS[0].title} 라이브 사이트 새 창에서 보기`}
                 aria-disabled="true"
                 tabIndex={-1}
                 draggable={false}
@@ -133,15 +133,21 @@ export default function Faces({ interactive, ready }: FacesProps) {
                 <span>LIVE SITE</span>
                 <span className="faces__cta-arrow" aria-hidden="true">&#8599;</span>
               </a>
-              {FACE_PROJECTS.some((p) => p.caseStudyPath) && (
+              {/*
+                CASE STUDY는 caseStudyUrl이 있는 project에서만 보인다(TCHAIKIM / JADUYA). 없는 project(F45)에서는
+                hidden(display: none)이라 자리도 남지 않고, LIVE SITE 하나만 가운데에 선다.
+              */}
+              {FACE_PROJECTS.some((p) => p.caseStudyUrl) && (
                 <a
                   className="faces__cta faces__cta--case"
-                  href={FACE_PROJECTS[0].caseStudyPath ?? undefined}
-                  aria-label={`${FACE_PROJECTS[0].title} Case Study 보기`}
+                  href={FACE_PROJECTS[0].caseStudyUrl ?? undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${FACE_PROJECTS[0].title} 케이스 스터디 새 창에서 보기`}
                   aria-disabled="true"
                   tabIndex={-1}
                   draggable={false}
-                  hidden={!FACE_PROJECTS[0].caseStudyPath}
+                  hidden={!FACE_PROJECTS[0].caseStudyUrl}
                 >
                   <span>CASE STUDY</span>
                   <span className="faces__cta-arrow" aria-hidden="true">&#8599;</span>

@@ -18,7 +18,8 @@ export type FaceProject = {
   /** 프로젝트 영상. 소리는 쓰지 않는다(muted). */
   media: string
   liveUrl: string
-  caseStudyPath?: string
+  /** Case Study(Figma Deck) 주소. 없는 project는 CASE STUDY CTA를 렌더링하지 않는다. */
+  caseStudyUrl?: string
   /**
    * 영상의 원본 비율(가로 / 세로). loadedmetadata의 videoWidth / videoHeight로 다시 확인하지만,
    * 그 전에도 레이아웃이 튀지 않도록 원본 파일에서 잰 값을 미리 둔다.
@@ -35,6 +36,7 @@ export const FACE_PROJECTS: FaceProject[] = [
   {
     id: 'tchaikim',
     liveUrl: 'https://myeonghee0187-sys.github.io/tchaikim_all/',
+    caseStudyUrl: 'https://www.figma.com/deck/IVOhQsvxXEl7LkIonDRzPa/-%ED%8C%80%ED%94%8C1-4%EC%A1%B0--%EA%B2%B0%EA%B3%BC%EB%B3%B4%EA%B3%A0%EC%84%9C_%EC%B0%A8%EC%9D%B4%ED%82%B4-%ED%95%9C%EB%B3%B5%ED%8C%90-?node-id=6242-19&p=f&viewport=527%2C373%2C0.38&t=y4aDmydh5sbZj8c2-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1',
     index: '01',
     title: 'TCHAIKIM',
     category: 'FASHION BRAND WEB REDESIGN',
@@ -45,6 +47,7 @@ export const FACE_PROJECTS: FaceProject[] = [
   {
     id: 'jaduya',
     liveUrl: 'https://jaduya.vercel.app/',
+    caseStudyUrl: 'https://www.figma.com/deck/1JhaNnsCFGHiULHwL2677r/2%EC%A1%B0--%EC%95%88%EB%85%95%EC%9E%90%EB%91%90%EC%95%BC--%EC%B5%9C%EC%A2%85%EB%B0%9C%ED%91%9C-%EC%8A%AC%EB%9D%BC%EC%9D%B4%EB%93%9C?node-id=42-308&viewport=-3666%2C-41%2C0.81&t=g5uLQNEWp9gHrNYa-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1',
     index: '02',
     title: 'JADUYA',
     category: 'MOBILE UX/UI PLATFORM',
