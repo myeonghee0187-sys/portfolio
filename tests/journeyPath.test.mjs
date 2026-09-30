@@ -9,12 +9,12 @@ const source = await readFile(new URL('../src/components/Journey/journeyPath.ts'
 const { outputText } = ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 })
-const { longSCurve, journeySCurve } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`)
+const { longSCurve, leadInSCurve, journeySCurve } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`)
 
-function parsePath(d) {
-  assert.deepEqual(d.match(/[A-Za-z]/g), ['M', 'C', 'C', 'C'], 'one move and exactly three long cubics')
+function parsePath(d, segments = 4) {
+  assert.deepEqual(d.match(/[A-Za-z]/g), ['M', ...Array(segments).fill('C')], 'one continuous path with the expected cubic spans')
   const values = d.match(/-?\d+(?:\.\d+)?/g).map(Number)
-  assert.equal(values.length, 20)
+  assert.equal(values.length, 2 + segments * 6)
   assert.ok(values.every(Number.isFinite))
   const curves = []
   let start = { x: values[0], y: values[1] }
@@ -70,6 +70,27 @@ function clearanceAt(p, box) {
   )
 }
 
+function assertOpening(curves, intro, radius, scale = 1) {
+  const first = curves[0][0], leadEnd = curves[0][3]
+  const rimGap = (first.y - intro.y - intro.hh) * scale - radius
+  assert.ok(Math.abs(rimGap - 20) < 0.002, `initial outer rim gap is ${rimGap}px, expected 20px`)
+  assert.ok(Math.abs((leadEnd.y - first.y) * scale - 80) < 0.002, 'lead-in must span 80 screen pixels')
+  for (const { p } of samples([curves[0]])) {
+    assert.ok(Math.abs(p.x - first.x) * scale < 0.001, 'the entry stays vertical before the broad curve')
+  }
+}
+
+test('adding the lead-in preserves the three broad spans and their final two curves', () => {
+  const points = [{ x: 500, y: 200 }, { x: 800, y: 1500 }, { x: 300, y: 3800 }, { x: 500, y: 4800 }]
+  const original = parsePath(longSCurve(points), 3)
+  const withEntry = parsePath(leadInSCurve(points, 80))
+  assert.deepEqual(withEntry[0][0], points[0])
+  assert.deepEqual(withEntry[0][3], { x: 500, y: 280 })
+  assert.deepEqual(withEntry.slice(2), original.slice(1), 'the two later broad spans must remain unchanged')
+  assert.deepEqual(withEntry.slice(1).map(curve => curve[3]), original.map(curve => curve[3]))
+  assertShape(withEntry)
+})
+
 // Embedded measurements from the prior browser QA; tests do not depend on ignored logs.
 const fixtures = [
   { name: '1920', scale: 1905 / 1920, width: 620, height: 439.99, diameter: 106 },
@@ -82,10 +103,13 @@ const boxesFor = fixture => centers.map(([x, y]) => ({
 }))
 
 for (const fixture of fixtures) {
-  test(`${fixture.name}: three broad cubics retain clear cards, bounded offsets and smooth motion`, context => {
+  test(`${fixture.name}: physical start and 80px entry join clear, broad curves without a hidden prefix`, context => {
     const original = boxesFor(fixture), snapshot = original.map(box => ({ ...box }))
     const clearance = (fixture.diameter / 2 + 4) / fixture.scale
-    const result = journeySCurve(original, clearance)
+    const result = journeySCurve(original, clearance, {
+      centerGap: (fixture.diameter / 2 + 20) / fixture.scale,
+      leadIn: 80 / fixture.scale,
+    })
     assert.deepEqual(original, snapshot, 'geometry measurement must not mutate card inputs')
     assert.equal(result.boxes.length, original.length)
     assert.equal(result.offsets.length, original.length)
@@ -99,12 +123,13 @@ for (const fixture of fixtures) {
     for (const i of [0, 3, 6]) assert.equal(result.offsets[i], 0, 'only the two opposing pairs may move')
     const curves = parsePath(result.d)
     const minimumRadius = assertShape(curves, fixture.scale)
-    // The pinned hook trims the interior intro/final endpoints; include its 28px intro travel.
-    const firstY = result.boxes[0].y + result.boxes[0].hh + clearance + 28 / fixture.scale
+    assert.equal(curves[0][0].x, result.boxes[0].x, 'physical start is centered below the intro')
+    assertOpening(curves, result.boxes[0], fixture.diameter / 2, fixture.scale)
+    // Start at the physical M point; only the final card's existing stop is trimmed.
     const lastY = result.boxes[6].y - result.boxes[6].hh - clearance
     let count = 0, minimumGap = Infinity
     for (const { p } of samples(curves)) {
-      if (p.y < firstY || p.y > lastY) continue
+      if (p.y > lastY) continue
       count++
       for (let i = 0; i < result.boxes.length; i++) {
         const distance = clearanceAt(p, result.boxes[i])
@@ -113,12 +138,12 @@ for (const fixture of fixtures) {
           `card ${i} clearance is ${distance * fixture.scale}px at (${p.x}, ${p.y})`)
       }
     }
-    assert.ok(count > 2000, 'inspect the entire visible route densely')
+    assert.ok(count > 3000, 'inspect the entry and entire visible route densely')
     context.diagnostic(`minimum radius ${minimumRadius.toFixed(2)}px; clock/card gap ${minimumGap.toFixed(2)}px`)
   })
 }
 
-test('mobile three-span gutter curve keeps the complete clock inside the viewport and clear of every card', context => {
+test('mobile entry and three broad gutter spans keep the complete clock inside the viewport and clear of every card', context => {
   const worldWidth = 375, radius = 36, cardLeft = 92, cardWidth = 262.667
   const heights = [345.542, 283.375, 213.406, 259.188, 287.99, 363.51, 235]
   let top = 100
@@ -128,15 +153,14 @@ test('mobile three-span gutter curve keeps the complete clock inside the viewpor
     return box
   })
   const left = radius + 4, right = cardLeft - radius - 4, x = (left + right) / 2
-  const firstY = boxes[0].y + boxes[0].hh + radius + 4, lastY = boxes.at(-1).y
+  const firstY = boxes[0].y + boxes[0].hh + radius + 20, lastY = boxes.at(-1).y
   const span = lastY - firstY
-  const curves = parsePath(longSCurve([
+  const curves = parsePath(leadInSCurve([
     { x, y: firstY }, { x: right, y: firstY + span / 3 },
     { x: left, y: firstY + span * 2 / 3 }, { x, y: lastY },
-  ]))
+  ], 80))
   const minimumRadius = assertShape(curves)
-  assert.ok(curves[0][0].y - radius >= boxes[0].y + boxes[0].hh + 4 - 0.001,
-    'first endpoint must clear the intro card with the complete clock radius')
+  assertOpening(curves, boxes[0], radius)
   for (const { p } of samples(curves)) {
     assert.ok(p.x - radius >= 4 - 0.001 && p.x + radius <= worldWidth - 4 + 0.001,
       'complete clock must stay within the mobile viewport')

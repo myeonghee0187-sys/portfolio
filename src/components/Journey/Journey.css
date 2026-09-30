@@ -57,21 +57,21 @@
   will-change: transform;
 }
 
+/* Line and clock share the intro's entry translation, keeping their physical
+ * gap from the moving card without changing opacity or masking the geometry. */
+.journey__flow-entry {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 .journey__path {
-  opacity: var(--journey-flow-opacity, 0);
   position: absolute;
   inset: 0 auto auto 0;
   width: 100%;
   height: auto;
   overflow: visible;
   pointer-events: none;
-}
-
-/* A fast scroll can finish the handoff beyond the opening ramp. Give that
- * reveal the same short fade; returning to pre-active cancels it immediately. */
-.journey__world[data-flow-state='active'] .journey__path,
-.journey__world[data-flow-state='active'] .journey__marker {
-  transition: opacity 180ms linear;
 }
 
 /*
@@ -88,7 +88,7 @@
 
 /* 전체 길. 아직 빛이 닿지 않은 앞길만 아주 옅게 보인다. */
 .journey__path .journey__path-base {
-  stroke: rgb(119 125 130 / 0.2);
+  stroke: rgb(212 229 239 / 0.16);
 }
 
 /*
@@ -312,11 +312,6 @@
   gap: 64px;
 }
 
-.journey--static .journey__path-base {
-  stroke: rgb(212 229 239 / 0.2);
-  stroke-width: 1px;
-}
-
 .journey--static .journey__node {
   --node-in: 1;
   position: relative;
@@ -371,7 +366,6 @@
 
 /* One analog glass clock follows the active line head without obscuring the line. */
 .journey__marker {
-  opacity: var(--journey-flow-opacity, 0);
   --marker-size: var(--journey-clock-size);
   position: absolute;
   top: 0;
@@ -494,11 +488,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .journey__world[data-flow-state='active'] .journey__path,
-  .journey__world[data-flow-state='active'] .journey__marker {
-    transition: none;
-  }
-
   .journey__marker {
     will-change: auto;
   }

@@ -2,8 +2,8 @@ import { useLayoutEffect, type RefObject } from 'react'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import useMediaQuery from '../../hooks/useMediaQuery'
 import { JOURNEY_CLOCK } from './journeyData'
-import { createJourneyFlow, journeyFlowVisibility } from './journeyFlow'
-import { longSCurve, pathDistanceAtY } from './journeyPath'
+import { createJourneyFlow } from './journeyFlow'
+import { leadInSCurve, pathDistanceAtY } from './journeyPath'
 import { journeyAmbientAt } from '../../hooks/journeyLighting'
 
 /** Document layout keeps its card order/gaps; one shared path clears the card edges. */
@@ -24,7 +24,7 @@ export default function useJourneyDocumentFlow(enabled: boolean, worldRef: RefOb
     let progress = 0
     const render = (value: number) => {
       progress = value
-      flow.render(progress, reducedMotion, journeyFlowVisibility(progress, progress, true, reducedMotion))
+      flow.render(progress, reducedMotion)
       stage.style.setProperty('--contact-ambient', journeyAmbientAt(progress).toFixed(4))
     }
     const measure = () => {
@@ -43,13 +43,13 @@ export default function useJourneyDocumentFlow(enabled: boolean, worldRef: RefOb
       const left = radius + 4
       const right = Math.min(...boxes.map(box => box.x - box.hw)) - radius - 4
       const x = (left + right) / 2
-      const firstY = boxes[0].y + boxes[0].hh + radius + 4
+      const firstY = boxes[0].y + boxes[0].hh + radius + 20
       const lastY = boxes[boxes.length - 1].y
       const span = lastY - firstY
-      const d = longSCurve([
+      const d = leadInSCurve([
         { x, y: firstY }, { x: right, y: firstY + span / 3 },
         { x: left, y: firstY + span * 2 / 3 }, { x, y: lastY },
-      ])
+      ], 80)
       svg.querySelectorAll('path').forEach(path => path.setAttribute('d', d))
       const total = active.getTotalLength()
       // Unlike the former card-crossing route, both endpoints are already clear.
