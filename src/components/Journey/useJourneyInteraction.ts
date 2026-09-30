@@ -2,15 +2,12 @@ import { useLayoutEffect, type RefObject } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { JOURNEY_CLOCK, JOURNEY_NODES } from './journeyData'
+import { createJourneyFlow } from './journeyFlow'
 import { HANDOFF_VIEWPORTS, JOURNEY_VIEWPORTS, PANEL_TRIGGER_ID, panelTiming } from '../../hooks/panelTiming'
 
 gsap.registerPlugin(ScrollTrigger)
 
-/*
- * journey-master 진행률(0 -> 1) 안에서 빛이 길을 따라 그려지는 구간.
- * 이 구간에서 빛의 길이는 scroll과 1:1이다(ease 없음) — 처음부터 지금 위치까지 하나로 이어져 있고,
- * card를 지나도 느려지거나 멈추지 않는다. 앞(0 ~ 0.02)은 첫 card, 뒤(0.88 ~ 1)는 STILL UPDATING에 머무는 시간이다.
- */
+/** Keep the existing scroll extent. Flow easing is applied to line + clock together. */
 const LINE_FROM = 0.02
 const LINE_TO = 0.88
 /** card가 켜지고 / 물러나는 데 걸리는 진행률. */
@@ -28,27 +25,6 @@ const SMOOTHING = 0.14
  * 화면 아래에서 들어온다. [진행률, opacity] — 0.78까지 0, 0.90에 0.12, 1.00에 0.35.
  * 이어서 Contact의 Light Rays가 0.35에서 출발해 0.5까지 올라간다(useContactScene).
  */
-/**
- * Journey의 Time Marker(journeyData.JOURNEY_CLOCK)가 움직이는 방식.
- *   rail   marker가 지나는 길. line 그대로이되, line이 card 밑으로 들어가는 구간(card + marker 반지름 + RAIL_GAP 안)은
- *          그 card 가장자리 바깥으로 밀어낸다 — marker는 card 위에 그려지지만 card 글자를 가리지 않고, 언제나 보인다.
- *   머묾   card에 line이 닿는 순간(marks) 그 card 가장자리(rail 위)에 도착해, 다음 card까지 가는 길의 DOCK_HOLD만큼 머문다.
- *          camera가 먼저 움직여 marker가 화면 가장자리(DOCK_MARGIN)에 닿을 것 같으면 그 전에 출발한다.
- *   이동   다음 머묾 자리까지 rail을 따라 sine in-out으로 흐른다(자석처럼 붙지 않는다). line 끝을 앞지르지 않는다.
- *   시간   언제나 보인다. 머무는 동안은 그 card의 시간, 이동하는 동안은 두 시간 사이를 분 단위로 이어서 흐른다.
- * 모두 journey-master 진행률 하나에서 나온다 — 되감으면 같은 값을 거꾸로 지난다.
- */
-const RAIL_GAP = 12
-const RAIL_STEP = 4
-const DOCK_HOLD = 0.3
-/** 머무는 marker가 있을 수 있는 화면 위 / 아래 가장자리(px, Header 아래부터). marker 반지름이 더해진다. */
-const DOCK_MARGIN = 140
-const easeInOut = (t: number) => (1 - Math.cos(Math.PI * t)) / 2
-const toMinutes = (time: string) => {
-  const [h, m] = time.split(':').map(v => parseInt(v, 10))
-  return h * 60 + m
-}
-
 const CONTACT_AMBIENT: ReadonlyArray<readonly [number, number]> = [
   [0.78, 0],
   [0.9, 0.12],
@@ -176,118 +152,25 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
     const active = world.querySelector<SVGPathElement>('.journey__path-active')!
     const paths = world.querySelectorAll<SVGPathElement>('.journey__path path')
     const marker = world.querySelector<HTMLElement>('.journey__marker')
-    const markerGlass = marker?.querySelector<HTMLElement>('.journey__marker-glass')
-    const hourHand = marker?.querySelector<HTMLElement>('.journey__marker-hand--hour')
-    const minuteHand = marker?.querySelector<HTMLElement>('.journey__marker-hand--minute')
-    const markerTime = marker?.querySelector<HTMLElement>('.journey__marker-time')
-
-    /*
-     * 경로 기하. card의 실제 크기를 재서, 경로 쪽 변 안쪽의 점(anchorOf)을 Catmull-Rom 곡선으로 잇는다.
-     * length는 화면 px이다 — non-scaling-stroke에서는 dash가 화면 px로 적용되기 때문이다.
-     *   marks[i]  빛이 i번째 card 테두리에 닿는 journey-master 진행률. 경로 길이에 비례한다 —
-     *             그래서 빛은 한 속도로 흐르고, card는 빛이 자기 자리를 지날 때 켜진다.
-     *   camera    진행률 -> world의 y. marks[i]에서 i번째 card가 화면 가운데(Header 아래)에 오고,
-     *             그 사이는 멈추지 않고 이어진다(monotoneCubic).
-     * refresh(초기 mount, 폰트 로드, resize)마다 다시 재고, scroll 중에는 다시 재지 않는다.
-     */
-    /** 머묾 자리. s는 경로 위 길이(viewBox 단위), arrive / depart는 journey-master 진행률. */
-    type ClockStop = { s: number; arrive: number; depart: number; minutes: number }
+    const flow = createJourneyFlow(world, active)
     const geom = {
       length: 0,
-      /** 경로 전체 길이(viewBox 단위). */
-      total: 0,
-      scale: 1,
-      /** marker가 지나는 길. rail[k]는 경로 위 길이 k x RAIL_STEP에 해당하는 점이다(card 밖으로 밀어낸 뒤). */
-      rail: [] as Point[],
       marks: [LINE_FROM] as number[],
       camera: (() => 0) as (p: number) => number,
-      /** marker의 머묾 자리들. */
-      stops: [] as ClockStop[],
     }
     /** 화면에 그리는 진행률(display)과 scroll 진행률(target). */
     const journey = { p: 0, target: 0 }
     const written = new Map<HTMLElement, string>()
     let lastY = ''
-    let lastOffset = ''
     let lastAmbient = ''
-    let lastMarker = ''
-    let lastTime = ''
-
-    /** 진행률 p에서 line 끝(지금까지 그려진 곳)의 경로 위 길이. */
-    const headAt = (p: number) => clamp01((p - LINE_FROM) / (LINE_TO - LINE_FROM)) * geom.total
-
-    /**
-     * 진행률 p에서 marker의 자리(경로 위 길이), 시간(분), 머묾 정도(0 -> 1).
-     *   머묾   a.arrive ~ a.depart   a.s에 머문다
-     *   이동   a.depart ~ b.arrive   a.s -> b.s, sine in-out. line 끝을 앞지르지 않는다. 시간도 같은 비율로 흐른다
-     */
-    const markerAt = (p: number) => {
-      const st = geom.stops
-      for (let k = 0; k < st.length - 1; k++) {
-        const a = st[k], b = st[k + 1]
-        if (p <= a.depart) return { s: a.s, minutes: a.minutes, dock: 1 }
-        if (p >= b.arrive) continue
-        const t = (p - a.depart) / (b.arrive - a.depart)
-        const f = easeInOut(t)
-        const s = Math.max(a.s, Math.min(a.s + (b.s - a.s) * f, headAt(p)))
-        // 머묾 정도: 출발 직후 / 도착 직전 15% 동안만 0 <-> 1로 바뀐다(테 / 반사의 선명도에만 쓴다).
-        const dock = Math.max(clamp01(1 - t / 0.15), clamp01((t - 0.85) / 0.15))
-        return { s, minutes: a.minutes + (b.minutes - a.minutes) * f, dock }
-      }
-      const last = st[st.length - 1]
-      return { s: last.s, minutes: last.minutes, dock: 1 }
-    }
-
-    /** rail 위 경로 길이 s의 점(viewBox 단위). */
-    const railPoint = (s: number): Point => {
-      const r = geom.rail
-      const k = Math.max(0, Math.min(r.length - 1, s / RAIL_STEP))
-      const i = Math.floor(k), j = Math.min(r.length - 1, i + 1), u = k - i
-      return { x: r[i].x + (r[j].x - r[i].x) * u, y: r[i].y + (r[j].y - r[i].y) * u }
-    }
-
-    const formatTime = (minutes: number) => {
-      const total = Math.round(minutes)
-      return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
-    }
-
-    const renderMarker = (p: number) => {
-      if (!marker || !geom.stops.length || !geom.rail.length) return
-      const c = markerAt(p)
-      const pt = railPoint(c.s)
-      const dock = c.dock.toFixed(3)
-      const key = `${pt.x.toFixed(1)} ${pt.y.toFixed(1)} ${c.minutes.toFixed(2)} ${dock}`
-      if (key === lastMarker) return
-      lastMarker = key
-      marker.style.transform = `translate3d(${(pt.x * geom.scale).toFixed(2)}px, ${(pt.y * geom.scale).toFixed(2)}px, 0)`
-      // 옅은 바늘. 시침은 12시간에 한 바퀴, 분침은 60분에 한 바퀴. 이동하는 동안 이어서 돈다.
-      if (hourHand) hourHand.style.transform = `translateX(-50%) rotate(${((c.minutes / 60) * 30).toFixed(2)}deg)`
-      if (minuteHand) minuteHand.style.transform = `translateX(-50%) rotate(${((c.minutes % 60) * 6).toFixed(2)}deg)`
-      marker.style.setProperty('--dock', dock)
-      const time = formatTime(c.minutes)
-      if (time !== lastTime && markerTime) {
-        markerTime.textContent = time
-        lastTime = time
-      }
-    }
-
-    /**
-     * 진행률 하나로 빛 / camera / card를 모두 그린다. 되감아도 같은 진행률이면 같은 화면이다.
-     *   빛     처음부터 지금 위치까지 하나로 이어진 한 줄. 진행률에 1:1(ease 없음)
-     *   camera card마다 서지 않고 흐른다. 빛이 i번째 card에 닿는 순간 그 card가 화면 가운데에 있다
-     *   card   빛이 자기 anchor에 닿을 때 켜지고, 빛이 다음 card로 반쯤 갔을 때 물러난다 — 빛의 길이는 건드리지 않는다
-     */
+    // Camera and Contact keep the original master timeline. Cards follow the line arrival.
     const render = () => {
       const p = journey.p
       const m = geom.marks
       if (!geom.length || m.length !== nodes.length) return
 
-      const line = clamp01((p - LINE_FROM) / (LINE_TO - LINE_FROM)) * geom.length
-      const offset = `${(geom.length - line).toFixed(2)}px`
-      if (offset !== lastOffset) {
-        active.style.strokeDashoffset = offset
-        lastOffset = offset
-      }
+      const journeyFlowProgress = flow.render(clamp01((p - LINE_FROM) / (LINE_TO - LINE_FROM))) ?? 0
+      const flowP = LINE_FROM + journeyFlowProgress * (LINE_TO - LINE_FROM)
 
       // Contact 쪽 빛. 화면에 그리는 진행률을 그대로 따라가므로 빛 / camera와 같은 frame에 움직인다.
       const ambient = piecewise(CONTACT_AMBIENT, p).toFixed(3)
@@ -302,13 +185,10 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
         lastY = y
       }
 
-      // Journey의 시계 하나. 새 scroll listener 없이 같은 진행률(p)과 card mark로만 정한다.
-      renderMarker(p)
-
       nodes.forEach((node, i) => {
-        const nodeIn = i === 0 ? 1 : clamp01((p - (m[i] - NODE_RAMP)) / NODE_RAMP)
+        const nodeIn = i === 0 ? 1 : clamp01((flowP - (m[i] - NODE_RAMP)) / NODE_RAMP)
         const leave = i + 1 < m.length ? m[i] + (m[i + 1] - m[i]) * NODE_LEAVE : Infinity
-        const nodeOut = clamp01((p - leave) / NODE_RAMP)
+        const nodeOut = clamp01((flowP - leave) / NODE_RAMP)
         const key = `${nodeIn.toFixed(3)} ${nodeOut.toFixed(3)}`
         if (written.get(node) === key) return
         written.set(node, key)
@@ -376,88 +256,6 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       return hits
     }
 
-    /**
-     * marker의 rail과 머묾 자리. rail은 경로를 RAIL_STEP마다 짚은 점들인데, card(+ marker 반지름 + RAIL_GAP) 안에 든 점은
-     * 가장 가까운 가장자리 바깥으로 밀어내고, 한 번 부드럽게 다듬은 뒤 다시 밀어낸다. 머묾 자리는 첫 card에서 line이
-     * 나오는 자리와, 각 card에 line이 닿는 자리다(둘 다 rail 위라 card 가장자리 바깥). refresh마다 다시 잰다.
-     */
-    const placeMarker = (boxes: Box[], hits: number[], total: number, scale: number) => {
-      if (!marker || !markerGlass) return
-      const pad = (markerGlass.offsetWidth / 2 + RAIL_GAP) / scale
-      /*
-       * 두 겹의 경계. outer = card + marker 반지름 + RAIL_GAP(marker가 card 완전히 밖), inner = card 안쪽 여백보다 얕게만
-       * 걸치는 경계(marker가 card 테두리에 조금 겹쳐도 글자에는 닿지 않는다). card가 붙어 있는 좁은 화면(1024 등)에서
-       * 가까운 곳에 outer 밖 자리가 없을 때만 inner를 쓴다.
-       */
-      const radius = markerGlass.offsetWidth / 2
-      const cardPadding = parseFloat(getComputedStyle(nodes[0].querySelector<HTMLElement>('.journey__card')!).paddingLeft) || 0
-      const inner = Math.max(0, radius - cardPadding + 10) / scale
-      const inAny = (pt: Point, margin: number, slack = 0) => boxes.some(b =>
-        Math.abs(pt.x - b.x) < b.hw + margin - slack && Math.abs(pt.y - b.y) < b.hh + margin - slack)
-      /** margin 경계 안의 점을, 모든 card의 그 경계 밖에 있는 가장 가까운 가장자리 점(best)과 가장 가까운 가장자리 점(nearest)으로. */
-      const candidates = (pt: Point, margin: number) => {
-        let best: Point | null = null, bestD = Infinity, nearest = pt, nearestD = Infinity
-        for (const b of boxes) {
-          const hx = b.hw + margin, hy = b.hh + margin
-          const cx = Math.max(b.x - hx, Math.min(pt.x, b.x + hx)), cy = Math.max(b.y - hy, Math.min(pt.y, b.y + hy))
-          for (const c of [{ x: b.x - hx, y: cy }, { x: b.x + hx, y: cy }, { x: cx, y: b.y - hy }, { x: cx, y: b.y + hy }]) {
-            const d = Math.hypot(c.x - pt.x, c.y - pt.y)
-            if (d < nearestD) { nearest = c; nearestD = d }
-            if (d < bestD && !inAny(c, margin, 0.5)) { best = c; bestD = d }
-          }
-        }
-        return { best, bestD, nearest, nearestD }
-      }
-      /**
-       * card 가까이의 점을 card 밖으로 옮긴다. outer 밖의 가까운 자리(가장 가까운 가장자리보다 pad의 3배 이내)가 있으면 그곳,
-       * 없으면 inner 밖의 가장 가까운 자리 — 멀리 돌아가며 튀지 않고, 글자도 가리지 않는다.
-       */
-      const push = (pt: Point): Point => {
-        if (!inAny(pt, pad)) return pt
-        const o = candidates(pt, pad)
-        if (o.best && o.bestD <= o.nearestD + pad * 3) return o.best
-        if (!inAny(pt, inner)) return pt
-        const i = candidates(pt, inner)
-        return i.best ?? i.nearest
-      }
-      const raw: Point[] = []
-      for (let s = 0; s <= total; s += RAIL_STEP) {
-        const q = active.getPointAtLength(s)
-        raw.push(push({ x: q.x, y: q.y }))
-      }
-      // 가장자리에 붙은 구간의 꺾임을 부드럽게(이동 평균) 다듬고, 다듬다 card 쪽으로 들어간 점은 다시 밀어낸다.
-      const W = 12
-      geom.rail = raw.map((_, i) => {
-        let x = 0, y = 0, n = 0
-        for (let j = Math.max(0, i - W); j <= Math.min(raw.length - 1, i + W); j++) { x += raw[j].x; y += raw[j].y; n++ }
-        return push({ x: x / n, y: y / n })
-      })
-      let exit0 = 0
-      const inCard0 = (s: number) => {
-        const q = active.getPointAtLength(s)
-        return Math.abs(q.x - boxes[0].x) <= boxes[0].hw && Math.abs(q.y - boxes[0].y) <= boxes[0].hh
-      }
-      while (exit0 < total && inCard0(exit0)) exit0 += 2
-      const header = document.querySelector('.site-header')?.getBoundingClientRect().height ?? 0
-      const margin = DOCK_MARGIN + markerGlass.offsetWidth / 2
-      const m = geom.marks
-      geom.stops = JOURNEY_CLOCK.map(stop => {
-        const i = stop.node
-        const s = Math.min(total, i === 0 ? exit0 : hits[i])
-        const pt = railPoint(s)
-        let depart = i + 1 < m.length ? m[i] + (m[i + 1] - m[i]) * DOCK_HOLD : Infinity
-        // camera가 먼저 떠나 머무는 marker가 화면 가장자리에 닿기 전에 출발한다. 마지막 자리(depart = Infinity)는 재지 않는다.
-        for (let q = m[i]; Number.isFinite(depart) && q < depart; q += 0.002) {
-          const y = pt.y * scale + geom.camera(q)
-          if (y < header + margin || y > stage.clientHeight - margin) {
-            depart = q
-            break
-          }
-        }
-        return { s, arrive: m[i], depart, minutes: toMinutes(stop.time) }
-      })
-    }
-
     const rebuildPath = () => {
       const scale = world.getBoundingClientRect().width / 1920
       if (!scale) return
@@ -468,8 +266,6 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       const L = total * scale
       geom.length = L
       // card가 켜지는 자리 = 빛이 그 card 테두리에 닿는 순간(경로 길이에 비례).
-      geom.scale = scale
-      geom.total = total
       const hits = borderHits(boxes, total)
       geom.marks = hits.map((at, i) =>
         i === 0 ? LINE_FROM : LINE_FROM + (at / total) * (LINE_TO - LINE_FROM))
@@ -480,20 +276,13 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
         [0, ...geom.marks, 1],
         [cameraAt[0], ...cameraAt, cameraAt[cameraAt.length - 1]],
       )
-      /*
-       * dasharray = 길이 L 한 줄. 간격만 L보다 4px 길게 둔다 — 간격이 정확히 L이면 아무것도 그려지지 않았을 때
-       * 경로 끝에 길이 0짜리 dash(round cap 점)가 남는다. dashoffset = L x (1 - 진행률).
-       */
-      active.style.strokeDasharray = `${L}px ${L + 4}px`
+      const milestones = JOURNEY_CLOCK.map(stop => ({ progress: hits[stop.node] / total, minutes: stop.minutes }))
+      flow.measure(milestones)
       written.clear()
-      lastMarker = ''
-      lastTime = ''
       lastY = ''
-      lastOffset = ''
       lastAmbient = ''
-      placeMarker(boxes, hits, total, scale)
       if (import.meta.env.DEV) {
-        stage.dataset.line = JSON.stringify({ length: +L.toFixed(1), marks: geom.marks.map(v => +v.toFixed(4)) })
+        stage.dataset.line = JSON.stringify({ length: +L.toFixed(1), marks: geom.marks.map(v => +v.toFixed(4)), milestones })
       }
       render()
     }
@@ -504,6 +293,14 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
      * ('refreshInit'은 pin이 이전 폭을 붙들고 있을 때라 resize 뒤의 좌표를 잴 수 없다.)
      */
     ScrollTrigger.addEventListener('revert', rebuildPath)
+    // Pin restoration can round the SVG viewport differently from its unpinned width.
+    // Cache the final CTM after refresh, while keeping card/path measurement on revert.
+    const refreshFlow = () => { flow.measure(); render() }
+    ScrollTrigger.addEventListener('refresh', refreshFlow)
+    // Container units can settle one layout after the pin is applied. Observe the SVG
+    // viewport itself; this never runs from the scroll renderer or measures card boxes.
+    const viewportObserver = new ResizeObserver(refreshFlow)
+    viewportObserver.observe(active.ownerSVGElement!)
 
     /** FACES 장면이 뒤로 물러나며 아주 조금 흐려진다(canvas에만). 0이면 filter를 지운다. */
     const facesBlur = { px: 0 }
@@ -527,7 +324,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
        */
       /*
        * FACES의 Crown 시간(13 : 30)은 FACES 동안만이다. Journey가 올라오기 시작하면 걷히고(Journey는 line 위의
-       * Time Marker 하나가 10 : 20 -> 18 : 10의 흐름을 이어받는다), 되감아 FACES로 돌아가면 다시 보인다. 두 시계가 동시에 다른 시간을 말하지 않는다.
+       * Analog Clock 하나가 13:40 -> 17:00의 흐름을 이어받는다), 되감아 FACES로 돌아가면 다시 보인다. 두 시계가 동시에 다른 시간을 말하지 않는다.
        */
       const crownEl = document.querySelector<HTMLElement>('.watch--stage .watch__crown')
       const syncCrownTime = (progress: number) => crownEl?.classList.toggle('watch__crown--time-hidden', progress > 0.3)
@@ -573,15 +370,12 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       cancelAnimationFrame(refreshId)
       gsap.ticker.remove(follow)
       ScrollTrigger.removeEventListener('revert', rebuildPath)
+      ScrollTrigger.removeEventListener('refresh', refreshFlow)
+      viewportObserver.disconnect()
       ctx.revert()
       facesCanvas?.style.removeProperty('filter')
       stage.style.removeProperty('--contact-ambient')
-      active.style.removeProperty('stroke-dasharray')
-      active.style.removeProperty('stroke-dashoffset')
-      marker?.style.removeProperty('transform')
-      marker?.style.removeProperty('--dock')
-      hourHand?.style.removeProperty('transform')
-      minuteHand?.style.removeProperty('transform')
+      flow.clear()
       for (const node of nodes) {
         node.style.removeProperty('--node-in')
         node.style.removeProperty('--node-out')
