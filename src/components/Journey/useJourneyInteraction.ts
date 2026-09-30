@@ -29,25 +29,20 @@ const SMOOTHING = 0.14
  * 이어서 Contact의 Light Rays가 0.35에서 출발해 0.5까지 올라간다(useContactScene).
  */
 /**
- * Journey의 시계(journeyData.JOURNEY_CLOCK)가 움직이는 방식.
- *   정박   card에 line이 닿는 순간(marks) 그 card 테두리 바로 앞(시계 반지름 + DOCK_GAP)에 도착해,
- *          다음 card까지 가는 길의 DOCK_HOLD만큼 머문다(그 card가 화면 가운데에 있는 동안). 단 camera가 먼저 움직여
- *          정박한 시계가 화면 가장자리(DOCK_MARGIN)에 닿을 것 같으면 그 전에 출발한다 — 시계는 화면 밖으로 밀려나지 않는다.
- *          첫 정박(출발점)은 첫 card에서 line이 나오는 자리다
- *   이동   정박한 card 밑으로 천천히 들어가(DIVE) line처럼 card 뒤로 지나가고, line이 그 card 밖으로 나온 뒤에
- *          card 반대편에서 다시 나와 다음 정박지까지 line 위를 따라간다. 도착은 감속(sine in-out) — 자석처럼 붙지 않는다.
- *          이동하는 동안 시계는 line 끝(지금까지 그려진 곳)을 앞지르지 않는다. 층: 경로 -> 시계 -> card
- *   바늘   이동하는 비율만큼 시간이 이어서 흐른다(시침 / 분침이 끊기지 않고 돈다)
- *   글자   정박한 시간(14 : 10 등). 출발할 때 LABEL_FADE 동안 사라지고 도착하기 LABEL_FADE 전부터 나타난다
+ * Journey의 Time Marker(journeyData.JOURNEY_CLOCK)가 움직이는 방식.
+ *   rail   marker가 지나는 길. line 그대로이되, line이 card 밑으로 들어가는 구간(card + marker 반지름 + RAIL_GAP 안)은
+ *          그 card 가장자리 바깥으로 밀어낸다 — marker는 card 위에 그려지지만 card 글자를 가리지 않고, 언제나 보인다.
+ *   머묾   card에 line이 닿는 순간(marks) 그 card 가장자리(rail 위)에 도착해, 다음 card까지 가는 길의 DOCK_HOLD만큼 머문다.
+ *          camera가 먼저 움직여 marker가 화면 가장자리(DOCK_MARGIN)에 닿을 것 같으면 그 전에 출발한다.
+ *   이동   다음 머묾 자리까지 rail을 따라 sine in-out으로 흐른다(자석처럼 붙지 않는다). line 끝을 앞지르지 않는다.
+ *   시간   언제나 보인다. 머무는 동안은 그 card의 시간, 이동하는 동안은 두 시간 사이를 분 단위로 이어서 흐른다.
  * 모두 journey-master 진행률 하나에서 나온다 — 되감으면 같은 값을 거꾸로 지난다.
  */
-const DOCK_GAP = 6
+const RAIL_GAP = 12
+const RAIL_STEP = 4
 const DOCK_HOLD = 0.3
-/** 정박한 시계가 머물 수 있는 화면 위 / 아래 가장자리(px, Header 아래부터). */
-const DOCK_MARGIN = 72
-/** 정박지에서 card 밑으로 들어가는 데 걸리는 진행률. */
-const DIVE = 0.014
-const LABEL_FADE = 0.15
+/** 머무는 marker가 있을 수 있는 화면 위 / 아래 가장자리(px, Header 아래부터). marker 반지름이 더해진다. */
+const DOCK_MARGIN = 140
 const easeInOut = (t: number) => (1 - Math.cos(Math.PI * t)) / 2
 const toMinutes = (time: string) => {
   const [h, m] = time.split(':').map(v => parseInt(v, 10))
@@ -180,11 +175,11 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
     const nodes = JOURNEY_NODES.map(n => world.querySelector<HTMLElement>(`[data-node="${n.id}"]`)!)
     const active = world.querySelector<SVGPathElement>('.journey__path-active')!
     const paths = world.querySelectorAll<SVGPathElement>('.journey__path path')
-    const clock = world.querySelector<HTMLElement>('.journey__clock')
-    const clockFace = clock?.querySelector<HTMLElement>('.journey__clock-face')
-    const hourHand = clock?.querySelector<HTMLElement>('.journey__clock-hand--hour')
-    const minuteHand = clock?.querySelector<HTMLElement>('.journey__clock-hand--minute')
-    const clockLabel = clock?.querySelector<HTMLElement>('.journey__clock-label')
+    const marker = world.querySelector<HTMLElement>('.journey__marker')
+    const markerGlass = marker?.querySelector<HTMLElement>('.journey__marker-glass')
+    const hourHand = marker?.querySelector<HTMLElement>('.journey__marker-hand--hour')
+    const minuteHand = marker?.querySelector<HTMLElement>('.journey__marker-hand--minute')
+    const markerTime = marker?.querySelector<HTMLElement>('.journey__marker-time')
 
     /*
      * 경로 기하. card의 실제 크기를 재서, 경로 쪽 변 안쪽의 점(anchorOf)을 Catmull-Rom 곡선으로 잇는다.
@@ -195,24 +190,18 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
      *             그 사이는 멈추지 않고 이어진다(monotoneCubic).
      * refresh(초기 mount, 폰트 로드, resize)마다 다시 재고, scroll 중에는 다시 재지 않는다.
      */
-    /**
-     * 정박지. s는 경로 위 길이(viewBox 단위), arrive / depart / emerge는 journey-master 진행률.
-     * dive(card 밑으로 들어간 자리)와 exit(card 밖으로 나오기 직전의 자리)는 둘 다 card에 가려지는 자리다 — 그 사이는 보이지 않는다.
-     */
-    type ClockStop = {
-      s: number; arrive: number; depart: number; minutes: number; time: string; label: boolean; side: 'left' | 'right'
-      dive?: number; exit?: number; emerge?: number
-    }
+    /** 머묾 자리. s는 경로 위 길이(viewBox 단위), arrive / depart는 journey-master 진행률. */
+    type ClockStop = { s: number; arrive: number; depart: number; minutes: number }
     const geom = {
       length: 0,
       /** 경로 전체 길이(viewBox 단위). */
       total: 0,
       scale: 1,
-      /** 시계가 line 끝에서 떨어지는 최소 거리(viewBox 단위). */
-      clockGap: 0,
+      /** marker가 지나는 길. rail[k]는 경로 위 길이 k x RAIL_STEP에 해당하는 점이다(card 밖으로 밀어낸 뒤). */
+      rail: [] as Point[],
       marks: [LINE_FROM] as number[],
       camera: (() => 0) as (p: number) => number,
-      /** 시계의 정박지들. s는 경로 위 길이(viewBox 단위), arrive / depart는 journey-master 진행률. */
+      /** marker의 머묾 자리들. */
       stops: [] as ClockStop[],
     }
     /** 화면에 그리는 진행률(display)과 scroll 진행률(target). */
@@ -221,68 +210,64 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
     let lastY = ''
     let lastOffset = ''
     let lastAmbient = ''
-    let lastClock = ''
-    let lastLabel = ''
+    let lastMarker = ''
+    let lastTime = ''
 
     /** 진행률 p에서 line 끝(지금까지 그려진 곳)의 경로 위 길이. */
     const headAt = (p: number) => clamp01((p - LINE_FROM) / (LINE_TO - LINE_FROM)) * geom.total
 
     /**
-     * 진행률 p에서 시계의 자리(경로 위 길이), 시간(분), 시간 글자의 opacity / 내용 / 쪽.
-     *   정박      a.arrive ~ a.depart   a.s에 머문다
-     *   들어감    a.depart ~ +DIVE      a.s -> a.dive(card 밑), ease-in. 글자가 사라진다
-     *   가려짐    ~ a.emerge            card 밑(a.exit)에서 기다린다 — line이 card 밖으로 나올 때까지
-     *   이동      ~ b.arrive            a.exit -> b.s, sine in-out. line 끝을 앞지르지 않는다. 도착 전에 글자가 나타난다
-     * 시간(분)은 a.depart ~ b.arrive 전체에 걸쳐 이어서 흐른다.
+     * 진행률 p에서 marker의 자리(경로 위 길이), 시간(분), 머묾 정도(0 -> 1).
+     *   머묾   a.arrive ~ a.depart   a.s에 머문다
+     *   이동   a.depart ~ b.arrive   a.s -> b.s, sine in-out. line 끝을 앞지르지 않는다. 시간도 같은 비율로 흐른다
      */
-    const clockAt = (p: number) => {
+    const markerAt = (p: number) => {
       const st = geom.stops
-      const at = (k: number) => ({ s: st[k].s, minutes: st[k].minutes, labelO: st[k].label ? 1 : 0, stop: st[k] })
       for (let k = 0; k < st.length - 1; k++) {
         const a = st[k], b = st[k + 1]
-        if (p <= a.depart) return at(k)
+        if (p <= a.depart) return { s: a.s, minutes: a.minutes, dock: 1 }
         if (p >= b.arrive) continue
-        const whole = (p - a.depart) / (b.arrive - a.depart)
-        const minutes = a.minutes + (b.minutes - a.minutes) * easeInOut(whole)
-        let startS = a.s, start = a.depart
-        if (a.dive !== undefined && a.exit !== undefined && a.emerge !== undefined) {
-          const diveEnd = a.depart + DIVE
-          if (p < diveEnd) {
-            const u = (p - a.depart) / DIVE
-            return { s: a.s + (a.dive - a.s) * u * u, minutes, labelO: a.label ? 1 - u : 0, stop: a }
-          }
-          start = Math.max(diveEnd, a.emerge)
-          startS = a.exit
-          if (p < start) return { s: a.exit, minutes, labelO: 0, stop: a }
-        }
-        const t = (p - start) / (b.arrive - start)
-        const eased = startS + (b.s - startS) * easeInOut(t)
-        const s = Math.max(startS, Math.min(eased, headAt(p) - geom.clockGap))
-        const labelO = b.label ? clamp01((t - (1 - LABEL_FADE)) / LABEL_FADE) : 0
-        return { s, minutes, labelO, stop: t < 0.5 ? a : b }
+        const t = (p - a.depart) / (b.arrive - a.depart)
+        const f = easeInOut(t)
+        const s = Math.max(a.s, Math.min(a.s + (b.s - a.s) * f, headAt(p)))
+        // 머묾 정도: 출발 직후 / 도착 직전 15% 동안만 0 <-> 1로 바뀐다(테 / 반사의 선명도에만 쓴다).
+        const dock = Math.max(clamp01(1 - t / 0.15), clamp01((t - 0.85) / 0.15))
+        return { s, minutes: a.minutes + (b.minutes - a.minutes) * f, dock }
       }
-      return at(st.length - 1)
+      const last = st[st.length - 1]
+      return { s: last.s, minutes: last.minutes, dock: 1 }
     }
 
-    const renderClock = (p: number) => {
-      if (!clock || !geom.stops.length) return
-      const c = clockAt(p)
-      const pt = active.getPointAtLength(c.s)
-      const dock = c.labelO.toFixed(3)
+    /** rail 위 경로 길이 s의 점(viewBox 단위). */
+    const railPoint = (s: number): Point => {
+      const r = geom.rail
+      const k = Math.max(0, Math.min(r.length - 1, s / RAIL_STEP))
+      const i = Math.floor(k), j = Math.min(r.length - 1, i + 1), u = k - i
+      return { x: r[i].x + (r[j].x - r[i].x) * u, y: r[i].y + (r[j].y - r[i].y) * u }
+    }
+
+    const formatTime = (minutes: number) => {
+      const total = Math.round(minutes)
+      return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+    }
+
+    const renderMarker = (p: number) => {
+      if (!marker || !geom.stops.length || !geom.rail.length) return
+      const c = markerAt(p)
+      const pt = railPoint(c.s)
+      const dock = c.dock.toFixed(3)
       const key = `${pt.x.toFixed(1)} ${pt.y.toFixed(1)} ${c.minutes.toFixed(2)} ${dock}`
-      if (key === lastClock) return
-      lastClock = key
-      clock.style.transform = `translate3d(${(pt.x * geom.scale).toFixed(2)}px, ${(pt.y * geom.scale).toFixed(2)}px, 0)`
-      // 시침은 12시간에 한 바퀴, 분침은 60분에 한 바퀴. 이동하는 동안 이어서 돈다.
+      if (key === lastMarker) return
+      lastMarker = key
+      marker.style.transform = `translate3d(${(pt.x * geom.scale).toFixed(2)}px, ${(pt.y * geom.scale).toFixed(2)}px, 0)`
+      // 옅은 바늘. 시침은 12시간에 한 바퀴, 분침은 60분에 한 바퀴. 이동하는 동안 이어서 돈다.
       if (hourHand) hourHand.style.transform = `translateX(-50%) rotate(${((c.minutes / 60) * 30).toFixed(2)}deg)`
       if (minuteHand) minuteHand.style.transform = `translateX(-50%) rotate(${((c.minutes % 60) * 6).toFixed(2)}deg)`
-      clock.style.setProperty('--dock', dock)
-      clock.style.setProperty('--label-o', dock)
-      const label = `${c.stop.time}|${c.stop.side}`
-      if (label !== lastLabel && clockLabel) {
-        clockLabel.textContent = c.stop.time
-        clock.dataset.side = c.stop.side
-        lastLabel = label
+      marker.style.setProperty('--dock', dock)
+      const time = formatTime(c.minutes)
+      if (time !== lastTime && markerTime) {
+        markerTime.textContent = time
+        lastTime = time
       }
     }
 
@@ -318,7 +303,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       }
 
       // Journey의 시계 하나. 새 scroll listener 없이 같은 진행률(p)과 card mark로만 정한다.
-      renderClock(p)
+      renderMarker(p)
 
       nodes.forEach((node, i) => {
         const nodeIn = i === 0 ? 1 : clamp01((p - (m[i] - NODE_RAMP)) / NODE_RAMP)
@@ -392,51 +377,84 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
     }
 
     /**
-     * 시계의 정박지. 첫 정박지는 첫 card에서 line이 나오는 자리(card 테두리 바로 밖), 나머지는 그 card에 line이 닿는 자리
-     * (테두리 바로 앞)다 — 시계 반지름 + DOCK_GAP만큼 떨어져 시계가 card에 가려지지 않는다.
-     * 시간 글자는 시계에서 card 반대쪽(가로)에 놓는다. refresh마다 경로와 함께 다시 잰다(scroll 중에는 재지 않는다).
+     * marker의 rail과 머묾 자리. rail은 경로를 RAIL_STEP마다 짚은 점들인데, card(+ marker 반지름 + RAIL_GAP) 안에 든 점은
+     * 가장 가까운 가장자리 바깥으로 밀어내고, 한 번 부드럽게 다듬은 뒤 다시 밀어낸다. 머묾 자리는 첫 card에서 line이
+     * 나오는 자리와, 각 card에 line이 닿는 자리다(둘 다 rail 위라 card 가장자리 바깥). refresh마다 다시 잰다.
      */
-    const placeClock = (boxes: Box[], hits: number[], total: number, scale: number) => {
-      if (!clock || !clockFace) return
-      const radius = clockFace.offsetWidth / 2
-      const gap = (radius + DOCK_GAP) / scale
-      // card 밑으로 들어가 완전히 가려지는 깊이(경로 방향으로 비스듬히 들어가도 가려지도록 반지름의 두 배).
-      const depth = (radius * 2 + 4) / scale
-      geom.clockGap = gap
-      const inside = (s: number, b: Box) => {
-        const pt = active.getPointAtLength(s)
-        return Math.abs(pt.x - b.x) <= b.hw && Math.abs(pt.y - b.y) <= b.hh
+    const placeMarker = (boxes: Box[], hits: number[], total: number, scale: number) => {
+      if (!marker || !markerGlass) return
+      const pad = (markerGlass.offsetWidth / 2 + RAIL_GAP) / scale
+      /*
+       * 두 겹의 경계. outer = card + marker 반지름 + RAIL_GAP(marker가 card 완전히 밖), inner = card 안쪽 여백보다 얕게만
+       * 걸치는 경계(marker가 card 테두리에 조금 겹쳐도 글자에는 닿지 않는다). card가 붙어 있는 좁은 화면(1024 등)에서
+       * 가까운 곳에 outer 밖 자리가 없을 때만 inner를 쓴다.
+       */
+      const radius = markerGlass.offsetWidth / 2
+      const cardPadding = parseFloat(getComputedStyle(nodes[0].querySelector<HTMLElement>('.journey__card')!).paddingLeft) || 0
+      const inner = Math.max(0, radius - cardPadding + 10) / scale
+      const inAny = (pt: Point, margin: number, slack = 0) => boxes.some(b =>
+        Math.abs(pt.x - b.x) < b.hw + margin - slack && Math.abs(pt.y - b.y) < b.hh + margin - slack)
+      /** margin 경계 안의 점을, 모든 card의 그 경계 밖에 있는 가장 가까운 가장자리 점(best)과 가장 가까운 가장자리 점(nearest)으로. */
+      const candidates = (pt: Point, margin: number) => {
+        let best: Point | null = null, bestD = Infinity, nearest = pt, nearestD = Infinity
+        for (const b of boxes) {
+          const hx = b.hw + margin, hy = b.hh + margin
+          const cx = Math.max(b.x - hx, Math.min(pt.x, b.x + hx)), cy = Math.max(b.y - hy, Math.min(pt.y, b.y + hy))
+          for (const c of [{ x: b.x - hx, y: cy }, { x: b.x + hx, y: cy }, { x: cx, y: b.y - hy }, { x: cx, y: b.y + hy }]) {
+            const d = Math.hypot(c.x - pt.x, c.y - pt.y)
+            if (d < nearestD) { nearest = c; nearestD = d }
+            if (d < bestD && !inAny(c, margin, 0.5)) { best = c; bestD = d }
+          }
+        }
+        return { best, bestD, nearest, nearestD }
       }
-      /** from부터 경로를 따라가다 card b 밖으로 처음 나오는 길이. */
-      const exitOf = (from: number, b: Box) => {
-        let s = from
-        while (s < total && inside(s, b)) s += 2
-        return Math.min(s, total)
+      /**
+       * card 가까이의 점을 card 밖으로 옮긴다. outer 밖의 가까운 자리(가장 가까운 가장자리보다 pad의 3배 이내)가 있으면 그곳,
+       * 없으면 inner 밖의 가장 가까운 자리 — 멀리 돌아가며 튀지 않고, 글자도 가리지 않는다.
+       */
+      const push = (pt: Point): Point => {
+        if (!inAny(pt, pad)) return pt
+        const o = candidates(pt, pad)
+        if (o.best && o.bestD <= o.nearestD + pad * 3) return o.best
+        if (!inAny(pt, inner)) return pt
+        const i = candidates(pt, inner)
+        return i.best ?? i.nearest
       }
-      const progressAt = (s: number) => LINE_FROM + (s / total) * (LINE_TO - LINE_FROM)
+      const raw: Point[] = []
+      for (let s = 0; s <= total; s += RAIL_STEP) {
+        const q = active.getPointAtLength(s)
+        raw.push(push({ x: q.x, y: q.y }))
+      }
+      // 가장자리에 붙은 구간의 꺾임을 부드럽게(이동 평균) 다듬고, 다듬다 card 쪽으로 들어간 점은 다시 밀어낸다.
+      const W = 12
+      geom.rail = raw.map((_, i) => {
+        let x = 0, y = 0, n = 0
+        for (let j = Math.max(0, i - W); j <= Math.min(raw.length - 1, i + W); j++) { x += raw[j].x; y += raw[j].y; n++ }
+        return push({ x: x / n, y: y / n })
+      })
+      let exit0 = 0
+      const inCard0 = (s: number) => {
+        const q = active.getPointAtLength(s)
+        return Math.abs(q.x - boxes[0].x) <= boxes[0].hw && Math.abs(q.y - boxes[0].y) <= boxes[0].hh
+      }
+      while (exit0 < total && inCard0(exit0)) exit0 += 2
       const header = document.querySelector('.site-header')?.getBoundingClientRect().height ?? 0
-      const exit0 = exitOf(0, boxes[0])
+      const margin = DOCK_MARGIN + markerGlass.offsetWidth / 2
       const m = geom.marks
-      geom.stops = JOURNEY_CLOCK.map((stop, k) => {
+      geom.stops = JOURNEY_CLOCK.map(stop => {
         const i = stop.node
-        const s = Math.min(total, Math.max(0, i === 0 ? exit0 + gap : hits[i] - gap))
-        const pt = active.getPointAtLength(s)
+        const s = Math.min(total, i === 0 ? exit0 : hits[i])
+        const pt = railPoint(s)
         let depart = i + 1 < m.length ? m[i] + (m[i + 1] - m[i]) * DOCK_HOLD : Infinity
-        // camera가 먼저 떠나 정박한 시계가 화면 가장자리에 닿기 전에(card 밑으로 들어가는 시간까지 남기고) 출발한다.
-        // 마지막 정박지는 떠나지 않는다(depart = Infinity) — 그때는 재지 않는다.
+        // camera가 먼저 떠나 머무는 marker가 화면 가장자리에 닿기 전에 출발한다. 마지막 자리(depart = Infinity)는 재지 않는다.
         for (let q = m[i]; Number.isFinite(depart) && q < depart; q += 0.002) {
           const y = pt.y * scale + geom.camera(q)
-          if (y < header + DOCK_MARGIN || y > stage.clientHeight - DOCK_MARGIN) {
-            depart = Math.max(m[i], q - DIVE)
+          if (y < header + margin || y > stage.clientHeight - margin) {
+            depart = q
             break
           }
         }
-        const side: 'left' | 'right' = pt.x < boxes[i].x - 1 ? 'left' : 'right'
-        const base = { s, arrive: m[i], depart, minutes: toMinutes(stop.time), time: stop.time, label: stop.label, side }
-        // 출발점(첫 card 밖)과 마지막 정박지는 card 밑을 지나지 않는다.
-        if (i === 0 || k === JOURNEY_CLOCK.length - 1) return base
-        const out = exitOf(hits[i], boxes[i])
-        return { ...base, dive: Math.min(hits[i] + depth, out), exit: Math.max(hits[i], out - depth), emerge: progressAt(out) }
+        return { s, arrive: m[i], depart, minutes: toMinutes(stop.time) }
       })
     }
 
@@ -468,12 +486,12 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
        */
       active.style.strokeDasharray = `${L}px ${L + 4}px`
       written.clear()
-      lastClock = ''
-      lastLabel = ''
+      lastMarker = ''
+      lastTime = ''
       lastY = ''
       lastOffset = ''
       lastAmbient = ''
-      placeClock(boxes, hits, total, scale)
+      placeMarker(boxes, hits, total, scale)
       if (import.meta.env.DEV) {
         stage.dataset.line = JSON.stringify({ length: +L.toFixed(1), marks: geom.marks.map(v => +v.toFixed(4)) })
       }
@@ -509,7 +527,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
        */
       /*
        * FACES의 Crown 시간(13 : 30)은 FACES 동안만이다. Journey가 올라오기 시작하면 걷히고(Journey는 line 위의
-       * 시계 하나가 13 : 30에서 이어받아 14 : 10 -> 17 : 00으로 간다), 되감아 FACES로 돌아가면 다시 보인다. 두 시계가 동시에 다른 시간을 말하지 않는다.
+       * Time Marker 하나가 10 : 20 -> 18 : 10의 흐름을 이어받는다), 되감아 FACES로 돌아가면 다시 보인다. 두 시계가 동시에 다른 시간을 말하지 않는다.
        */
       const crownEl = document.querySelector<HTMLElement>('.watch--stage .watch__crown')
       const syncCrownTime = (progress: number) => crownEl?.classList.toggle('watch__crown--time-hidden', progress > 0.3)
@@ -525,7 +543,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       handoff.to('.faces__meta', { opacity: 0, duration: 0.15, ease: 'none' }, 0)
       handoff.fromTo('.journey__intro-entry', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.38, ease: 'none' }, 0.62)
       // 경로도 첫 card와 함께 들어온다 — card가 아직 옅고 28px 아래에 있을 때 그 surface 너머로 선 끝이 비치지 않는다.
-      handoff.fromTo([world.querySelector('.journey__path'), clock], { opacity: 0 }, { opacity: 1, duration: 0.38, ease: 'none' }, 0.62)
+      handoff.fromTo([world.querySelector('.journey__path'), marker], { opacity: 0 }, { opacity: 1, duration: 0.38, ease: 'none' }, 0.62)
       handoff.fromTo(stage, { '--leading-light': 1 }, { '--leading-light': 0, duration: 0.5, ease: 'none' }, 0.5)
       handoff.set({}, {}, 1)
 
@@ -560,15 +578,10 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       stage.style.removeProperty('--contact-ambient')
       active.style.removeProperty('stroke-dasharray')
       active.style.removeProperty('stroke-dashoffset')
-      if (clock) {
-        clock.style.removeProperty('transform')
-        clock.style.removeProperty('--dock')
-        clock.style.removeProperty('--label-o')
-        delete clock.dataset.side
-      }
+      marker?.style.removeProperty('transform')
+      marker?.style.removeProperty('--dock')
       hourHand?.style.removeProperty('transform')
       minuteHand?.style.removeProperty('transform')
-      if (clockLabel) clockLabel.textContent = ''
       for (const node of nodes) {
         node.style.removeProperty('--node-in')
         node.style.removeProperty('--node-out')

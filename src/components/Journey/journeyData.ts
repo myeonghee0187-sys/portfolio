@@ -132,27 +132,27 @@ export const JOURNEY_NODES: JourneyNode[] = [
 export const JOURNEY_WORLD_HEIGHT = 5300
 
 /**
- * Journey의 시계(story/storyTime.ts). Journey 전체에 시계는 하나뿐이다 — line 위를 따라 이동하다가
- * 아래 card에 line이 닿는 자리(card 테두리 바로 앞)에 잠깐 정박하고, 그 card가 물러나면 다음 정박지로 다시 출발한다.
- * 바늘은 이동하는 동안 이어서 돌아간다(13 : 30 -> 14 : 10 -> 15 : 00 -> 16 : 20 -> 17 : 00).
- *   node    정박하는 card(JOURNEY_NODES index). 첫 정박(0)은 출발점이다 — FROM FIGMA TO WEB에서 line이 나오는 자리
- *   time    그 자리의 시간. 출발점은 FACES Crown의 13 : 30에서 이어받는다
- *   label   정박하는 동안 시계 옆에 시간 글자를 보여 줄지(출발점은 바늘만)
+ * Journey의 Time Marker(story/storyTime.ts). Journey 전체에 marker는 하나뿐이다 — line을 따라 시작부터 끝까지 이동하고,
+ * 아래 card에 line이 닿는 자리 근처에서 잠깐 머문 뒤 다음 자리로 다시 흐른다. 안의 디지털 시간은 한 번도 비지 않는다 —
+ * 머무는 동안은 그 card의 시간이고, 이동하는 동안은 두 시간 사이를 분 단위로 이어서 흐른다.
+ *   node   머무는 card(JOURNEY_NODES index). 첫 자리(0)는 출발점이다 — FROM FIGMA TO WEB에서 line이 나오는 자리
+ *   time   그 자리의 시간. 출발점은 첫 시간(FIGMA DESIGN)과 같다
  */
 export type JourneyClockStop = {
   node: number
   time: string
-  label: boolean
 }
 
 export const JOURNEY_CLOCK: JourneyClockStop[] = [
-  { node: 0, time: STORY_TIME.faces, label: false },
+  { node: 0, time: STORY_TIME.journey[0] },
   // FIGMA DESIGN
-  { node: 1, time: STORY_TIME.journey[0], label: true },
+  { node: 1, time: STORY_TIME.journey[0] },
   // FRONT - END
-  { node: 3, time: STORY_TIME.journey[1], label: true },
+  { node: 3, time: STORY_TIME.journey[1] },
+  // BUILD, TEST, PUBLISH
+  { node: 4, time: STORY_TIME.journey[2] },
   // WORKING WITH AI
-  { node: 5, time: STORY_TIME.journey[2], label: true },
+  { node: 5, time: STORY_TIME.journey[3] },
   // STILL UPDATING
-  { node: 6, time: STORY_TIME.journey[3], label: true },
+  { node: 6, time: STORY_TIME.journey[4] },
 ]

@@ -10,8 +10,8 @@ export const STORY_TIME = {
   about: '11 : 10',
   /** FACES 이후 정면 Crown controller */
   faces: '13 : 30',
-  /** Journey line 옆 여백(순서대로 네 구간). */
-  journey: ['14 : 10', '15 : 00', '16 : 20', '17 : 00'],
+  /** Journey Time Marker가 머무는 card의 시간(FIGMA DESIGN / FRONT - END / BUILD / WORKING WITH AI / STILL UPDATING). */
+  journey: ['10 : 20', '12 : 10', '14 : 40', '16 : 30', '18 : 10'],
   /** Contact Watch */
   contact: '18 : 10',
 } as const
