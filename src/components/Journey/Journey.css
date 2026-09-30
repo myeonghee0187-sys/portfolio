@@ -1,5 +1,6 @@
 /* Card 중심 좌표와 active / completed / upcoming motion은 그대로다. */
 .journey {
+  --journey-clock-size: 106px;
   /*
    * Card 공통 크기 시스템. 7장이 모두 같은 크기와 여백을 쓴다(card별 override 없음).
    *   1920 x 1080       620 x 440, padding 40 (이전 560 x 400에서 약 10% 넓다)
@@ -99,7 +100,7 @@
 }
 
 .journey__node {
-  /* Approved: the exact path passes under cards; the clock follows underneath too. */
+  /* Cards and their content retain visual priority above the flow layer. */
   z-index: 2;
   --node-in: 0;
   --node-out: 0;
@@ -299,6 +300,7 @@
   height: auto;
   margin: auto;
   padding: 100px 20px;
+  padding-left: calc(var(--journey-clock-size) + 20px);
   display: flex;
   flex-direction: column;
   gap: 64px;
@@ -363,7 +365,7 @@
 
 /* One analog glass clock follows the active line head without obscuring the line. */
 .journey__marker {
-  --marker-size: 104px;
+  --marker-size: var(--journey-clock-size);
   position: absolute;
   top: 0;
   left: 0;
@@ -384,17 +386,27 @@
   width: var(--marker-size);
   height: var(--marker-size);
   overflow: hidden;
-  border: 1px solid rgb(212 229 239 / 0.3);
+  border: 1px solid rgb(212 229 239 / 0.32);
   border-radius: 50%;
   background:
     radial-gradient(120% 70% at 50% -8%, rgb(212 229 239 / 0.08), transparent 62%),
-    radial-gradient(80% 100% at 100% 75%, rgb(24 109 229 / 0.14), transparent 68%),
-    rgb(8 9 10 / 0.46);
-  /* Keep the glass center unblurred so the continuous 2.5px line stays legible. */
+    radial-gradient(80% 100% at 100% 75%, rgb(24 109 229 / 0.08), transparent 68%),
+    rgb(8 9 10 / 0.34);
   box-shadow:
-    inset 0 1px 0 rgb(212 229 239 / 0.08),
-    inset 0 -1px 0 rgb(24 109 229 / 0.14),
-    0 5px 16px rgb(0 0 0 / 0.18);
+    inset 0 0 18px rgb(212 229 239 / 0.04),
+    0 0 14px rgb(24 109 229 / 0.08);
+}
+
+/* Frost only the thin rim: the center keeps the continuous line legible. */
+.journey__marker-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  mask: radial-gradient(closest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
 }
 
 /* Twelve individual ticks; quarter hours are only slightly longer. */
@@ -403,16 +415,16 @@
   top: 50%;
   left: 50%;
   width: 1px;
-  height: 5%;
+  height: 3%;
   border-radius: 1px;
-  background: rgb(212 229 239 / 0.38);
+  background: rgb(212 229 239 / 0.22);
   transform-origin: 50% 0;
   transform: translateX(-50%) rotate(var(--tick-angle)) translateY(calc(var(--marker-size) * -0.41));
 }
 
 .journey__marker-tick--major {
-  height: 7%;
-  background: rgb(212 229 239 / 0.58);
+  height: 5%;
+  background: rgb(212 229 239 / 0.32);
 }
 
 /* Hand angles share the same progress source as the clock and active line. */
@@ -428,14 +440,14 @@
 
 .journey__marker-hand--hour {
   width: 3px;
-  height: 24%;
+  height: 14%;
   opacity: 0.9;
 }
 
 .journey__marker-hand--minute {
   width: 2px;
-  height: 36%;
-  opacity: 0.82;
+  height: 21%;
+  opacity: 0.8;
 }
 
 .journey__marker-pin {
@@ -445,19 +457,32 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #d4e5ef;
+  background: rgb(212 229 239 / 0.8);
+  box-shadow: 0 0 3px rgb(24 109 229 / 0.14);
   transform: translate(-50%, -50%);
 }
 
+@media (max-width: 1440px) {
+  .journey {
+    --journey-clock-size: 102px;
+  }
+}
+
 @media (max-width: 1200px) {
-  .journey__marker {
-    --marker-size: 88px;
+  .journey {
+    --journey-clock-size: 88px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .journey:not(.journey--static) .journey__stage {
+    --journey-card-width: min(460px, calc(49.479167cqw - var(--journey-clock-size) - 16px));
   }
 }
 
 @media (max-width: 600px) {
-  .journey__marker {
-    --marker-size: 74px;
+  .journey {
+    --journey-clock-size: 72px;
   }
 }
 

@@ -2,7 +2,8 @@ import { useLayoutEffect, type RefObject } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { JOURNEY_CLOCK, JOURNEY_NODES } from './journeyData'
-import { createJourneyFlow } from './journeyFlow'
+import { createJourneyFlow, pathEntryDistance, pathExitDistance } from './journeyFlow'
+import { detourJourneyPath, pathDistanceAtY, type FlowObstacle } from './journeyPath'
 import { HANDOFF_VIEWPORTS, JOURNEY_VIEWPORTS, PANEL_TRIGGER_ID, panelTiming } from '../../hooks/panelTiming'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -262,27 +263,56 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       const boxes = measureBoxes(scale)
       const d = buildSmoothPath(boxes.map(anchorOf))
       paths.forEach(p => p.setAttribute('d', d))
-      const total = active.getTotalLength()
-      const L = total * scale
-      geom.length = L
+      const originalTotal = active.getTotalLength()
       // card가 켜지는 자리 = 빛이 그 card 테두리에 닿는 순간(경로 길이에 비례).
-      const hits = borderHits(boxes, total)
-      geom.marks = hits.map((at, i) =>
-        i === 0 ? LINE_FROM : LINE_FROM + (at / total) * (LINE_TO - LINE_FROM))
+      const originalHits = borderHits(boxes, originalTotal)
+      const originalMarks = originalHits.map((at, i) =>
+        i === 0 ? LINE_FROM : LINE_FROM + (at / originalTotal) * (LINE_TO - LINE_FROM))
       const header = document.querySelector('.site-header')?.getBoundingClientRect().height ?? 0
       const unit = stage.clientWidth / 1920
       const cameraAt = JOURNEY_NODES.map(n => header + (stage.clientHeight - header) / 2 - n.position.y * unit)
       geom.camera = monotoneCubic(
-        [0, ...geom.marks, 1],
+        [0, ...originalMarks, 1],
         [cameraAt[0], ...cameraAt, cameraAt[cameraAt.length - 1]],
       )
-      const milestones = JOURNEY_CLOCK.map(stop => ({ progress: hits[stop.node] / total, minutes: stop.minutes }))
-      flow.measure(milestones)
+      // Include the intro's existing 28px entry travel so its surface cannot cross
+      // the initial clock while the shared scene fades in. No new clock/layer.
+      const radius = parseFloat(getComputedStyle(marker!).getPropertyValue('--marker-size')) / 2
+      const clearance = (radius + 4) / scale
+      const obstacles: FlowObstacle[] = boxes.slice(1, -1).map(box => ({
+        ...box, side: box.side as 'left' | 'right',
+      }))
+      // On the narrow tablet, neighbouring expanded cards can form one obstacle.
+      // Follow its outside edge instead of squeezing through a closed corridor.
+      for (let i = 1; i < obstacles.length; i++) {
+        const previous = obstacles[i - 1], here = obstacles[i]
+        const dx = Math.abs(here.x - previous.x) - here.hw - previous.hw
+        const dy = Math.abs(here.y - previous.y) - here.hh - previous.hh
+        if (previous.side !== here.side && dx < 2 * clearance && dy < 2 * clearance) {
+          here.side = previous.side
+        }
+      }
+      const routed = detourJourneyPath(d, obstacles, clearance)
+      paths.forEach(path => path.setAttribute('d', routed))
+      const total = active.getTotalLength()
+      const L = total * scale
+      geom.length = L
+      const intro = { ...boxes[0], y: boxes[0].y + 14 / scale, hh: boxes[0].hh + 14 / scale }
+      const from = pathExitDistance(active, intro, clearance) / total
+      const to = pathEntryDistance(active, boxes[boxes.length - 1], clearance) / total
+      const hits = boxes.map((box, i) => i === 0 ? from * total
+        : i === boxes.length - 1 ? to * total : pathDistanceAtY(active, box.y))
+      geom.marks = hits.map(at => LINE_FROM + at / total * (LINE_TO - LINE_FROM))
+      const milestones = JOURNEY_CLOCK.map(stop => ({
+        progress: stop.node === 0 ? from : hits[stop.node] / total,
+        minutes: stop.minutes,
+      }))
+      flow.measure(milestones, { from, to })
       written.clear()
       lastY = ''
       lastAmbient = ''
       if (import.meta.env.DEV) {
-        stage.dataset.line = JSON.stringify({ length: +L.toFixed(1), marks: geom.marks.map(v => +v.toFixed(4)), milestones })
+        stage.dataset.line = JSON.stringify({ length: +L.toFixed(1), marks: geom.marks.map(v => +v.toFixed(4)), milestones, range: { from, to }, obstacles })
       }
       render()
     }

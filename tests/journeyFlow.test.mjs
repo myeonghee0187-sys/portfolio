@@ -9,7 +9,7 @@ const source = await readFile(new URL('../src/components/Journey/journeyFlow.ts'
 const { outputText } = ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 })
-const { mapJourneyFlow, journeyMinutesAt } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`)
+const { mapJourneyFlow, journeyMinutesAt, pathExitDistance, pathEntryDistance } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`)
 
 // Deliberately uneven distances model anchors measured from the actual SVG geometry.
 const milestones = [
@@ -21,6 +21,29 @@ const milestones = [
 ]
 const near = (actual, expected, tolerance = 1e-9) =>
   assert.ok(Math.abs(actual - expected) < tolerance, `${actual} ≈ ${expected}`)
+
+test('start clears the entire clock radius after leaving the intro card', () => {
+  const path = { getTotalLength: () => 1000, getPointAtLength: s => ({ x: 0, y: 110 + s }) }
+  const intro = { x: 0, y: 14, hw: 310, hh: 234 }
+  const distance = pathExitDistance(path, intro, 57)
+  // Bottom edge248, radius53 + gap4; entry animation is included in the box.
+  near(distance, 195, 0.001)
+  assert.ok(path.getPointAtLength(distance).y - intro.y - intro.hh >= 57)
+})
+
+test('safe start ignores empty path before the first card and finds its exit', () => {
+  const path = { getTotalLength: () => 1000, getPointAtLength: s => ({ x: 0, y: s }) }
+  const distance = pathExitDistance(path, { x: 0, y: 300, hw: 100, hh: 100 }, 36)
+  near(distance, 436, 0.001)
+})
+
+test('the final clock stops fully clear of the last card and returns on the same path', () => {
+  const path = { getTotalLength: () => 1000, getPointAtLength: s => ({ x: 0, y: s }) }
+  const distance = pathEntryDistance(path, { x: 0, y: 1000, hw: 310, hh: 220 }, 57)
+  near(distance, 723, 0.001)
+  assert.ok(780 - path.getPointAtLength(distance).y >= 57)
+  assert.ok(780 - path.getPointAtLength(distance - 10).y > 57)
+})
 
 test('uneven geometry anchors retain their exact path positions and story times', () => {
   for (const { progress, minutes } of milestones) {
@@ -55,6 +78,17 @@ test('milestone mapping has continuous positive velocity from either direction',
     const rightSlope = (mapJourneyFlow(progress + step, milestones) - center) / step
     assert.ok(leftSlope > 0 && rightSlope > 0)
     near(leftSlope, rightSlope, 1e-4)
+  }
+})
+
+test('milestone speed remains between 30% and 45% of cruising speed', () => {
+  const step = 1e-7
+  const slope = p => (mapJourneyFlow(p + step, milestones) - mapJourneyFlow(p - step, milestones)) / (2 * step)
+  for (let i = 1; i < milestones.length - 1; i++) {
+    const at = milestones[i].progress
+    const cruise = slope((milestones[i - 1].progress + at) / 2)
+    const ratio = slope(at) / cruise
+    assert.ok(ratio >= 0.3 && ratio <= 0.45, `milestone/cruise speed: ${ratio}`)
   }
 })
 

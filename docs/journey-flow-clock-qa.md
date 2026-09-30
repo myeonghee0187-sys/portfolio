@@ -1,58 +1,73 @@
-# Journey Flow Clock QA
+# Journey Flow Clock — final refinement QA
 
-Base: origin/main at 85e25544bf540ed8605b9b1adb88e1424777f36d.
-Branch: feature/journey-flow-clock. The initial working tree was clean.
+Base: `origin/main` at `e88f8ac` (PR #10). Feature: `feature/journey-flow-clock-final`.
 
-## Approved geometry behavior
+## Scope and root cause
 
-The original path travels through the cards beneath opaque surfaces. The user explicitly chose to preserve that exact geometry and allow the clock to pass behind cards. The clock is therefore occluded inside cards, including the first/last interior endpoints. It never switches DOM or follows a displaced rail. Mobile retains the existing central vertical line and document cards; the existing SVG now renders that same line instead of a CSS background.
+The first clock was the single moving marker, not a duplicate or decoration. The original bottom anchor is one quarter of the card height inside its opaque surface, and cards paint above the clock. The original final anchor and intermediate path also entered cards.
 
-## Implementation
+The user explicitly approved local detours of the shared SVG and minimum responsive clearance. Seven-card copy, order and center coordinates remain unchanged. The original organic builder and baseline camera timing remain; the shared path is deformed only near collisions. No protected section, shared timeline, Contact CTA, Crown component, modal, rays, email, dependency or package file changed.
 
-- Journey.tsx: one decorative, noninteractive clock DOM with 12 ticks, two hands and a center pin. No digital time, numerals or second hand.
-- Journey.css: desktop 104px, tablet 88px at <=1200px, mobile 74px at <=600px. Carbon glass rgba(8,9,10,.46), 1px Ice rim .30, highlight .08, Electric Ice reflection .14. Unblurred center keeps the line legible. Hour hand 3px x 24% at .9 opacity; minute 2px x 36% at .82; pin 4px. Quarter-hour ticks are slightly longer.
-- journeyData.ts: minutes 820 / 850 / 900 / 980 / 1020, corresponding to 13:40 / 14:10 / 15:00 / 16:20 / 17:00. Card data is unchanged.
-- journeyFlow.ts: one journeyFlowProgress writes active stroke-dashoffset, actual getPointAtLength(total * progress), and both hand angles. getTotalLength and SVG CTM are cached. Unwrapped angles (minutes / 2, minutes * 6) remain continuous across hour boundaries.
-- useJourneyInteraction.ts: retains original organic path construction, card anchors, camera, scroll extent and handoff. Removes the separate clock rail and dock schedule. Existing on-demand GSAP ticker remains the only smoothing loop.
-- useJourneyDocumentFlow.ts: one unpinned trigger for the existing document layout. Reduced motion uses direct scroll progress without easing or an animation loop.
+## Appearance
 
-Per segment: f(t) = .22t + .78t²(3 - 2t). It is monotone and C1 even with unequal milestone spacing. Minimum slope .22 prevents a hold, snap or timer pause. Reverse uses the same pure mapping. Minutes interpolate between measured path milestones; the last path segment continues to 1 with the time remaining at 17:00.
+| Viewport | Clock diameter | Card adjustment |
+| --- | ---: | --- |
+| 1920×1080 | 106px | Existing 620×440px |
+| 1440×900 | 102px | Existing 465×366.66px |
+| 1024×768 | 88px | Minimum corridor width; 395.24×340px in measured browser, centers/type/padding retained |
+| 390×844 | 72px | Left padding 20→92px, right20px and gap64px retained; card height follows existing content wrapping |
 
-Geometry is measured at mount, fonts ready, resize and ScrollTrigger refresh. A ResizeObserver updates the cached SVG mapping after pin/container dimensions settle. Neither scroll renderer reads card rectangles or computed styles. Cleanup removes triggers, observers, listeners, ticker callbacks and inline state.
+One persistent marker contains one glass body, twelve ticks, two hands and one pin. No time text, numbers, label, second hand, clone or per-card visibility switch.
 
-## Browser QA
+- Glass: `rgba(8,9,10,.34)`; border1px `rgba(212,229,239,.32)`.
+- Frost:12px blur only on the thin masked rim, keeping the line visible through the center.
+- Shadows: inset18px Ice/.04, outer14px Electric Ice/.08; static faint reflections, no pulse or flashing.
+- Ticks: four5%-diameter ticks/.32; eight3%-diameter ticks/.22.
+- Hour:3px wide,14% diameter (28% radius), Ice/.9.
+- Minute:2px wide,21% diameter (42% radius), Ice/.8.
+- Pin:4px, Ice/.8 with a restrained Electric Ice reflection.
 
-The root agent inspected the actual React app in Chromium through a local viewport harness. Dimensions were verified from each iframe's innerWidth/innerHeight. The harness scrolls the actual document and measures rendered SVG/clock geometry without replacing production animation logic. Ignored logs/ QA files are not shipped.
+## Geometry, progress and time
 
-| Viewport | Diameter | Normalized milestones: Start / FIGMA / FRONT-END / AI / STILL |
-| --- | --- | --- |
-| 1920x1080 | 104px | 0 / .143982 / .420561 / .754805 / .979962 |
-| 1440x900 | 104px | 0 / .137318 / .415646 / .749714 / .977470 |
-| 1024x768 | 88px | 0 / .120025 / .398102 / .723714 / .968121 |
-| 390x844 | 74px | 0 / .186680 / .443925 / .712437 / .902538 |
+`journeyFlowProgress` is the single normalized0→1 driver. It maps into a measured safe window of the existing shared SVG. `getTotalLength()` is cached at measurement; `getPointAtLength()` places the clock. The same physical distance determines stroke dash offset and clock center; normalized progress interpolates story minutes and both unwrapped hand angles.
 
-## Regression and validation
+The beginning clears the first card plus clock radius and its existing28px intro travel. The end remains fully outside STILL UPDATING. Intermediate card anchors are measured on the actual detoured path, not equally divided percentages. Hermite pieces retain the original vertical progression and continuous tangents; an opposing narrow corridor smoothly limits the outward bow. A close pair at1024 follows its outside boundary when the inner corridor is closed.
 
-- Seven cards retain order, copy, positions, dimensions and typography. Path construction and anchors are unchanged.
-- No edits to Intro, Header, Hero, About, FACES/CTA, Crown, ALL FACES, Contact/CTA/modal, Light Rays or email copy.
-- npm run lint: pass.
-- npm run build: pass; existing large-bundle advisory remains.
-- node --test tests/journeyFlow.test.mjs: 7/7 pass (nonuniform milestones, positive slope, C1, reverse, hour rollover, reduced motion, final continuation).
-- git diff --check: pass.
+Milestone speeds are40% of mid-segment speeds: `0.5t + 0.5t²(3−2t)`. There are no time-based pauses, zero-slope stops, snaps or history-dependent reverse branches. Time interpolation uses820→850→900→980→1020 minutes, corresponding to13:40→14:10→15:00→16:20→17:00. These values are never rendered as text.
 
-## Final verification notes
+Actual normalized **SVG distances** (the first/last values define the safe window; normalized flow begins0 and ends1):
 
-Desktop/tablet card dimensions observed: 620x439.99 at 1920, 465x366.656 at 1440, 460x340 at 1024. No horizontal overflow at the requested sizes. During 24-second full traversals, instrumentation recorded zero Journey getBoundingClientRect/getComputedStyle calls from scroll rendering and zero Journey child-list mutations. The same clock DOM and exactly one Journey progress trigger remained active through viewport changes.
+| Viewport | Start | FIGMA DESIGN | FRONT-END | WORKING WITH AI | STILL UPDATING |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1920 | .040784 | .203427 | .458409 | .762766 | .965667 |
+| 1440 | .050401 | .202130 | .456346 | .761861 | .958658 |
+| 1024 | .056166 | .163344 | .366059 | .718117 | .954588 |
+| 390 | .179652 | .258776 | .505504 | .798398 | .944688 |
 
-The user-approved card occlusion is intentional. On mobile the 74px clock also passes behind document cards while following the original centered line; it is visible in the spaces between them. The clock center is never displaced to avoid cards.
+Recompute on mount, fonts ready, resize and ScrollTrigger refresh. Scroll writes perform no card/layout measurements and no React state updates. The pinned scene retains one on-demand GSAP follow callback; document mode has one progress trigger and no animation loop. Reduced motion uses direct clamped progress; no reflection or scale animation is present.
 
-### Browser outcomes
+## Browser validation
 
-- 1920, 1440, 1024 and 390: passed full traversal and visual checks; the desktop/tablet reverse and mobile forward/reverse runs were also inspected directly.
-- Each 24-second traversal sampled approximately 1,400 frames. Forward center error was below .001px; desktop/tablet reversal boundary samples stayed below 1px. Active line progress error stayed below .000003 (under .01px of stroke length). These are screen-coordinate/serialization tolerances; both use the same path distance.
-- Exactly one clock, 12 ticks, two hands, no digital text; one Journey progress trigger; same DOM identity after resizing across desktop/mobile.
-- Mobile final milestones: 0 / .186680 / .443925 / .712437 / .902538.
-- Reduced-motion preference was emulated in the local app's matchMedia interface at 1440x900. 23 forward/reverse samples passed with zero reverse discrepancy, zero Journey layout reads and no duplicate trigger. CSS inspection confirms no pulse or reflection animation.
-- Contact end: Crown attach reached 1. Returning into Journey restored attach to 0, with the same clock/path state. The existing Contact CTA was visually unchanged.
-- Application error capture: zero. Fresh final QA browser console: zero errors. Earlier development-page hot reloads produced browser-tool MutationObserver errors; these did not reproduce on the final fresh page.
-- Final lint, build and all seven tests passed after the last source change.
+Root agent directly inspected actual browser traversal and screenshots in all four viewport sizes, using the same React application in an exact-size iframe. The temporary ignored harness drives native scrolling; it does not replace the production controller. Each viewport received a24-second forward and24-second reverse traversal (approximately1,441 frame samples each), plus five exact milestone seeks and refresh between sizes.
+
+All eight traversals: zero card/clock overlap, zero viewport clipping during Journey, one persistent clock, twelve ticks, two hands, no digital text, no horizontal overflow, no app errors, zero Journey rectangle/style reads during scrolling, and zero child-list mutations. Card text remains uncovered. Desktop identity persists through switching to mobile.
+
+Measured minimum full-circle viewport clearance:1920≈82.7px;1440≈64.3px;1024≈54.9px;390≈4px. Native fractional scroll rounding produces a maximum milestone time difference of.026minute (about1.6seconds); pure-function tests hit exact milestone values.
+
+SVG arc-length flattening can return slightly different totals after pin/render changes. Therefore physical head verification uses `(strokeDasharray − strokeDashoffset) / scale`, not a freshly recomputed total multiplied by an old fraction. This compares the actual drawn head with the clock center.
+
+A second physical-head pass traversed all four sizes forward/reverse (361 samples per direction): maximum center/head distance0.327px at the reverse boundary, typically below0.01px; zero overlap or clipping.
+
+Reduced-motion JavaScript preference emulation at1440×900 passed23 forward/reverse samples: reverse discrepancy0, overlap0, app errors0, one persistent DOM and one progress trigger. CSS was inspected for the absence of reflection/scale animation; OS-level preference emulation was not used.
+
+Journey→Contact displayed the unchanged CTA and attached Crown (attach=1); reversing to Journey restored attach=0 and the visible13:40 starting clock. App error capture remained empty. Browser-tool/harness MutationObserver errors occurred during reloads in the outer QA page, not in the application error capture.
+
+## Automated validation
+
+- `npm run lint`: pass.
+- `npm run build`: pass; existing large-bundle advisory remains.
+- `node --test tests/journeyFlow.test.mjs tests/journeyPath.test.mjs`:17/17 pass.
+- Tests cover full-radius safe endpoints, irregular milestones, positive continuous speed,40% slowdown ratio, reverse identity, hour rollover, reduced motion, path clearance, preserved remote geometry/y progression and continuous tangent joins.
+- Independent static review confirms unchanged protected files/card data/baseline path and symmetric trigger/observer/ticker cleanup.
+
+Browser evidence is under ignored `logs/journey-final-*`; temporary QA pages are not production artifacts.
