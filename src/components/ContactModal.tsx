@@ -204,13 +204,13 @@ export default function ContactModal({ onClose, qaSuccessPreview = false }: Cont
     setSubmitState('success')
   }
 
-  // 성공 상태가 되면 MESSAGE SENT가 먼저 서고 상태 문구 / 설명 / CLOSE가 살짝 뒤따른다. focus는 CLOSE로 옮긴다
+  // 성공 상태가 되면 MESSAGE SENT가 먼저 서고 설명 / CLOSE가 살짝 뒤따른다. focus는 CLOSE로 옮긴다
   // (보조기술도 성공을 알 수 있게 role="status"). reduced motion에서는 motion 없이 바로 보인다.
   useLayoutEffect(() => {
     if (submitState !== 'success' || !successRef.current) return
     const root = successRef.current
     const title = root.querySelector('.contact-modal__success-title')
-    const rest = root.querySelectorAll('.contact-modal__success-status, .contact-modal__success-text, .contact-modal__done')
+    const rest = root.querySelectorAll('.contact-modal__success-text, .contact-modal__done')
     const tl = gsap.timeline()
     if (!reduced) {
       tl.fromTo(title, { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.42, ease: 'power3.out' }, 0)
@@ -276,16 +276,10 @@ export default function ContactModal({ onClose, qaSuccessPreview = false }: Cont
               <br />
               SENT
             </h2>
-            <p className="contact-modal__success-status">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M5 12.5l4.5 4.5L19 7.5" />
-              </svg>
-              YOUR MESSAGE IS ON ITS WAY.
-            </p>
             <p className="contact-modal__success-text">확인 후 회신드리겠습니다.</p>
             <button ref={successCloseRef} type="button" className="contact-modal__done" onClick={requestClose}>
               <span>
-                CLOSE<span className="contact-modal__done-arrow" aria-hidden="true">&#8599;</span>
+                CLOSE<span className="contact-modal__done-arrow" aria-hidden="true">&#8594;</span>
               </span>
             </button>
           </div>
