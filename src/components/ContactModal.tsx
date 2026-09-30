@@ -25,9 +25,25 @@ const SCROLL_KEYS = new Set(['PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'Ar
 
 /**
  * 실제 전송. 이 프로젝트에는 아직 메일 전송 Provider(서버 API / 메일 서비스)가 없다.
- * TODO: Provider를 연결하면 이 함수를 채운다. 연결 전에는 전송하지 않고, 가짜 성공도 보여 주지 않는다.
+ * TODO: Provider를 연결하면 이 함수를 채운다(성공이면 resolve, 실패면 reject).
+ * 연결 전에는 전송하지 않고, 가짜 성공도 보여 주지 않는다 — success 상태는 이 함수가 실제로 resolve된 뒤에만 온다.
  */
 const sendMessage: ((values: Values) => Promise<void>) | null = null
+
+/**
+ * 개발 서버 전용 QA mock. window.__contactSendMock = 'success' | 'error'일 때만 가짜 응답을 돌려준다.
+ * production build에서는 import.meta.env.DEV가 false라 이 코드 자체가 빠진다 — 배포된 화면은 절대 가짜 성공을 보이지 않는다.
+ */
+const devSendMock: ((values: Values) => Promise<void>) | null = import.meta.env.DEV
+  ? () => {
+      const mode = (window as unknown as { __contactSendMock?: 'success' | 'error' }).__contactSendMock
+      return new Promise<void>((resolve, reject) =>
+        window.setTimeout(() => (mode === 'success' ? resolve() : reject(new Error('mock send failure'))), 900))
+    }
+  : null
+
+/** 전송 상태. success는 실제 전송이 성공 응답을 준 뒤에만 된다. */
+type SubmitState = 'idle' | 'sending' | 'success' | 'error'
 
 function validate(values: Values): Errors {
   const errors: Errors = {}
@@ -57,6 +73,10 @@ export default function ContactModal({ onClose }: ContactModalProps) {
   const [errors, setErrors] = useState<Errors>({})
   const [submitted, setSubmitted] = useState(false)
   const [notice, setNotice] = useState<'idle' | 'unavailable'>('idle')
+  const [submitState, setSubmitState] = useState<SubmitState>('idle')
+  const formRef = useRef<HTMLFormElement>(null)
+  const successRef = useRef<HTMLDivElement>(null)
+  const successCloseRef = useRef<HTMLButtonElement>(null)
   const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   useLayoutEffect(() => {
@@ -161,12 +181,46 @@ export default function ContactModal({ onClose }: ContactModalProps) {
       setNotice('idle')
       return
     }
-    if (!sendMessage) {
+    const sender = sendMessage ?? (import.meta.env.DEV && (window as unknown as { __contactSendMock?: string }).__contactSendMock ? devSendMock : null)
+    if (!sender) {
       setNotice('unavailable')
       return
     }
-    await sendMessage(values)
+    if (submitState === 'sending') return
+    setNotice('idle')
+    setSubmitState('sending')
+    try {
+      await sender(values)
+    } catch {
+      // 실패: form과 입력값은 그대로 두고, 작은 안내만 보인다. 버튼은 다시 누를 수 있다.
+      if (!closingRef.current) setSubmitState('error')
+      return
+    }
+    if (closingRef.current) return
+    // 실제 성공 응답 뒤에만: form이 짧게 사라지고 modal 안이 성공 상태로 바뀐다(자동으로 닫지 않는다).
+    const form = formRef.current
+    if (form && !reduced) await gsap.to(form, { opacity: 0, y: -6, duration: 0.22, ease: 'power1.in' })
+    setSubmitState('success')
   }
+
+  // 성공 상태가 되면 check / 문구가 들어오고, focus는 CLOSE로 옮긴다(보조기술도 성공을 알 수 있게 role="status").
+  useLayoutEffect(() => {
+    if (submitState !== 'success' || !successRef.current) return
+    const root = successRef.current
+    const check = root.querySelector('.contact-modal__success-check')
+    const rest = root.querySelectorAll('.contact-modal__success-title, .contact-modal__success-text, .contact-modal__submit')
+    const tl = gsap.timeline()
+    if (reduced) {
+      tl.fromTo(root, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'none' })
+    } else {
+      tl.fromTo(check, { opacity: 0, scale: 0.82 }, { opacity: 1, scale: 1, duration: 0.3, ease: 'power2.out' }, 0)
+      tl.fromTo(rest, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.32, ease: 'power2.out', stagger: 0.05 }, 0.08)
+    }
+    successCloseRef.current?.focus({ preventScroll: true })
+    return () => {
+      tl.kill()
+    }
+  }, [submitState, reduced])
 
   const fieldProps = (field: Field) => ({
     id: `contact-${field}`,
@@ -191,6 +245,7 @@ export default function ContactModal({ onClose }: ContactModalProps) {
       <div
         ref={panelRef}
         className="contact-modal__panel"
+        data-state={submitState}
         role="dialog"
         aria-modal="true"
         aria-labelledby="contact-modal-title"
@@ -205,7 +260,25 @@ export default function ContactModal({ onClose }: ContactModalProps) {
           GET IN TOUCH
         </h2>
 
-        <form className="contact-modal__form" noValidate onSubmit={submit}>
+        {submitState === 'success' ? (
+          <div ref={successRef} className="contact-modal__success" role="status" aria-live="polite">
+            <span className="contact-modal__success-check" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+            </span>
+            <p className="contact-modal__success-title">MESSAGE SENT</p>
+            <p className="contact-modal__success-text">
+              메시지가 전달되었습니다.
+              <br />
+              확인 후 회신드리겠습니다.
+            </p>
+            <button ref={successCloseRef} type="button" className="contact-modal__submit" onClick={requestClose}>
+              CLOSE
+            </button>
+          </div>
+        ) : (
+        <form ref={formRef} className="contact-modal__form" noValidate onSubmit={submit}>
           <div className="contact-modal__row">
             <div className="contact-modal__field">
               <label htmlFor="contact-name">
@@ -282,10 +355,28 @@ export default function ContactModal({ onClose }: ContactModalProps) {
           </div>
 
           <div className="contact-modal__actions">
-            <button type="submit" className="contact-modal__submit">
-              SEND MESSAGE
+            <button type="submit" className="contact-modal__submit" disabled={submitState === 'sending'} aria-busy={submitState === 'sending'}>
+              {submitState === 'sending' ? (
+                <>
+                  SENDING
+                  <span className="contact-modal__sending-dots" aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                </>
+              ) : (
+                <>
+                  SEND MESSAGE<span className="contact-modal__submit-arrow" aria-hidden="true">&#8599;</span>
+                </>
+              )}
             </button>
           </div>
+
+          {/* 전송 실패 안내. 입력값은 그대로 남는다. 보조기술에는 조용히 읽힌다. */}
+          <p className="contact-modal__send-error" aria-live="polite">
+            {submitState === 'error' ? '전송하지 못했습니다. 잠시 후 다시 시도해주세요.' : ''}
+          </p>
 
           {notice === 'unavailable' && (
             <p className="contact-modal__notice" role="status">
@@ -294,6 +385,7 @@ export default function ContactModal({ onClose }: ContactModalProps) {
             </p>
           )}
         </form>
+        )}
       </div>
     </div>,
     document.body,
