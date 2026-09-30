@@ -9,7 +9,7 @@ const source = await readFile(new URL('../src/components/Journey/journeyPath.ts'
 const { outputText } = ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 })
-const { longSCurve, leadInSCurve, journeySCurve } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`)
+const { longSCurve, leadInSCurve, journeySCurve, cubicPath } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`)
 
 function parsePath(d, segments = 4) {
   assert.deepEqual(d.match(/[A-Za-z]/g), ['M', ...Array(segments).fill('C')], 'one continuous path with the expected cubic spans')
@@ -70,11 +70,13 @@ function clearanceAt(p, box) {
   )
 }
 
-function assertOpening(curves, intro, radius, scale = 1) {
+/** The line starts at the intro's bottom-center (2px inside, masked) and runs a 90px straight lead-in. */
+function assertOpening(curves, intro, scale = 1) {
   const first = curves[0][0], leadEnd = curves[0][3]
-  const rimGap = (first.y - intro.y - intro.hh) * scale - radius
-  assert.ok(Math.abs(rimGap - 20) < 0.002, `initial outer rim gap is ${rimGap}px, expected 20px`)
-  assert.ok(Math.abs((leadEnd.y - first.y) * scale - 80) < 0.002, 'lead-in must span 80 screen pixels')
+  const gap = (first.y - intro.y - intro.hh) * scale
+  assert.ok(Math.abs(gap + 2) < 0.002, `path starts ${gap}px from the card bottom, expected 2px inside it`)
+  assert.equal(first.x, intro.x, 'path starts at the card bottom-center')
+  assert.ok(Math.abs((leadEnd.y - first.y) * scale - 90) < 0.002, 'lead-in must span 90 screen pixels')
   for (const { p } of samples([curves[0]])) {
     assert.ok(Math.abs(p.x - first.x) * scale < 0.001, 'the entry stays vertical before the broad curve')
   }
@@ -103,12 +105,12 @@ const boxesFor = fixture => centers.map(([x, y]) => ({
 }))
 
 for (const fixture of fixtures) {
-  test(`${fixture.name}: physical start and 80px entry join clear, broad curves without a hidden prefix`, context => {
+  test(`${fixture.name}: card-edge start and 90px entry join clear, broad curves`, context => {
     const original = boxesFor(fixture), snapshot = original.map(box => ({ ...box }))
     const clearance = (fixture.diameter / 2 + 4) / fixture.scale
     const result = journeySCurve(original, clearance, {
-      centerGap: (fixture.diameter / 2 + 20) / fixture.scale,
-      leadIn: 80 / fixture.scale,
+      startInset: 2 / fixture.scale,
+      leadIn: 90 / fixture.scale,
     })
     assert.deepEqual(original, snapshot, 'geometry measurement must not mutate card inputs')
     assert.equal(result.boxes.length, original.length)
@@ -124,12 +126,13 @@ for (const fixture of fixtures) {
     const curves = parsePath(result.d)
     const minimumRadius = assertShape(curves, fixture.scale)
     assert.equal(curves[0][0].x, result.boxes[0].x, 'physical start is centered below the intro')
-    assertOpening(curves, result.boxes[0], fixture.diameter / 2, fixture.scale)
-    // Start at the physical M point; only the final card's existing stop is trimmed.
+    assertOpening(curves, result.boxes[0], fixture.scale)
+    // The clock travels from 90px below the card edge; only the final card's existing stop is trimmed.
+    const clockStartY = result.boxes[0].y + result.boxes[0].hh + 90 / fixture.scale
     const lastY = result.boxes[6].y - result.boxes[6].hh - clearance
     let count = 0, minimumGap = Infinity
     for (const { p } of samples(curves)) {
-      if (p.y > lastY) continue
+      if (p.y > lastY || p.y < clockStartY - 1e-6) continue
       count++
       for (let i = 0; i < result.boxes.length; i++) {
         const distance = clearanceAt(p, result.boxes[i])
@@ -138,7 +141,7 @@ for (const fixture of fixtures) {
           `card ${i} clearance is ${distance * fixture.scale}px at (${p.x}, ${p.y})`)
       }
     }
-    assert.ok(count > 3000, 'inspect the entry and entire visible route densely')
+    assert.ok(count > 2500, 'inspect the clock route (after the lead-in) densely')
     context.diagnostic(`minimum radius ${minimumRadius.toFixed(2)}px; clock/card gap ${minimumGap.toFixed(2)}px`)
   })
 }
@@ -153,18 +156,28 @@ test('mobile entry and three broad gutter spans keep the complete clock inside t
     return box
   })
   const left = radius + 4, right = cardLeft - radius - 4, x = (left + right) / 2
-  const firstY = boxes[0].y + boxes[0].hh + radius + 20, lastY = boxes.at(-1).y
+  // Same geometry as useJourneyDocumentFlow: the line leaves the first card's bottom edge
+  // (2px inside its lower-left corner), reaches the gutter 90px below it, then three broad spans.
+  const first = boxes[0]
+  const start = { x: first.x - first.hw + 4, y: first.y + first.hh - 2 }
+  const firstY = first.y + first.hh + 90, lastY = boxes.at(-1).y
   const span = lastY - firstY
-  const curves = parsePath(leadInSCurve([
-    { x, y: firstY }, { x: right, y: firstY + span / 3 },
+  const curves = parsePath(cubicPath([
+    start, { x, y: firstY }, { x: right, y: firstY + span / 3 },
     { x: left, y: firstY + span * 2 / 3 }, { x, y: lastY },
-  ], 80))
-  const minimumRadius = assertShape(curves)
-  assertOpening(curves, boxes[0], radius)
+  ]))
+  assert.ok(Math.abs(start.y - first.y - first.hh + 2) < 1e-9, 'line starts at the card bottom edge')
+  for (const { v } of samples([curves[0]])) assert.ok(v.y > 0, 'the entry keeps descending')
+  const minimumRadius = assertShape(curves.slice(1))
+  // The clock starts 90px along the visible line; from there it clears every card.
+  let travelled = -2, previous = null
   for (const { p } of samples(curves)) {
+    if (previous) travelled += Math.hypot(p.x - previous.x, p.y - previous.y)
+    previous = p
+    if (travelled < 90) continue
     assert.ok(p.x - radius >= 4 - 0.001 && p.x + radius <= worldWidth - 4 + 0.001,
       'complete clock must stay within the mobile viewport')
-    for (const box of boxes) assert.ok(clearanceAt(p, box) >= radius + 4 - 0.001, 'clock overlaps mobile card')
+    for (const box of boxes) assert.ok(clearanceAt(p, box) >= radius + 4 - 0.001, `clock overlaps mobile card at (${p.x}, ${p.y})`)
   }
   context.diagnostic(`minimum mobile curvature radius ${minimumRadius.toFixed(2)}px`)
 })

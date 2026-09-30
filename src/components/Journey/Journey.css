@@ -57,8 +57,9 @@
   will-change: transform;
 }
 
-/* Line and clock share the intro's entry translation, keeping their physical
- * gap from the moving card without changing opacity or masking the geometry. */
+/* Line and clock share the intro's entry translation, so the line stays attached to the
+ * card's bottom edge while it rises. The part under the cards is hidden by the SVG card
+ * footprint mask (Journey.tsx), never by hiding the line or changing its opacity. */
 .journey__flow-entry {
   position: absolute;
   inset: 0;

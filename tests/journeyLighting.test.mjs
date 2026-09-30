@@ -13,20 +13,20 @@ const { journeyAmbientAt, CONTACT_ENTRY_LIGHT } = await import(`data:text/javasc
 const near = (actual, expected, tolerance = 1e-12) =>
   assert.ok(Math.abs(actual - expected) < tolerance, `${actual} ≈ ${expected}`)
 
-test('Journey stays exactly unlit from its start through 78 percent', () => {
-  for (let i = 0; i <= 780; i++) assert.equal(journeyAmbientAt(i / 1000), 0)
-  assert.equal(journeyAmbientAt(0.78), 0)
+test('Journey stays exactly unlit from its start through 80 percent', () => {
+  for (let i = 0; i <= 800; i++) assert.equal(journeyAmbientAt(i / 1000), 0)
+  assert.equal(journeyAmbientAt(0.8), 0)
 })
 
 test('late light reaches the requested knots and the shared Contact entry level', () => {
-  for (const [progress, light] of [[0.78, 0], [0.88, 0.08], [0.96, 0.22], [1, 0.38]]) {
+  for (const [progress, light] of [[0.8, 0], [0.9, 0.08], [0.97, 0.22], [1, 0.35]]) {
     near(journeyAmbientAt(progress), light)
   }
-  assert.equal(CONTACT_ENTRY_LIGHT, 0.38)
+  assert.equal(CONTACT_ENTRY_LIGHT, 0.35)
   assert.equal(journeyAmbientAt(1), CONTACT_ENTRY_LIGHT)
-  near(journeyAmbientAt(0.83), 0.04)
-  near(journeyAmbientAt(0.92), 0.15)
-  near(journeyAmbientAt(0.98), 0.30)
+  near(journeyAmbientAt(0.83), 0.024)
+  near(journeyAmbientAt(0.92), 0.12)
+  near(journeyAmbientAt(0.98), 0.22 + 0.13 / 3)
 })
 
 test('late lighting rises continuously without a jump or reversal', () => {
@@ -34,10 +34,10 @@ test('late lighting rises continuously without a jump or reversal', () => {
   for (let i = 1; i <= 2200; i++) {
     const current = journeyAmbientAt(0.78 + i / 10000)
     assert.ok(current >= previous && current <= CONTACT_ENTRY_LIGHT)
-    assert.ok(current - previous <= 0.000401, 'adjacent samples must not produce a visible jump')
+    assert.ok(current - previous <= 0.000434, 'adjacent samples must not produce a visible jump')
     previous = current
   }
-  for (const knot of [0.78, 0.88, 0.96, 1]) {
+  for (const knot of [0.8, 0.9, 0.97, 1]) {
     const center = journeyAmbientAt(knot)
     near(journeyAmbientAt(knot - 1e-8), center, 1e-7)
     near(journeyAmbientAt(knot + 1e-8), center, 1e-7)

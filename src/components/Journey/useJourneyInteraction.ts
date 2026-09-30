@@ -21,6 +21,10 @@ const NODE_LEAVE = 0.5
  * wheel 한 칸의 계단만 녹이고, 멈추면 바로 선다. anchor snap / card pause / 되감김 없음.
  */
 const SMOOTHING = 0.14
+/** 첫 card 하단에서 곧게 내려오는 lead-in 길이(화면 px). 그 뒤는 긴 S-curve다. */
+const LEAD_IN = 90
+/** 시계가 출발하는 자리: 보이는 line 시작점(첫 card 하단)에서 path를 따라 이만큼(화면 px). */
+const CLOCK_START = 90
 
 type Options = {
   enabled: boolean
@@ -132,6 +136,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
     const active = world.querySelector<SVGPathElement>('.journey__path-active')!
     const paths = world.querySelectorAll<SVGPathElement>('.journey__path path')
     const marker = world.querySelector<HTMLElement>('.journey__marker')
+    const maskRects = [...world.querySelectorAll<SVGRectElement>('.journey__mask-card')]
     const flow = createJourneyFlow(world, active)
     const geom = {
       length: 0,
@@ -257,14 +262,26 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
         [cameraAt[0], ...cameraAt, cameraAt[cameraAt.length - 1]],
       )
       const radius = parseFloat(getComputedStyle(marker!).getPropertyValue('--marker-size')) / 2
+      const cardRadius = parseFloat(getComputedStyle(nodes[0].querySelector<HTMLElement>('.journey__card')!).borderTopLeftRadius) || 0
       const clearance = (radius + 4) / scale
-      const route = journeySCurve(boxes, clearance, { centerGap: (radius + 20) / scale, leadIn: 80 / scale })
+      const startInset = 2 / scale
+      const route = journeySCurve(boxes, clearance, { startInset, leadIn: LEAD_IN / scale })
       nodes.forEach((node, i) => node.style.setProperty('--node-shift-x', `${route.offsets[i] * scale}px`))
       paths.forEach(path => path.setAttribute('d', route.d))
+      // card footprint mask: 실제 card 상자 그대로(여유 없음). 그 밖의 line은 곧바로 보인다.
+      maskRects.forEach((rect, i) => {
+        const b = route.boxes[i]
+        rect.setAttribute('x', (b.x - b.hw).toFixed(2))
+        rect.setAttribute('y', (b.y - b.hh).toFixed(2))
+        rect.setAttribute('width', (b.hw * 2).toFixed(2))
+        rect.setAttribute('height', (b.hh * 2).toFixed(2))
+        rect.setAttribute('rx', (cardRadius / scale).toFixed(2))
+      })
       const total = active.getTotalLength()
       const L = total * scale
       geom.length = L
-      const from = 0
+      // 시계는 보이는 line 시작점(card 하단)에서 CLOCK_START만큼 진행한 자리에서 출발한다(path 기준, y hard-code 없음).
+      const from = Math.min(1, (startInset + CLOCK_START / scale) / total)
       const to = pathEntryDistance(active, boxes[boxes.length - 1], clearance) / total
       const hits = boxes.map((box, i) => i === 0 ? from * total
         : i === boxes.length - 1 ? to * total : pathDistanceAtY(active, box.y))
@@ -315,7 +332,8 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
        *   FACES 장면   15 ~ 90%  scale 1 -> 0.95, opacity 1 -> 0.35, blur 0 -> 1.5px
        *   Journey      8 ~ 88%   yPercent 100 -> 0
        *   첫 card      62 ~ 100% opacity 0 -> 1, y 28 -> 0
-       *   경로 / 시계  handoff부터 보이며, 첫 card와 같은 28px entry 이동으로 외곽 여백을 유지한다.
+       *   경로 / 시계  handoff부터 숨기지 않는다. 첫 card와 같은 28px entry 이동으로 함께 올라오고,
+       *                card 뒤의 line은 card footprint mask가 가린다(card가 아직 옅을 때도 비치지 않는다).
        * FACES와 Journey는 같은 pin 하나 안에 있다(nested pin 없음). 이 구간에서 pin이 풀리지 않으므로
        * 풀리는 순간의 1 frame jump가 생길 자리가 없다. pin은 Journey가 끝난 뒤 Contact에서만 풀린다.
        */

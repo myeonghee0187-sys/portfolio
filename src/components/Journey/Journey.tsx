@@ -25,13 +25,27 @@ export default function Journey({ interactive, ready }: JourneyProps) {
           {/*
             경로는 하나다. 두 path가 같은 d(모든 card를 잇는 하나의 문자열)를 쓴다 —
             아주 옅은 전체 길과, 처음부터 지금 위치까지 이어진 #D4E5EF 한 줄.
-            d는 첫 card 아래 20px의 시계 외곽 여백, 80px lead-in, 세 개의 긴 S-curve로 만든다.
+            d는 첫 card의 bottom-center에서 시작해 90px lead-in, 세 개의 긴 S-curve로 이어진다.
+            card 안쪽 구간은 mask로만 가린다. 시계는 보이는 line 시작점에서 90px 진행한 자리에서 출발한다.
             두 path와 시계가 같은 geometry를 사용하며, card마다 작은 우회 곡선을 추가하지 않는다.
           */}
           <div className="journey__flow-entry" aria-hidden="true">
             <svg className="journey__path" viewBox={`0 0 1920 ${JOURNEY_WORLD_HEIGHT}`} preserveAspectRatio="xMidYMin meet" aria-hidden="true" focusable="false">
-              <path className="journey__path-base" />
-              <path className="journey__path-active" />
+              {/*
+                card footprint mask. 각 card의 실제 상자(여유 없음) 안에서만 line을 가린다 — card가 나타나는 동안
+                (투명할 때도) card 뒤 line이 비치지 않고, card 테두리 바로 밖에서는 line이 곧바로 보인다.
+                사각형의 자리 / 크기는 useJourneyInteraction이 경로와 함께 잰다.
+              */}
+              <defs>
+                <mask id="journey-card-mask" maskUnits="userSpaceOnUse">
+                  <rect className="journey__mask-all" x="-10000" y="-10000" width="20000" height="40000" fill="#fff" />
+                  {JOURNEY_NODES.map(node => <rect key={node.id} className="journey__mask-card" fill="#000" />)}
+                </mask>
+              </defs>
+              <g mask="url(#journey-card-mask)">
+                <path className="journey__path-base" />
+                <path className="journey__path-active" />
+              </g>
             </svg>
             {/* One persistent clock follows the shared line outside card surfaces. */}
             <div className="journey__marker" aria-hidden="true">

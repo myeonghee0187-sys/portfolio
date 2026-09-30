@@ -93,9 +93,12 @@ export function createJourneyFlow(world: HTMLElement, active: SVGPathElement) {
       }))
       lastProgress = -1
       const length = total * scale
-      active.style.strokeDasharray = `${length}px ${length + 4}px`
-      active.style.strokeDashoffset = `${length}px`
-      active.style.visibility = 'hidden'
+      // Painted from the path start (the card edge) up to the waiting clock; a zero-length
+      // stroke (clock at the path start) stays hidden so no round-cap dot is left.
+      const lead = length * range.from
+      active.style.strokeDasharray = `${lead > 0 ? lead : length}px ${length + 4}px`
+      active.style.strokeDashoffset = `${lead > 0 ? 0 : length}px`
+      active.style.visibility = lead > 0 ? 'visible' : 'hidden'
     },
     render(scrollProgress: number, reducedMotion = false) {
       if (!total || !milestones.length) return
@@ -109,12 +112,13 @@ export function createJourneyFlow(world: HTMLElement, active: SVGPathElement) {
       const minutes = journeyMinutesAt(journeyFlowProgress, milestones)
       // All four writes consume this exact progress in the same frame. No DOM measurements.
       const length = total * scale
-      const drawn = length * (pathProgress - range.from)
+      // The active line runs from the path start (the first card's edge) to the clock, so the
+      // short lead-in above the clock is lit from the first frame. A zero-length stroke is hidden.
+      const drawn = length * pathProgress
       const painted = drawn > 0
-      // A zero-length active stroke has no round-cap dot. The base and clock stay visible.
       active.style.visibility = painted ? 'visible' : 'hidden'
       active.style.strokeDasharray = `${painted ? drawn : length}px ${length + 4}px`
-      active.style.strokeDashoffset = `${painted ? -length * range.from : length}px`
+      active.style.strokeDashoffset = `${painted ? 0 : length}px`
       marker.style.transform = `translate3d(${x}px, ${y}px, 0)`
       // Unwrapped angles are visually equivalent to modulo 60/12, and continuous at hour boundaries.
       hour.style.transform = `translateX(-50%) rotate(${minutes / 2}deg)`

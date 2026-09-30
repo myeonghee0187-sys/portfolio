@@ -78,8 +78,9 @@ function assertNoStroke(f) {
 function assertPaintedHead(f) {
   const scale = Math.hypot(f.geometry.matrix.a, f.geometry.matrix.b)
   const [drawn, gap] = f.active.style.strokeDasharray.split(' ').map(parseFloat)
+  // The active line is painted from the path start (the first card's edge) up to the clock.
   const start = -parseFloat(f.active.style.strokeDashoffset)
-  near(start, f.geometry.total * scale * f.range.from)
+  near(start, 0)
   assert.ok(drawn > 0)
   assert.ok(gap > f.geometry.total * scale, 'another dash cannot wrap into the path')
   assert.equal(f.active.style.visibility, 'visible')
@@ -166,10 +167,10 @@ test('remeasure recomputes unchanged progress and can return to the new physical
   f.clockPoint().forEach((value, i) => near(value, f.expectedPoint(0)[i]))
 })
 
-test('a supplied nonzero range still aligns its first painted dash and current clock', () => {
+test('a nonzero clock start lights the lead-in from the path start and aligns the clock', () => {
   const f = fixture({ from: 0.12, to: 0.9 })
   f.flow.render(0)
-  assertNoStroke(f)
+  assertPaintedHead(f)
   f.clockPoint().forEach((value, i) => near(value, f.expectedPoint(120)[i]))
   for (const p of [0.000001, 0.4, 1, 0.4]) {
     f.flow.render(p)
