@@ -136,7 +136,7 @@ export default function Contact({ interactive, ready }: ContactProps) {
               onClick={() => setFormOpen(true)}
               data-contact-reveal="16"
             >
-              {/* hover / keyboard focus 때 한 번, 문장과 ↗가 거의 동시에 한 번 굴러 올라온다(문구는 그대로). */}
+              {/* hover / keyboard focus 때 한 번, 문장과 ↗가 하나의 텍스트 유닛으로 함께 굴러 올라온다(문구는 그대로). */}
               <RotatingWords text="START A CONVERSATION" trailing={'\u2197'} />
             </button>
             {/* 메일 앱으로 가지 않고 주소를 복사한다. 줄 전체가 button이다(Enter / Space도 된다). */}

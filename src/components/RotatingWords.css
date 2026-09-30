@@ -12,30 +12,19 @@
   white-space: nowrap;
 }
 
-/* 단어 사이 간격은 공백 한 칸(글자 크기 기준)이다. */
-.rotating-words__visual {
-  display: inline-flex;
-  gap: 0.34em;
-}
-
 /*
- * 단어 하나의 칸. 폭 / 높이는 단어 그대로이고, 칸 밖으로 굴러 나가는 부분은 잘려 보이지 않는다.
- * 원근은 칸마다 같은 값이라 세 단어가 같은 면에서 뒤집힌다.
+ * 문장 하나의 칸. 폭 / 높이는 문장 그대로이고, 칸 밖으로 굴러 나가는 부분은 잘려 보이지 않는다.
+ * 원근도 이 칸 하나에만 둔다 — 단어마다 따로 기우는 타일이 아니라 한 줄이 한 면으로 뒤집힌다.
  */
-.rotating-words__word {
+.rotating-words__visual {
   display: inline-block;
   height: 1.2em;
   overflow: hidden;
   line-height: 1.2;
-  perspective: 400px;
+  perspective: 600px;
 }
 
-/* 뒤따르는 기호(↗). 문장과의 간격은 부모가 정한다(--rotating-trailing-gap, 없으면 단어 사이 간격 그대로). */
-.rotating-words__word--trailing {
-  margin-left: calc(var(--rotating-trailing-gap, 0.34em) - 0.34em);
-}
-
-/* 같은 단어 두 줄. -50%면 아래 줄(들어오는 줄)이 칸에 들어온다. */
+/* 같은 문장 두 줄. -50%면 아래 줄(들어오는 줄)이 칸에 들어온다. */
 .rotating-words__track {
   display: flex;
   flex-direction: column;
@@ -43,7 +32,8 @@
 }
 
 .rotating-words__line {
-  display: block;
+  display: flex;
+  gap: 0.34em;
   height: 1.2em;
   white-space: nowrap;
   backface-visibility: hidden;
@@ -56,4 +46,9 @@
 
 .rotating-words__line--in {
   transform-origin: 50% 100%;
+}
+
+/* 뒤따르는 기호(↗). 문장과의 간격은 부모가 정한다(--rotating-trailing-gap, 없으면 단어 사이 간격 그대로). */
+.rotating-words__token--trailing {
+  margin-left: calc(var(--rotating-trailing-gap, 0.34em) - 0.34em);
 }

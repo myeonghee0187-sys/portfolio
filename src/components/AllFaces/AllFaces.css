@@ -66,6 +66,27 @@
   box-sizing: border-box;
   border: 1px solid rgb(212 229 239 / 0.12);
   border-radius: 50%;
+  transition: border-color 300ms ease;
+}
+
+/*
+ * 세 dial이 같은 필드 안에 있다는 느낌. 그룹 중심에서 바깥 ring까지 아주 옅게 밝은 원형 면 하나(움직이지 않는다).
+ * 이 면과 orbit path, 가운데 ALL FACES가 세 dial의 공통 중심 축이다.
+ */
+.all-faces__orbit::before {
+  content: '';
+  position: absolute;
+  top: calc(var(--ring) * -1);
+  left: calc(var(--ring) * -1);
+  width: calc(var(--ring) * 2);
+  height: calc(var(--ring) * 2);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(212 229 239 / 0.035), rgb(212 229 239 / 0.012) 70%, transparent);
+}
+
+/* dial 하나에 올라가면 세 dial을 잇는 orbit path도 함께 조금 밝아진다 — 하나의 시스템이 반응한다. */
+.all-faces__stage[data-hovered] .all-faces__orbit-path {
+  border-color: rgb(212 229 239 / 0.2);
 }
 
 /*
@@ -322,7 +343,8 @@
 @media (prefers-reduced-motion: reduce) {
   .all-faces__dial,
   .all-faces__project,
-  .all-faces__rim {
+  .all-faces__rim,
+  .all-faces__orbit-path {
     transition: none;
   }
 
