@@ -47,7 +47,7 @@ export const FACE_PROJECTS: FaceProject[] = [
   {
     id: 'jaduya',
     liveUrl: 'https://jaduya.vercel.app/',
-    caseStudyUrl: 'https://www.figma.com/deck/1JhaNnsCFGHiULHwL2677r/2%EC%A1%B0--%EC%95%88%EB%85%95%EC%9E%90%EB%91%90%EC%95%BC--%EC%B5%9C%EC%A2%85%EB%B0%9C%ED%91%9C-%EC%8A%AC%EB%9D%BC%EC%9D%B4%EB%93%9C?node-id=42-308&viewport=-3666%2C-41%2C0.81&t=g5uLQNEWp9gHrNYa-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1',
+    caseStudyUrl: 'https://www.figma.com/deck/1JhaNnsCFGHiULHwL2677r/2%EC%A1%B0--%EC%95%88%EB%85%95%EC%9E%90%EB%91%90%EC%95%BC--%EC%B5%9C%EC%A2%85%EB%B0%9C%ED%91%9C-%EC%8A%AC%EB%9D%BC%EC%9D%B4%EB%93%9C?node-id=42-45&viewport=-146%2C62%2C0.68&t=IESmG21W7J7vH3Fs-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1',
     index: '02',
     title: 'JADUYA',
     category: 'MOBILE UX/UI PLATFORM',

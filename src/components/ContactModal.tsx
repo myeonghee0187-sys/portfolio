@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import gsap from 'gsap'
-import { CONTACT_EMAIL } from './contactInfo'
 import './ContactModal.css'
 
 /** 문의 종류. value는 영문 그대로 두고(보낼 데이터), 화면에는 label만 한국어로 보인다. */
@@ -24,23 +23,26 @@ const FIELD_ORDER: Field[] = ['name', 'company', 'email', 'message']
 const SCROLL_KEYS = new Set(['PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown', ' '])
 
 /**
- * 실제 전송. 이 프로젝트에는 아직 메일 전송 Provider(서버 API / 메일 서비스)가 없다.
- * TODO: Provider를 연결하면 이 함수를 채운다(성공이면 resolve, 실패면 reject).
- * 연결 전에는 전송하지 않고, 가짜 성공도 보여 주지 않는다 — success 상태는 이 함수가 실제로 resolve된 뒤에만 온다.
+ * 실제 전송: 같은 사이트의 서버 함수(POST /api/contact, api/contact.ts)로 보낸다. 메일 Provider의 key와 수신 주소는
+ * 서버에만 있다(client bundle에 secret 없음). 서버가 실제로 발송에 성공해 { ok: true }를 돌려줄 때만 resolve하고,
+ * 그 밖의 모든 경우(검증 실패 / 미설정 / 발송 실패 / 네트워크 오류)는 reject한다 — success는 실제 성공 뒤에만 온다.
  */
-const sendMessage: ((values: Values) => Promise<void>) | null = null
-
-/**
- * 개발 서버 전용 QA mock. window.__contactSendMock = 'success' | 'error'일 때만 가짜 응답을 돌려준다.
- * production build에서는 import.meta.env.DEV가 false라 이 코드 자체가 빠진다 — 배포된 화면은 절대 가짜 성공을 보이지 않는다.
- */
-const devSendMock: ((values: Values) => Promise<void>) | null = import.meta.env.DEV
-  ? () => {
-      const mode = (window as unknown as { __contactSendMock?: 'success' | 'error' }).__contactSendMock
-      return new Promise<void>((resolve, reject) =>
-        window.setTimeout(() => (mode === 'success' ? resolve() : reject(new Error('mock send failure'))), 900))
-    }
-  : null
+async function sendMessage(values: Values, website: string): Promise<void> {
+  const response = await fetch('/api/contact', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: values.name,
+      company: values.company,
+      contact: values.email,
+      subject: values.subject,
+      message: values.message,
+      website,
+    }),
+  })
+  const result = (await response.json().catch(() => null)) as { ok?: boolean } | null
+  if (!response.ok || !result?.ok) throw new Error('send failed')
+}
 
 /** 전송 상태. success는 실제 전송이 성공 응답을 준 뒤에만 된다. */
 type SubmitState = 'idle' | 'sending' | 'success' | 'error'
@@ -72,9 +74,10 @@ export default function ContactModal({ onClose }: ContactModalProps) {
   const [values, setValues] = useState<Values>(EMPTY)
   const [errors, setErrors] = useState<Errors>({})
   const [submitted, setSubmitted] = useState(false)
-  const [notice, setNotice] = useState<'idle' | 'unavailable'>('idle')
   const [submitState, setSubmitState] = useState<SubmitState>('idle')
   const formRef = useRef<HTMLFormElement>(null)
+  // honeypot(사람에게는 보이지 않는 칸). 값이 들어오면 서버가 거절한다.
+  const websiteRef = useRef<HTMLInputElement>(null)
   const successRef = useRef<HTMLDivElement>(null)
   const successCloseRef = useRef<HTMLButtonElement>(null)
   const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -178,19 +181,12 @@ export default function ContactModal({ onClose }: ContactModalProps) {
     const firstInvalid = FIELD_ORDER.find((field) => nextErrors[field])
     if (firstInvalid) {
       panelRef.current?.querySelector<HTMLElement>(`#contact-${firstInvalid}`)?.focus()
-      setNotice('idle')
-      return
-    }
-    const sender = sendMessage ?? (import.meta.env.DEV && (window as unknown as { __contactSendMock?: string }).__contactSendMock ? devSendMock : null)
-    if (!sender) {
-      setNotice('unavailable')
       return
     }
     if (submitState === 'sending') return
-    setNotice('idle')
     setSubmitState('sending')
     try {
-      await sender(values)
+      await sendMessage(values, websiteRef.current?.value ?? '')
     } catch {
       // 실패: form과 입력값은 그대로 두고, 작은 안내만 보인다. 버튼은 다시 누를 수 있다.
       if (!closingRef.current) setSubmitState('error')
@@ -354,6 +350,14 @@ export default function ContactModal({ onClose }: ContactModalProps) {
             {errorText('message')}
           </div>
 
+          {/* honeypot. 화면 / 키보드 / 보조기술 어디에도 드러나지 않는다(자동 입력 bot만 채운다). */}
+          <div className="contact-modal__hp" aria-hidden="true">
+            <label>
+              Website
+              <input ref={websiteRef} type="text" name="website" tabIndex={-1} autoComplete="off" defaultValue="" />
+            </label>
+          </div>
+
           <div className="contact-modal__actions">
             <button type="submit" className="contact-modal__submit" disabled={submitState === 'sending'} aria-busy={submitState === 'sending'}>
               {submitState === 'sending' ? (
@@ -378,12 +382,6 @@ export default function ContactModal({ onClose }: ContactModalProps) {
             {submitState === 'error' ? '전송하지 못했습니다. 잠시 후 다시 시도해주세요.' : ''}
           </p>
 
-          {notice === 'unavailable' && (
-            <p className="contact-modal__notice" role="status">
-              아직 메시지 전송이 연결되어 있지 않습니다.{' '}
-              <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>으로 직접 보내 주세요.
-            </p>
-          )}
         </form>
         )}
       </div>

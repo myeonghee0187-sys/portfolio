@@ -16,3 +16,9 @@ npm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Local secrets (only .env.example is committed)
+.env
+.env.*
+!.env.example
+.vercel
