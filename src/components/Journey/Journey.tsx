@@ -25,8 +25,8 @@ export default function Journey({ interactive, ready }: JourneyProps) {
           {/*
             경로는 하나다. 두 path가 같은 d(모든 card를 잇는 하나의 문자열)를 쓴다 —
             아주 옅은 전체 길과, 처음부터 지금 위치까지 이어진 #D4E5EF 한 줄.
-            d는 card의 실제 크기를 재서, card 변에 들어오고 나가는 점으로 만든다(useJourneyInteraction).
-            시계가 지나는 구간만 카드 외곽으로 부드럽게 우회하며 두 path와 시계가 같은 geometry를 쓴다.
+            d는 실제 card 크기와 시계 반지름을 반영한 세 개의 긴 S-curve로 만든다.
+            두 path와 시계가 같은 geometry를 사용하며, card마다 작은 우회 곡선을 추가하지 않는다.
           */}
           <svg className="journey__path" viewBox={`0 0 1920 ${JOURNEY_WORLD_HEIGHT}`} preserveAspectRatio="xMidYMin meet" aria-hidden="true" focusable="false">
             <path className="journey__path-base" />

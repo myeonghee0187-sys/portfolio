@@ -3,7 +3,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { JOURNEY_CLOCK, JOURNEY_NODES } from './journeyData'
 import { createJourneyFlow, pathEntryDistance, pathExitDistance } from './journeyFlow'
-import { detourJourneyPath, pathDistanceAtY, type FlowObstacle } from './journeyPath'
+import { journeySCurve, pathDistanceAtY } from './journeyPath'
 import { HANDOFF_VIEWPORTS, JOURNEY_VIEWPORTS, PANEL_TRIGGER_ID, panelTiming } from '../../hooks/panelTiming'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -279,21 +279,9 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       // the initial clock while the shared scene fades in. No new clock/layer.
       const radius = parseFloat(getComputedStyle(marker!).getPropertyValue('--marker-size')) / 2
       const clearance = (radius + 4) / scale
-      const obstacles: FlowObstacle[] = boxes.slice(1, -1).map(box => ({
-        ...box, side: box.side as 'left' | 'right',
-      }))
-      // On the narrow tablet, neighbouring expanded cards can form one obstacle.
-      // Follow its outside edge instead of squeezing through a closed corridor.
-      for (let i = 1; i < obstacles.length; i++) {
-        const previous = obstacles[i - 1], here = obstacles[i]
-        const dx = Math.abs(here.x - previous.x) - here.hw - previous.hw
-        const dy = Math.abs(here.y - previous.y) - here.hh - previous.hh
-        if (previous.side !== here.side && dx < 2 * clearance && dy < 2 * clearance) {
-          here.side = previous.side
-        }
-      }
-      const routed = detourJourneyPath(d, obstacles, clearance)
-      paths.forEach(path => path.setAttribute('d', routed))
+      const route = journeySCurve(boxes, clearance)
+      nodes.forEach((node, i) => node.style.setProperty('--node-shift-x', `${route.offsets[i] * scale}px`))
+      paths.forEach(path => path.setAttribute('d', route.d))
       const total = active.getTotalLength()
       const L = total * scale
       geom.length = L
@@ -312,7 +300,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       lastY = ''
       lastAmbient = ''
       if (import.meta.env.DEV) {
-        stage.dataset.line = JSON.stringify({ length: +L.toFixed(1), marks: geom.marks.map(v => +v.toFixed(4)), milestones, range: { from, to }, obstacles })
+        stage.dataset.line = JSON.stringify({ length: +L.toFixed(1), marks: geom.marks.map(v => +v.toFixed(4)), milestones, range: { from, to }, offsets: route.offsets.map(x => x * scale) })
       }
       render()
     }
@@ -409,6 +397,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       for (const node of nodes) {
         node.style.removeProperty('--node-in')
         node.style.removeProperty('--node-out')
+        node.style.removeProperty('--node-shift-x')
       }
       gsap.set(world, { clearProps: 'transform' })
       if (import.meta.env.DEV) delete stage.dataset.line
