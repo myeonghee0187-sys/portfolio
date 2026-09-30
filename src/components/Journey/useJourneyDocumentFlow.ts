@@ -2,8 +2,8 @@ import { useLayoutEffect, type RefObject } from 'react'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import useMediaQuery from '../../hooks/useMediaQuery'
 import { JOURNEY_CLOCK } from './journeyData'
-import { createJourneyFlow, pathExitDistance } from './journeyFlow'
-import { detourJourneyPath, pathDistanceAtY, type FlowObstacle } from './journeyPath'
+import { createJourneyFlow } from './journeyFlow'
+import { longSCurve, pathDistanceAtY } from './journeyPath'
 
 /** Document layout keeps its card order/gaps; one shared path clears the card edges. */
 export default function useJourneyDocumentFlow(enabled: boolean, worldRef: RefObject<HTMLDivElement | null>) {
@@ -35,16 +35,22 @@ export default function useJourneyDocumentFlow(enabled: boolean, worldRef: RefOb
         const r = node.querySelector('.journey__card')!.getBoundingClientRect()
         return { x: r.left - bounds.left + r.width / 2, y: r.top - bounds.top + r.height / 2, hw: r.width / 2, hh: r.height / 2 }
       })
-      const obstacles: FlowObstacle[] = boxes.slice(1).map(box => ({ ...box, side: 'left' }))
-      // Keep the original vertical flow; local shoulders move its visible portions
-      // into the minimum reserved margin beside the cards. No extra clock rail.
-      const x = width / 2, span = height - 160
-      const original = `M ${x} 80 C ${x} ${80 + span / 3}, ${x} ${80 + span * 2 / 3}, ${x} ${height - 80}`
-      const d = detourJourneyPath(original, obstacles, radius + 4)
+      // The existing mobile gutter carries the same three broad spans. Its
+      // amplitude is bounded by the complete clock radius, not individual cards.
+      const left = radius + 4
+      const right = Math.min(...boxes.map(box => box.x - box.hw)) - radius - 4
+      const x = (left + right) / 2
+      const firstY = boxes[0].y + boxes[0].hh + radius + 4
+      const lastY = boxes[boxes.length - 1].y
+      const span = lastY - firstY
+      const d = longSCurve([
+        { x, y: firstY }, { x: right, y: firstY + span / 3 },
+        { x: left, y: firstY + span * 2 / 3 }, { x, y: lastY },
+      ])
       svg.querySelectorAll('path').forEach(path => path.setAttribute('d', d))
       const total = active.getTotalLength()
-      const from = pathExitDistance(active, boxes[0], radius + 4) / total
-      const to = pathDistanceAtY(active, boxes[boxes.length - 1].y) / total
+      // Unlike the former card-crossing route, both endpoints are already clear.
+      const from = 0, to = 1
       startY = active.getPointAtLength(from * total).y
       endY = active.getPointAtLength(to * total).y
       const milestones = JOURNEY_CLOCK.map(stop => ({
@@ -52,7 +58,7 @@ export default function useJourneyDocumentFlow(enabled: boolean, worldRef: RefOb
         minutes: stop.minutes,
       }))
       flow.measure(milestones, { from, to })
-      if (import.meta.env.DEV) world.parentElement!.dataset.line = JSON.stringify({ length: total, milestones, range: { from, to }, obstacles })
+      if (import.meta.env.DEV) world.parentElement!.dataset.line = JSON.stringify({ length: total, milestones, range: { from, to } })
       render(progress)
     }
     measure()
