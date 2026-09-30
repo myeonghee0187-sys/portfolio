@@ -89,16 +89,18 @@
 }
 
 /*
- * 처음부터 지금 scroll 위치까지 하나로 이어진 빛. 색은 primary(#186DE5) 하나이고, 지나온 길은 어두워지지 않는다.
+ * 처음부터 지금 scroll 위치까지 하나로 이어진 빛. 색은 Ice Reflection(#D4E5EF) 하나이고, 지나온 길은 어두워지지 않는다.
  * 짧은 빛 조각이 움직이는 방식이 아니다 — 마지막에는 첫 card부터 STILL UPDATING까지 한 줄이 된다.
  * 공통 규칙(.journey__path path)보다 우선해야 2.5px이 된다.
  */
 .journey__path .journey__path-active {
-  stroke: #186de5;
+  stroke: #d4e5ef;
   stroke-width: 2.5px;
 }
 
 .journey__node {
+  /* Approved: the exact path passes under cards; the clock follows underneath too. */
+  z-index: 2;
   --node-in: 0;
   --node-out: 0;
   position: absolute;
@@ -285,7 +287,6 @@
   --ju: 1px;
 }
 
-.journey--static .journey__path,
 .journey--static .journey__surface,
 .journey--static .journey__handoff {
   display: none;
@@ -301,7 +302,11 @@
   display: flex;
   flex-direction: column;
   gap: 64px;
-  background: linear-gradient(rgb(212 229 239 / 0.2),rgb(212 229 239 / 0.2)) no-repeat center / 1px calc(100% - 160px);
+}
+
+.journey--static .journey__path-base {
+  stroke: rgb(212 229 239 / 0.2);
+  stroke-width: 1px;
 }
 
 .journey--static .journey__node {
@@ -356,19 +361,13 @@
   }
 }
 
-/*
- * Journey의 Time Marker 하나(journeyData.JOURNEY_CLOCK). line 위의 한 점(JS가 transform으로 옮긴다)을 중심으로 한
- * 원형 black glass — 반투명 Carbon 면 + blur, 얇은 primary 테, 위쪽의 옅은 Ice 반사, 가운데 Geist 디지털 시간.
- * 시침 / 분침은 시간 글자 뒤에 아주 옅게만 있다(디지털 시간이 주인공). card보다 위에 그려진다 — 그래서 언제나 보인다.
- * 머무는 동안(--dock 0 -> 1) 테와 반사가 조금 더 선명해질 뿐, 시간 글자는 어떤 때에도 사라지지 않는다.
- */
+/* One analog glass clock follows the active line head without obscuring the line. */
 .journey__marker {
-  --marker-size: clamp(72px, 4.4vw, 88px);
-  --dock: 0;
+  --marker-size: 104px;
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 2;
+  z-index: 1;
   width: 0;
   height: 0;
   pointer-events: none;
@@ -385,65 +384,85 @@
   width: var(--marker-size);
   height: var(--marker-size);
   overflow: hidden;
-  border: 1px solid rgb(24 109 229 / calc(0.7 + 0.3 * var(--dock)));
+  border: 1px solid rgb(212 229 239 / 0.3);
   border-radius: 50%;
   background:
-    radial-gradient(120% 70% at 50% -8%, rgb(212 229 239 / calc(0.14 + 0.06 * var(--dock))), transparent 58%),
-    radial-gradient(circle at 50% 60%, rgb(22 25 29 / 0.72), rgb(8 9 10 / 0.86) 72%);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+    radial-gradient(120% 70% at 50% -8%, rgb(212 229 239 / 0.08), transparent 62%),
+    radial-gradient(80% 100% at 100% 75%, rgb(24 109 229 / 0.14), transparent 68%),
+    rgb(8 9 10 / 0.46);
+  /* Keep the glass center unblurred so the continuous 2.5px line stays legible. */
   box-shadow:
-    inset 0 1px 0 rgb(212 229 239 / 0.22),
-    inset 0 -10px 18px rgb(0 0 0 / 0.35),
-    0 10px 28px rgb(0 0 0 / 0.45),
-    0 0 calc(18px * var(--dock)) rgb(24 109 229 / 0.28);
+    inset 0 1px 0 rgb(212 229 239 / 0.08),
+    inset 0 -1px 0 rgb(24 109 229 / 0.14),
+    0 5px 16px rgb(0 0 0 / 0.18);
 }
 
-/* 가장자리의 12개 짧은 눈금(아주 옅게). */
-.journey__marker-glass::before {
-  content: '';
+/* Twelve individual ticks; quarter hours are only slightly longer. */
+.journey__marker-tick {
   position: absolute;
-  inset: 4px;
-  border-radius: 50%;
-  background: repeating-conic-gradient(from -0.6deg, rgb(212 229 239 / 0.22) 0 1.2deg, transparent 1.2deg 30deg);
-  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 5px), #000 calc(100% - 5px));
-  mask: radial-gradient(closest-side, transparent calc(100% - 5px), #000 calc(100% - 5px));
+  top: 50%;
+  left: 50%;
+  width: 1px;
+  height: 5%;
+  border-radius: 1px;
+  background: rgb(212 229 239 / 0.38);
+  transform-origin: 50% 0;
+  transform: translateX(-50%) rotate(var(--tick-angle)) translateY(calc(var(--marker-size) * -0.41));
 }
 
-/* 시간 글자 뒤의 옅은 바늘. JS가 rotate한다. */
+.journey__marker-tick--major {
+  height: 7%;
+  background: rgb(212 229 239 / 0.58);
+}
+
+/* Hand angles share the same progress source as the clock and active line. */
 .journey__marker-hand {
   position: absolute;
   bottom: 50%;
   left: 50%;
-  border-radius: 1px;
+  border-radius: 2px;
   transform-origin: 50% 100%;
   transform: translateX(-50%);
-  background: rgb(212 229 239 / 0.16);
+  background: #d4e5ef;
 }
 
 .journey__marker-hand--hour {
-  width: 2px;
+  width: 3px;
   height: 24%;
+  opacity: 0.9;
 }
 
 .journey__marker-hand--minute {
-  width: 1px;
+  width: 2px;
   height: 36%;
+  opacity: 0.82;
 }
 
-.journey__marker-time {
-  position: relative;
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  font-size: calc(var(--marker-size) * 0.215);
-  line-height: 1;
-  letter-spacing: 0.02em;
-  color: #f3f4f4;
-  text-shadow: 0 1px 8px rgb(8 9 10 / 0.8);
+.journey__marker-pin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #d4e5ef;
+  transform: translate(-50%, -50%);
 }
 
-/* 문서형(static — 모바일 / 연출 꺼짐)에는 line의 진행이 없다. marker도 없다. */
-.journey--static .journey__marker {
-  display: none;
+@media (max-width: 1200px) {
+  .journey__marker {
+    --marker-size: 88px;
+  }
+}
+
+@media (max-width: 600px) {
+  .journey__marker {
+    --marker-size: 74px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey__marker {
+    will-change: auto;
+  }
 }

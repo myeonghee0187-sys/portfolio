@@ -1,5 +1,3 @@
-import { STORY_TIME } from '../../story/storyTime'
-
 /**
  * Journey copy와 card 배치. 좌표는 1920 기준 world 좌표다.
  *
@@ -131,28 +129,11 @@ export const JOURNEY_NODES: JourneyNode[] = [
 
 export const JOURNEY_WORLD_HEIGHT = 5300
 
-/**
- * Journey의 Time Marker(story/storyTime.ts). Journey 전체에 marker는 하나뿐이다 — line을 따라 시작부터 끝까지 이동하고,
- * 아래 card에 line이 닿는 자리 근처에서 잠깐 머문 뒤 다음 자리로 다시 흐른다. 안의 디지털 시간은 한 번도 비지 않는다 —
- * 머무는 동안은 그 card의 시간이고, 이동하는 동안은 두 시간 사이를 분 단위로 이어서 흐른다.
- *   node   머무는 card(JOURNEY_NODES index). 첫 자리(0)는 출발점이다 — FROM FIGMA TO WEB에서 line이 나오는 자리
- *   time   그 자리의 시간. 출발점은 첫 시간(FIGMA DESIGN)과 같다
- */
-export type JourneyClockStop = {
-  node: number
-  time: string
-}
-
-export const JOURNEY_CLOCK: JourneyClockStop[] = [
-  { node: 0, time: STORY_TIME.journey[0] },
-  // FIGMA DESIGN
-  { node: 1, time: STORY_TIME.journey[0] },
-  // FRONT - END
-  { node: 3, time: STORY_TIME.journey[1] },
-  // BUILD, TEST, PUBLISH
-  { node: 4, time: STORY_TIME.journey[2] },
-  // WORKING WITH AI
-  { node: 5, time: STORY_TIME.journey[3] },
-  // STILL UPDATING
-  { node: 6, time: STORY_TIME.journey[4] },
-]
+/** Analog Journey story only. Other sections retain their existing time story. */
+export const JOURNEY_CLOCK = [
+  { node: 0, minutes: 13 * 60 + 40 },
+  { node: 1, minutes: 14 * 60 + 10 },
+  { node: 3, minutes: 15 * 60 },
+  { node: 5, minutes: 16 * 60 + 20 },
+  { node: 6, minutes: 17 * 60 },
+] as const

@@ -1,7 +1,7 @@
 import { useRef, type CSSProperties } from 'react'
 import { JOURNEY_NODES, JOURNEY_WORLD_HEIGHT } from './journeyData'
-import { STORY_TIME } from '../../story/storyTime'
 import useJourneyInteraction from './useJourneyInteraction'
+import useJourneyDocumentFlow from './useJourneyDocumentFlow'
 import './Journey.css'
 
 type JourneyProps = { interactive: boolean; ready: boolean }
@@ -11,6 +11,7 @@ export default function Journey({ interactive, ready }: JourneyProps) {
   const stageRef = useRef<HTMLDivElement>(null)
   const worldRef = useRef<HTMLDivElement>(null)
   useJourneyInteraction({ enabled: interactive && ready, sectionRef, stageRef, worldRef })
+  useJourneyDocumentFlow(ready && !interactive, worldRef)
 
   return (
     <section ref={sectionRef} className={`journey journey--${interactive ? 'interactive' : 'static'}`} id="journey" aria-labelledby="journey-title">
@@ -23,7 +24,7 @@ export default function Journey({ interactive, ready }: JourneyProps) {
         <div ref={worldRef} className="journey__world" style={{ '--world-h': JOURNEY_WORLD_HEIGHT } as CSSProperties}>
           {/*
             경로는 하나다. 두 path가 같은 d(모든 card를 잇는 하나의 문자열)를 쓴다 —
-            아주 옅은 전체 길과, 처음부터 지금 위치까지 이어진 primary(#186DE5) 한 줄.
+            아주 옅은 전체 길과, 처음부터 지금 위치까지 이어진 #D4E5EF 한 줄.
             d는 card의 실제 크기를 재서, card 변에 들어오고 나가는 점으로 만든다(useJourneyInteraction).
             card 안쪽 구간은 불투명한 surface 아래로 지나간다.
           */}
@@ -65,17 +66,16 @@ export default function Journey({ interactive, ready }: JourneyProps) {
               </article>
             )
           })}
-          {/*
-            Journey의 Time Marker 하나. line을 따라 시작부터 끝까지 이동하며 각 단계의 시간을 잇는다 — 안의 디지털 시간은
-            한 번도 비지 않는다(이동하는 동안에도 분 단위로 이어서 흐른다). card 위에 그려지지만 card 안으로는 들어가지 않는다:
-            line이 card 밑으로 지나가는 구간에서는 card 가장자리 바깥을 따라 돈다. 자리 / 시간은 useJourneyInteraction이
-            journey-master 진행률 하나로 정한다. 보조기술에는 읽히지 않는다(시간은 장식이고 card 글자가 본문이다).
-          */}
+          {/* One analog clock follows the active path head, behind the unchanged cards. */}
           <div className="journey__marker" aria-hidden="true">
             <span className="journey__marker-glass">
+              {Array.from({ length: 12 }, (_, tick) => (
+                <span key={tick} className={`journey__marker-tick${tick % 3 === 0 ? ' journey__marker-tick--major' : ''}`}
+                  style={{ '--tick-angle': `${tick * 30}deg` } as CSSProperties} />
+              ))}
               <span className="journey__marker-hand journey__marker-hand--hour" />
               <span className="journey__marker-hand journey__marker-hand--minute" />
-              <span className="journey__marker-time">{STORY_TIME.journey[0].replace(/\s/g, '')}</span>
+              <span className="journey__marker-pin" />
             </span>
           </div>
         </div>
