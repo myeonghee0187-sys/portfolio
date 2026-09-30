@@ -1,4 +1,4 @@
-import { sendContactEmail, validateContact } from './_contact'
+import { sendContactEmail, validateContact } from './_contact.js'
 
 /**
  * POST /api/contact — Vercel Serverless Function.
