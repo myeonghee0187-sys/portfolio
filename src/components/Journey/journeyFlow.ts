@@ -1,9 +1,46 @@
 export type FlowMilestone = { progress: number; minutes: number }
+export type FlowRange = { from: number; to: number }
+
+type PathBox = { x: number; y: number; hw: number; hh: number }
+type PathSampler = Pick<SVGPathElement, 'getTotalLength' | 'getPointAtLength'>
+
+/** First fully exposed circle after the path leaves a card. Called only at refresh. */
+export function pathExitDistance(path: PathSampler, box: PathBox, radius: number) {
+  const total = path.getTotalLength()
+  const overlaps = (distance: number) => {
+    const point = path.getPointAtLength(distance)
+    const dx = Math.max(0, Math.abs(point.x - box.x) - box.hw)
+    const dy = Math.max(0, Math.abs(point.y - box.y) - box.hh)
+    return dx * dx + dy * dy < radius * radius
+  }
+  let entered = false
+  for (let distance = 0; distance <= total; distance += 2) {
+    if (overlaps(distance)) { entered = true; continue }
+    if (!entered) continue
+    let low = Math.max(0, distance - 2), high = distance
+    for (let i = 0; i < 12; i++) {
+      const mid = (low + high) / 2
+      if (overlaps(mid)) low = mid
+      else high = mid
+    }
+    return high
+  }
+  return total
+}
+
+/** Last fully exposed point before the path enters its final card. */
+export function pathEntryDistance(path: PathSampler, box: PathBox, radius: number) {
+  const total = path.getTotalLength()
+  return total - pathExitDistance({
+    getTotalLength: () => total,
+    getPointAtLength: distance => path.getPointAtLength(total - distance),
+  }, box, radius)
+}
 
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
 
-/** A reversible C1 mapping. Its slope stays positive (0.22) at each milestone:
- * slow → settle → flow, without a hold, snap or time-based pause. */
+/** A reversible C1 mapping. Milestone speed is 40% of mid-segment speed
+ * (0.5 / 1.25), without a hold, snap or time-based pause. */
 export function mapJourneyFlow(progress: number, milestones: readonly FlowMilestone[], reducedMotion = false) {
   const p = clamp01(progress)
   if (reducedMotion) return p
@@ -12,7 +49,7 @@ export function mapJourneyFlow(progress: number, milestones: readonly FlowMilest
     if (p > knots[i]) continue
     const from = knots[i - 1], span = knots[i] - from
     const t = (p - from) / span
-    const eased = 0.22 * t + 0.78 * t * t * (3 - 2 * t)
+    const eased = 0.5 * t + 0.5 * t * t * (3 - 2 * t)
     return from + span * eased
   }
   return 1
@@ -38,15 +75,22 @@ export function createJourneyFlow(world: HTMLElement, active: SVGPathElement) {
   let total = 0, scale = 1, lastProgress = -1
   let matrix: DOMMatrix | null = null
   let milestones: FlowMilestone[] = []
+  let pathMilestones: FlowMilestone[] = []
+  let range: FlowRange = { from: 0, to: 1 }
 
   return {
-    measure(stops: FlowMilestone[] = milestones) {
+    measure(stops: FlowMilestone[] = pathMilestones, window: FlowRange = range) {
       total = active.getTotalLength()
       // Cache the SVG's actual viewBox mapping, including subpixel meet/letterboxing.
       // Inferring this from world width alone can drift at fractional viewport sizes.
       matrix = active.getCTM()
       scale = matrix ? Math.hypot(matrix.a, matrix.b) : 1
-      milestones = stops
+      range = window
+      pathMilestones = stops
+      milestones = stops.map(stop => ({
+        ...stop,
+        progress: clamp01((stop.progress - range.from) / (range.to - range.from)),
+      }))
       lastProgress = -1
       const length = total * scale
       active.style.strokeDasharray = `${length}px ${length + 4}px`
@@ -54,22 +98,23 @@ export function createJourneyFlow(world: HTMLElement, active: SVGPathElement) {
     render(scrollProgress: number, reducedMotion = false) {
       if (!total || !milestones.length) return
       const journeyFlowProgress = mapJourneyFlow(scrollProgress, milestones, reducedMotion)
-      if (journeyFlowProgress === lastProgress) return journeyFlowProgress
+      const pathProgress = range.from + (range.to - range.from) * journeyFlowProgress
+      if (journeyFlowProgress === lastProgress) return pathProgress
       lastProgress = journeyFlowProgress
-      const point = active.getPointAtLength(total * journeyFlowProgress)
+      const point = active.getPointAtLength(total * pathProgress)
       const x = matrix ? point.x * matrix.a + point.y * matrix.c + matrix.e : point.x
       const y = matrix ? point.x * matrix.b + point.y * matrix.d + matrix.f : point.y
       const minutes = journeyMinutesAt(journeyFlowProgress, milestones)
       // All four writes consume this exact progress in the same frame. No DOM measurements.
-      active.style.strokeDashoffset = `${total * scale * (1 - journeyFlowProgress)}px`
+      active.style.strokeDashoffset = `${total * scale * (1 - pathProgress)}px`
       marker.style.transform = `translate3d(${x}px, ${y}px, 0)`
       // Unwrapped angles are visually equivalent to modulo 60/12, and continuous at hour boundaries.
       hour.style.transform = `translateX(-50%) rotate(${minutes / 2}deg)`
       minute.style.transform = `translateX(-50%) rotate(${minutes * 6}deg)`
       if (import.meta.env.DEV) {
-        marker.dataset.flow = JSON.stringify({ progress: journeyFlowProgress, minutes, x, y })
+        marker.dataset.flow = JSON.stringify({ progress: pathProgress, journeyFlowProgress, minutes, x, y })
       }
-      return journeyFlowProgress
+      return pathProgress
     },
     clear() {
       active.style.removeProperty('stroke-dasharray')
