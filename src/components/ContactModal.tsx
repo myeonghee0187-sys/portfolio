@@ -64,13 +64,16 @@ type ContactModalProps = {
 
 /**
  * GET IN TOUCH — 같은 화면 위에 여는 문의 form.
- * 닫기: X / 바깥 click / ESC. 열려 있는 동안 뒤 화면은 scroll되지 않고, Tab은 modal 안에서만 돈다.
+ * 닫기: X / 바깥 click / ESC(성공 상태에서는 CLOSE도). 어느 상태에서 닫든 unmount되므로 다음에 열면 빈 form이다.
+ * 열려 있는 동안 뒤 화면은 scroll되지 않고, Tab은 modal 안에서만 돈다.
  */
 export default function ContactModal({ onClose }: ContactModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const firstFieldRef = useRef<HTMLInputElement>(null)
   const closingRef = useRef(false)
+  // 바깥 막에서 눌러서 바깥 막에서 뗀 click만 닫는다. 입력 칸에서 글자를 drag로 고르다 바깥에서 떼는 경우 등은 닫지 않는다.
+  const pressedOnOverlayRef = useRef(false)
   const [values, setValues] = useState<Values>(EMPTY)
   const [errors, setErrors] = useState<Errors>({})
   const [submitted, setSubmitted] = useState(false)
@@ -237,7 +240,19 @@ export default function ContactModal({ onClose }: ContactModalProps) {
 
   return createPortal(
     <div className="contact-modal">
-      <div ref={overlayRef} className="contact-modal__overlay" onMouseDown={requestClose} />
+      {/* panel은 overlay의 형제라, panel 안의 click은 overlay로 올라오지 않는다(panel 안 / 성공 화면 click으로는 닫히지 않는다). */}
+      <div
+        ref={overlayRef}
+        className="contact-modal__overlay"
+        onPointerDown={(event) => {
+          pressedOnOverlayRef.current = event.button === 0 && event.target === event.currentTarget
+        }}
+        onClick={(event) => {
+          const pressedHere = pressedOnOverlayRef.current
+          pressedOnOverlayRef.current = false
+          if (pressedHere && event.target === event.currentTarget) requestClose()
+        }}
+      />
       <div
         ref={panelRef}
         className="contact-modal__panel"
@@ -270,7 +285,7 @@ export default function ContactModal({ onClose }: ContactModalProps) {
               확인 후 회신드리겠습니다.
             </p>
             <button ref={successCloseRef} type="button" className="contact-modal__submit" onClick={requestClose}>
-              CLOSE
+              CLOSE<span className="contact-modal__submit-arrow" aria-hidden="true">&#8599;</span>
             </button>
           </div>
         ) : (
