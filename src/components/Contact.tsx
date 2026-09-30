@@ -69,6 +69,14 @@ export default function Contact({ interactive, ready }: ContactProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const ctaRef = useRef<HTMLButtonElement>(null)
   const [formOpen, setFormOpen] = useState(false)
+  /*
+   * 개발 서버 전용 Success 화면 미리보기: `?qa=contact-success`로 연 뒤 START A CONVERSATION을 누르면 첫 한 번만
+   * 성공 화면으로 열린다(메일은 보내지 않는다). import.meta.env.DEV가 build에서 false로 바뀌어 production bundle에는
+   * 이 분기 자체가 없다 — production에서는 어떤 URL로도 켜지지 않는다.
+   */
+  const [qaSuccessPreview, setQaSuccessPreview] = useState(
+    () => import.meta.env.DEV && new URLSearchParams(window.location.search).get('qa') === 'contact-success',
+  )
   const [copied, setCopied] = useState(false)
   const copiedTimer = useRef(0)
   const allFacesOpen = useAllFacesOpen()
@@ -76,6 +84,7 @@ export default function Contact({ interactive, ready }: ContactProps) {
 
   const closeForm = useCallback(() => {
     setFormOpen(false)
+    if (import.meta.env.DEV) setQaSuccessPreview(false)
     // modal이 닫히면 열었던 버튼으로 focus를 돌려준다.
     requestAnimationFrame(() => ctaRef.current?.focus())
   }, [])
@@ -190,7 +199,7 @@ export default function Contact({ interactive, ready }: ContactProps) {
         <span>&copy; 2026</span>
       </footer>
 
-      {formOpen && <ContactModal onClose={closeForm} />}
+      {formOpen && <ContactModal onClose={closeForm} qaSuccessPreview={import.meta.env.DEV && qaSuccessPreview} />}
     </section>
   )
 }
