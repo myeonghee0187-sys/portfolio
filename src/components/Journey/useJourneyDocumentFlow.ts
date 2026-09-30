@@ -2,7 +2,7 @@ import { useLayoutEffect, type RefObject } from 'react'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import useMediaQuery from '../../hooks/useMediaQuery'
 import { JOURNEY_CLOCK } from './journeyData'
-import { createJourneyFlow } from './journeyFlow'
+import { createJourneyFlow, journeyFlowVisibility } from './journeyFlow'
 import { longSCurve, pathDistanceAtY } from './journeyPath'
 import { journeyAmbientAt } from '../../hooks/journeyLighting'
 
@@ -24,7 +24,7 @@ export default function useJourneyDocumentFlow(enabled: boolean, worldRef: RefOb
     let progress = 0
     const render = (value: number) => {
       progress = value
-      flow.render(progress, reducedMotion)
+      flow.render(progress, reducedMotion, journeyFlowVisibility(progress, progress, true, reducedMotion))
       stage.style.setProperty('--contact-ambient', journeyAmbientAt(progress).toFixed(4))
     }
     const measure = () => {

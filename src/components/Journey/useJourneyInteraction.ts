@@ -2,7 +2,7 @@ import { useLayoutEffect, type RefObject } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { JOURNEY_CLOCK, JOURNEY_NODES } from './journeyData'
-import { createJourneyFlow, pathEntryDistance, pathExitDistance } from './journeyFlow'
+import { createJourneyFlow, journeyFlowVisibility, pathEntryDistance, pathExitDistance } from './journeyFlow'
 import { journeySCurve, pathDistanceAtY } from './journeyPath'
 import { HANDOFF_VIEWPORTS, JOURNEY_VIEWPORTS, PANEL_TRIGGER_ID, panelTiming } from '../../hooks/panelTiming'
 import { journeyAmbientAt } from '../../hooks/journeyLighting'
@@ -140,6 +140,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
     }
     /** 화면에 그리는 진행률(display)과 scroll 진행률(target). */
     const journey = { p: 0, target: 0 }
+    let handoffComplete = false
     const written = new Map<HTMLElement, string>()
     let lastY = ''
     let lastAmbient = ''
@@ -149,7 +150,8 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       const m = geom.marks
       if (!geom.length || m.length !== nodes.length) return
 
-      const journeyFlowProgress = flow.render(clamp01((p - LINE_FROM) / (LINE_TO - LINE_FROM))) ?? 0
+      const reveal = journeyFlowVisibility(p, journey.target, handoffComplete)
+      const journeyFlowProgress = flow.render(clamp01((p - LINE_FROM) / (LINE_TO - LINE_FROM)), false, reveal) ?? 0
       const flowP = LINE_FROM + journeyFlowProgress * (LINE_TO - LINE_FROM)
 
       // Contact 쪽 빛. 화면에 그리는 진행률을 그대로 따라가므로 빛 / camera와 같은 frame에 움직인다.
@@ -315,7 +317,8 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
        * 특정 지점을 넘자마자 딱 붙지 않는다.
        *   FACES 장면   15 ~ 90%  scale 1 -> 0.95, opacity 1 -> 0.35, blur 0 -> 1.5px
        *   Journey      8 ~ 88%   yPercent 100 -> 0
-       *   첫 card      62 ~ 100% opacity 0 -> 1, y 28 -> 0 (경로도 같은 구간에 opacity 0 -> 1)
+       *   첫 card      62 ~ 100% opacity 0 -> 1, y 28 -> 0
+       *   경로 / 시계  handoff 전체에서 숨김. 실제 도착 + master 시작 후에만 함께 드러난다.
        * FACES와 Journey는 같은 pin 하나 안에 있다(nested pin 없음). 이 구간에서 pin이 풀리지 않으므로
        * 풀리는 순간의 1 frame jump가 생길 자리가 없다. pin은 Journey가 끝난 뒤 Contact에서만 풀린다.
        */
@@ -325,20 +328,27 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
        */
       const crownEl = document.querySelector<HTMLElement>('.watch--stage .watch__crown')
       const syncCrownTime = (progress: number) => crownEl?.classList.toggle('watch__crown--time-hidden', progress > 0.3)
+      let syncHandoff = () => {}
       const handoff = gsap.timeline({ scrollTrigger: {
         id: 'faces-journey-handoff', trigger: section, start: handoffStart, end: journeyStart,
         scrub: 1.15, invalidateOnRefresh: true, refreshPriority: -2,
         onUpdate: self => { panelTiming.handoff = self.progress; syncCrownTime(self.progress) },
-        onRefresh: self => { panelTiming.handoff = self.progress; syncCrownTime(self.progress) },
+        onRefresh: self => { panelTiming.handoff = self.progress; syncCrownTime(self.progress); syncHandoff() },
       } })
       handoff.fromTo(section, { yPercent: 100, y: 0 }, { yPercent: 0, ease: softLanding, duration: 0.80 }, 0.08)
       if (facesScene) handoff.fromTo(facesScene, { scale: 1, opacity: 1 }, { scale: 0.95, opacity: 0.35, ease: 'none', duration: 0.75 }, 0.15)
       handoff.fromTo(facesBlur, { px: 0 }, { px: 1.5, ease: 'none', duration: 0.75, onUpdate: writeBlur, immediateRender: false }, 0.15)
       handoff.to('.faces__meta', { opacity: 0, duration: 0.15, ease: 'none' }, 0)
       handoff.fromTo('.journey__intro-entry', { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.38, ease: 'none' }, 0.62)
-      // 경로도 첫 card와 함께 들어온다 — card가 아직 옅고 28px 아래에 있을 때 그 surface 너머로 선 끝이 비치지 않는다.
-      handoff.fromTo([world.querySelector('.journey__path'), marker], { opacity: 0 }, { opacity: 1, duration: 0.38, ease: 'none' }, 0.62)
       handoff.set({}, {}, 1)
+      // Raw scroll can cross the master start before the 1.15s scrub has settled.
+      // Listen to the actual animation too, so a stationary scroll can reveal it.
+      syncHandoff = () => {
+        handoffComplete = handoff.progress() >= 1 - 1e-6
+        render()
+      }
+      handoff.eventCallback('onUpdate', syncHandoff)
+      syncHandoff()
 
       /*
        * Journey 전체가 진행률 하나다. card마다 tween을 나누지 않는다 —
@@ -349,7 +359,11 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
         id: 'journey-master', trigger: section, start: journeyStart,
         end: () => journeyStart() + innerHeight * JOURNEY_VIEWPORTS,
         invalidateOnRefresh: true, refreshPriority: -3,
-        onUpdate: self => setTarget(self.progress),
+        onUpdate: self => {
+          setTarget(self.progress)
+          // Close the visibility gate on the exact reverse boundary, before smoothing.
+          if (self.progress === 0) render()
+        },
         onRefresh: self => {
           journey.target = journey.p = self.progress
           render()
