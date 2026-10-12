@@ -1,0 +1,107 @@
+.project-header {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 40;
+  height: calc(104px + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) clamp(20px, 6.25vw, 120px) 0;
+  color: #f3f4f4;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.project-header::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 140px;
+  background: linear-gradient(180deg, rgb(8 9 10 / 0.64), rgb(8 9 10 / 0.18) 58%, transparent);
+  pointer-events: none;
+}
+
+.project-header[data-hidden] {
+  transform: translate3d(0, -110%, 0);
+}
+
+.project-header:focus-within {
+  transform: translate3d(0, 0, 0);
+}
+
+.project-header__inner {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  width: min(100%, 1680px);
+  height: 100%;
+  margin: 0 auto;
+}
+
+.project-header__item {
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  color: inherit;
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(11px, 1.042vw, 20px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  white-space: nowrap;
+  pointer-events: auto;
+  transition: opacity 180ms ease;
+}
+
+.project-header__item--faces {
+  justify-self: start;
+}
+
+.project-header__item--name {
+  position: absolute;
+  left: 50%;
+  justify-self: center;
+  font-weight: 300;
+  letter-spacing: 0.015em;
+  transform: translateX(-50%);
+}
+
+.project-header__item--contact {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.project-header__item:hover {
+  opacity: 0.68;
+}
+
+.project-header__item:focus-visible {
+  outline: 1px solid #dce6e4;
+  outline-offset: 6px;
+}
+
+@media (max-width: 640px) {
+  .project-header {
+    height: calc(72px + env(safe-area-inset-top, 0px));
+    padding-inline: 16px;
+  }
+
+  .project-header::before {
+    height: 104px;
+  }
+
+  .project-header__item {
+    font-size: 11px;
+  }
+
+  .project-header__item--name {
+    font-size: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-header {
+    transition: none;
+  }
+}

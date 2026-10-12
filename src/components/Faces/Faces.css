@@ -50,6 +50,24 @@
   will-change: transform, opacity;
 }
 
+/* A semantic hit area over the display only; pointer events still bubble to drag. */
+.faces__display-link {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.faces__display-link[data-ready='true'] {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.faces__display-link:focus-visible {
+  outline: 2px solid #f3f4f4;
+  outline-offset: -5px;
+}
+
 /*
  * Watch display 위쪽 safe area의 text CTA 막대. 폭은 display와 같고(JS), 높이는 display 높이의 약 17%다.
  * 위쪽 모서리를 display와 같은 반경으로 잘라 display 밖으로 새지 않는다. 아주 옅은 막이 밝은 영상 위에서도 글자를 읽히게 한다.
@@ -58,7 +76,7 @@
  */
 .faces__display-cta {
   position: absolute;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -321,4 +339,34 @@
 .faces__slide-meta .faces__cta--explore::after {
   right: 0;
   left: 0;
+}
+
+.faces__cta[aria-disabled='true'] {
+  cursor: default;
+}
+
+.faces__visual-link {
+  display: block;
+  overflow: hidden;
+  -webkit-user-drag: none;
+}
+
+.faces__visual-link:focus-visible {
+  outline: 2px solid #f3f4f4;
+  outline-offset: 4px;
+}
+
+.faces__visual-link video {
+  transition: transform 320ms ease-out;
+}
+
+.faces__rail[data-exiting-project='tchaikim'] [data-project-id='tchaikim'] .faces__visual video {
+  transform: scale(1.035);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faces__visual-link video {
+    transition: none;
+    transform: none !important;
+  }
 }
