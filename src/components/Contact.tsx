@@ -132,7 +132,7 @@ export default function Contact({ interactive, ready }: ContactProps) {
 
       <div className="contact__inner">
         <div className="contact__copy">
-          <h2 id="contact-title" className="contact__title" data-contact-reveal="36">
+          <h2 id="contact-title" className="contact__title" data-contact-reveal="36" tabIndex={-1}>
             <span>LET&rsquo;S CREATE</span>
             <span>THE NEXT FACE</span>
           </h2>

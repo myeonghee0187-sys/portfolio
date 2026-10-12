@@ -24,7 +24,7 @@ export default function Header() {
     if (!contact || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     event.preventDefault()
     const header = document.querySelector('.site-header')?.getBoundingClientRect().height ?? 0
-    history.replaceState(null, '', '#contact')
+    history.replaceState(history.state, '', '#contact')
     window.scrollTo({ top: window.scrollY + contact.getBoundingClientRect().top - header, behavior: prefersReducedMotion ? 'auto' : 'smooth' })
   }, [prefersReducedMotion])
 

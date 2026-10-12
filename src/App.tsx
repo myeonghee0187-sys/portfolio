@@ -1,162 +1,226 @@
-import { useCallback, useRef, useState } from 'react'
-import IntroVideo from './components/IntroVideo'
-import Header from './components/Header'
-import Hero from './components/Hero'
-import About from './components/About'
-import Faces from './components/Faces/Faces'
-import Journey from './components/Journey/Journey'
-import WatchStage from './components/Watch/WatchStage'
-import SplashCursor from './components/SplashCursor/SplashCursor'
-import useMediaQuery from './hooks/useMediaQuery'
-import useScrollScene from './hooks/useScrollScene'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import gsap from 'gsap'
+import TchaikimCaseStudy from './components/Projects/TchaikimCaseStudy'
+import BrandExperienceVideo from './components/Projects/BrandExperienceVideo'
 import { FACE_PROJECTS } from './components/Faces/facesData'
-import Contact from './components/Contact'
-import AllFaces from './components/AllFaces/AllFaces'
-import { closeAllFaces, openAllFaces, useAllFacesOpen } from './components/AllFaces/allFacesStore'
-import { navigateToFaceWithRetries, type FacesNavigationController } from './components/Faces/facesNavigation'
+import { routeForHistory, routeFromUrl, type PortfolioRoute } from './navigation/projectRouting'
+import './navigation/PageTransition.css'
+
+type TransitionStyle = 'dissolve' | 'reverse' | 'editorial'
+const newKey = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8)
+// Direct case-study visits do not download the homepage's Three/OGL scene bundle.
+const HomePage = lazy(() => import('./HomePage'))
+const nextFace = FACE_PROJECTS[(FACE_PROJECTS.findIndex((project) => project.id === 'tchaikim') + 1) % FACE_PROJECTS.length]
+
+function snapshot(route: PortfolioRoute): PortfolioRoute {
+  let destination = route.destination
+  if (route.page === 'home') {
+    const stage = document.querySelector('.faces__stage')?.getBoundingClientRect()
+    const display = document.querySelector<HTMLElement>('.faces__display-cta')
+    const slide = [...document.querySelectorAll<HTMLElement>('.faces__slide')].find((node) => {
+      const rect = node.getBoundingClientRect()
+      return rect.top >= 0 && rect.top < innerHeight && rect.left >= -2 && rect.right <= innerWidth + 2
+    })
+    const faceId = display?.dataset.projectId ?? slide?.dataset.projectId
+    const journey = document.querySelector('.journey')?.getBoundingClientRect()
+    const inFaces = display
+      ? Boolean(stage && Math.abs(stage.top) <= 1 && (journey?.top ?? innerHeight) >= innerHeight - 1)
+      : Boolean(slide && stage && stage.top < innerHeight && stage.bottom > 0)
+    destination = faceId && inFaces
+      ? { section: 'faces', faceId }
+      : { section: 'saved', scrollY: window.scrollY }
+  }
+  return { ...route, destination, scrollY: window.scrollY }
+}
 
 export default function App() {
-  const [isIntroDone, setIsIntroDone] = useState(false)
-  const isFinePointer = useMediaQuery('(hover: hover) and (pointer: fine)')
-  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
-  const isWideEnough = useMediaQuery('(min-width: 901px)')
+  const [route, setRoute] = useState<PortfolioRoute>(() =>
+    routeForHistory(new URL(location.href), history.state?.portfolio, newKey()) ??
+    { page: 'home', key: newKey(), destination: { section: 'hero' }, scrollY: 0 },
+  )
+  const [busy, setBusy] = useState(false)
+  const routeRef = useRef(route)
+  const busyRef = useRef(false)
+  const introDone = useRef(route.page !== 'home' || Boolean(route.destination))
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const tweenRef = useRef<gsap.core.Tween | null>(null)
+  const entranceTween = useRef<gsap.core.Tween | null>(null)
+  const transitionToken = useRef(0)
+  const pendingReady = useRef<{ key: string; resolve: () => void } | null>(null)
+  const visitedEntries = useRef(new Map<string, PortfolioRoute>())
 
-  /*
-   * ALL FACES. 열림 상태는 allFacesStore 하나에 있다(Crown / Contact 빛 / FACES WebGL이 같은 값을 읽는다).
-   * 닫기를 누르면 곧바로 store가 닫히고(가려져 멈춰 있던 page가 다시 그려진다), overlay는 닫힘 motion이
-   * 끝난 뒤에 unmount된다.
-   */
-  const allFacesOpen = useAllFacesOpen()
-  const [allFacesMounted, setAllFacesMounted] = useState(false)
-  const facesRef = useRef<FacesNavigationController>(null)
-  const selectionFocusRef = useRef<HTMLElement | null>(null)
-  if (allFacesOpen && !allFacesMounted) setAllFacesMounted(true)
-  const handleAllFacesClosed = useCallback((returnFocus: HTMLElement | null) => {
-    setAllFacesMounted(false)
-    const focusTarget = selectionFocusRef.current ?? returnFocus
-    selectionFocusRef.current = null
-    if (focusTarget) requestAnimationFrame(() => {
-      if (focusTarget.isConnected) focusTarget.focus({ preventScroll: true })
+  useLayoutEffect(() => { routeRef.current = route }, [route])
+  const handleIntroDone = useCallback(() => { introDone.current = true }, [])
+  const handleReady = useCallback(() => {
+    if (pendingReady.current?.key === route.key) {
+      pendingReady.current.resolve()
+      pendingReady.current = null
+    }
+  }, [route.key])
+
+  const transition = useCallback(async (next: PortfolioRoute, href: string | null, style: TransitionStyle) => {
+    const token = ++transitionToken.current
+    tweenRef.current?.kill()
+    entranceTween.current?.kill()
+    pendingReady.current?.resolve()
+    pendingReady.current = null
+    busyRef.current = true
+    setBusy(true)
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+    const animate = (opacity: number, duration: number) => new Promise<void>((resolve) => {
+      tweenRef.current = gsap.to(overlayRef.current, {
+        opacity, duration, ease: 'power2.inOut', onComplete: resolve, onInterrupt: resolve,
+      })
+    })
+    if (href) {
+      const saved = snapshot(routeRef.current)
+      visitedEntries.current.set(saved.key, saved)
+      history.replaceState({ ...history.state, portfolio: saved }, '', location.href)
+    }
+    if (routeRef.current.page === 'home' && next.page === 'tchaikim') {
+      window.dispatchEvent(new CustomEvent('portfolio-project-exit', { detail: { projectId: 'tchaikim' } }))
+    }
+    await animate(1, reduced ? 0.08 : style === 'dissolve' ? 0.32 : 0.27)
+    if (token !== transitionToken.current) return
+    introDone.current = true
+    if (href) history.pushState({ portfolio: next }, '', href)
+    const destinationReady = new Promise<void>((resolve) => { pendingReady.current = { key: next.key, resolve } })
+    window.scrollTo(0, 0)
+    setRoute(next)
+    let timeout = 0
+    await Promise.race([destinationReady, new Promise<void>((resolve) => { timeout = window.setTimeout(resolve, 8000) })])
+    clearTimeout(timeout)
+    if (token !== transitionToken.current) return
+    pendingReady.current = null
+    if (next.page === 'tchaikim' && style !== 'editorial' && !reduced) {
+      const copy = contentRef.current?.querySelector('.tchai-hero__copy')
+      if (copy) entranceTween.current = gsap.fromTo(copy,
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: .3, delay: .04, clearProps: 'opacity,transform', ease: 'power2.out' },
+      )
+    }
+    if (style === 'editorial' && !reduced) {
+      const hero = contentRef.current?.querySelector('[data-case-hero]')
+      if (hero) entranceTween.current = gsap.fromTo(hero, { y: 16 }, { y: 0, duration: .34, clearProps: 'transform', ease: 'power2.out' })
+    }
+    await animate(0, reduced ? 0.08 : style === 'dissolve' ? .38 : .3)
+    if (token !== transitionToken.current) return
+    busyRef.current = false
+    setBusy(false)
+    requestAnimationFrame(() => {
+      if (token !== transitionToken.current) return
+      const selector = next.page === 'tchaikim' ? 'h1' : next.destination?.section === 'faces'
+        ? '[data-face-heading="' + (next.destination.faceId ?? 'tchaikim') + '"]'
+        : next.destination?.section === 'contact' ? '#contact h2' : '#hero h1'
+      contentRef.current?.querySelector<HTMLElement>(selector)?.focus({ preventScroll: true })
     })
   }, [])
 
-  const handleIntroFinish = useCallback(() => setIsIntroDone(true), [])
+  const navigate = useCallback((href: string, style: TransitionStyle = 'reverse') => {
+    if (busyRef.current) return
+    const url = new URL(href, location.href)
+    if (url.origin !== location.origin) return
+    const next = routeFromUrl(url, newKey())
+    if (next) void transition(next, url.pathname + url.search + url.hash, style)
+  }, [transition])
 
-  /** FACES 이후 고정되는 정면 Digital Crown의 click handler. */
-  const handleOpenAllFaces = useCallback(() => openAllFaces(), [])
+  const openProject = useCallback((projectId: string) => {
+    const project = FACE_PROJECTS.find((candidate) => candidate.id === projectId)
+    if (project?.detailPath) navigate(project.detailPath, 'dissolve')
+  }, [navigate])
 
-  const handleProjectSelect = useCallback(async (projectId: string) => {
-    const result = await navigateToFaceWithRetries(
-      projectId,
-      () => facesRef.current,
-      3,
-      // A responsive/reduced-motion switch can replace the controller while
-      // the previous one is preparing media. Retry against the controller
-      // mounted by the next committed frame.
-      () => new Promise<void>((resolve) => window.setTimeout(resolve, 80)),
-    )
-    const success = result.status !== 'unavailable'
-    if (success) {
-      selectionFocusRef.current = result.focusTarget
-      closeAllFaces()
+  useEffect(() => {
+    const restoration = history.scrollRestoration
+    history.scrollRestoration = 'manual'
+    history.replaceState({ ...history.state, portfolio: routeRef.current }, '', location.href)
+    const onPop = () => {
+      // An interrupted mount still owns its intended destination, not the
+      // temporary scroll=0 beneath the opaque transition.
+      if (!busyRef.current) {
+        const departed = snapshot(routeRef.current)
+        visitedEntries.current.set(departed.key, departed)
+      }
+      const parsed = routeForHistory(new URL(location.href), history.state?.portfolio, newKey())
+      if (parsed) {
+        const next = visitedEntries.current.get(parsed.key) ?? parsed
+        void transition(next, null, 'reverse')
+      }
     }
-    return success
-  }, [])
+    const save = () => {
+      if (busyRef.current && history.state?.portfolio?.key !== routeRef.current.key) return
+      history.replaceState({
+        ...history.state, portfolio: busyRef.current ? routeRef.current : snapshot(routeRef.current),
+      }, '', location.href)
+    }
+    window.addEventListener('popstate', onPop)
+    window.addEventListener('pagehide', save)
+    return () => {
+      history.scrollRestoration = restoration
+      window.removeEventListener('popstate', onPop)
+      window.removeEventListener('pagehide', save)
+      transitionToken.current += 1
+      tweenRef.current?.kill()
+      entranceTween.current?.kill()
+      pendingReady.current?.resolve()
+    }
+  }, [transition])
 
-  /*
-   * Splash Cursor는 커서가 있는 데스크톱 전용이고, 순수 장식이라 reduced motion에서는 끈다.
-   * CSS로 숨기는 대신 컴포넌트 자체를 마운트하지 않는다 — 조건이 false면
-   * WebGL 컨텍스트도, rAF 루프도, mousemove 리스너도 생기지 않는다.
-   * Intro가 끝났는지는 기존 isIntroDone을 그대로 쓴다(상태를 새로 만들지 않는다).
-   */
-  const showSplashCursor = isIntroDone && isFinePointer && !prefersReducedMotion
+  useEffect(() => {
+    document.documentElement.dataset.projectPage = String(route.page === 'tchaikim')
+    document.title = route.page === 'tchaikim' ? 'TCHAI KIM — Song Myeonghee' : 'Song Myeonghee'
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')
+    if (canonical) canonical.href = 'https://portfolio-two-virid-30.vercel.app/' + (route.page === 'tchaikim' ? 'projects/tchaikim' : '')
+    if (route.page !== 'tchaikim') return
+    let cancelled = false
+    const prepare = async () => {
+      const images = [...(contentRef.current?.querySelectorAll<HTMLImageElement>('[data-case-hero] img') ?? [])]
+      await Promise.race([
+        Promise.allSettled([document.fonts.ready, ...images.map((image) => image.decode())]),
+        new Promise<void>((resolve) => window.setTimeout(resolve, 3000)),
+      ])
+      if (!cancelled) {
+        window.scrollTo(0, route.scrollY)
+        handleReady()
+      }
+    }
+    void prepare()
+    return () => { cancelled = true }
+  }, [route, handleReady])
 
-  /*
-   * Hero -> About scroll 연출을 켤지.
-   * 터치 기기, reduced motion, 좁은 화면에서는 pin/scrub을 아예 만들지 않는다.
-   * 그 경우 Watch는 WatchStage(fixed) 대신 Hero와 About이 각각 정적으로 들고 있고,
-   * About은 Figma 배치가 그대로 보이는 정적 화면이 된다.
-   */
-  const scrollSceneEnabled = isFinePointer && !prefersReducedMotion && isWideEnough
-
-  /*
-   * 측정은 Intro가 끝난 뒤에 한다.
-   * Intro는 <html>에 overflow: hidden을 걸어 스크롤을 잠그는데, 그동안에는
-   * 세로 스크롤바가 없어서 뷰포트가 15px 더 넓게 잡힌다. 그 상태로 pin을 계산하면
-   * ScrollTrigger가 만든 pin-spacer 폭이 실제보다 넓게 굳어 가로 overflow가 생긴다.
-   */
-  useScrollScene(scrollSceneEnabled && isIntroDone)
+  useEffect(() => {
+    if (!busy) return
+    const block = (event: Event) => event.preventDefault()
+    const blockKeys = (event: KeyboardEvent) => {
+      if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key)) event.preventDefault()
+    }
+    window.addEventListener('wheel', block, { passive: false })
+    window.addEventListener('touchmove', block, { passive: false })
+    window.addEventListener('keydown', blockKeys)
+    return () => {
+      window.removeEventListener('wheel', block)
+      window.removeEventListener('touchmove', block)
+      window.removeEventListener('keydown', blockKeys)
+    }
+  }, [busy])
 
   return (
     <>
-      {/*
-        Header/Hero는 Intro 아래에 항상 마운트되어 있다.
-        Intro가 불투명한 fixed overlay라 재생 중에는 가려져 보이지 않고,
-        fade-out이 진행되면서 그대로 드러난다.
-      */}
-      {!isIntroDone && <IntroVideo onFinish={handleIntroFinish} />}
-
-      {/*
-        페이지 전체에서 단 하나만 존재하는 global cursor effect.
-        특정 섹션이 아니라 이 shell에 두어야 Header/Hero/About까지
-        같은 인스턴스가 따라간다.
-      */}
-      {showSplashCursor && (
-        <SplashCursor
-          DENSITY_DISSIPATION={9.5}
-          VELOCITY_DISSIPATION={1.5}
-          PRESSURE={0.5}
-          CURL={0}
-          SPLAT_RADIUS={0.21}
-          SPLAT_FORCE={5000}
-          COLOR_UPDATE_SPEED={18}
-          SHADING
-          RAINBOW_MODE={false}
-          COLOR="#3B657E"
-          /*
-           * 원본의 mousedown burst는 끈다. 실제 화면에서 이동 trail의 최대치보다
-           * 밝은 빛이 클릭 지점에 즉시 터져(alpha 58 -> 90) Watch와 타이포에서
-           * 시선을 빼앗았다. 이번 작업에서 필요한 건 이동 trail뿐이다.
-           */
-          CLICK_SPLAT={false}
-        />
-      )}
-
-      <div
-        className="site"
-        data-all-faces-open={allFacesOpen}
-        data-all-faces-count={FACE_PROJECTS.length}
-        inert={allFacesMounted ? true : undefined}
-      >
-        <Header />
-        <main>
-          <Hero inlineWatch={!scrollSceneEnabled} />
-          <About inlineWatch={!scrollSceneEnabled} />
-          {/* 가로 트랙 연출도 About과 같은 조건에서만 켠다. 아니면 native 가로 scroll 목록이다. */}
-          <div className={scrollSceneEnabled ? 'panels panels--interactive' : 'panels'}>
-            <div className="panels__viewport">
-              <Faces ref={facesRef} interactive={scrollSceneEnabled} ready={isIntroDone} />
-              <Journey interactive={scrollSceneEnabled} ready={isIntroDone} />
-            </div>
-          </div>
-          <Contact interactive={scrollSceneEnabled} ready={isIntroDone} />
-        </main>
-
-        {/*
-          Hero와 About이 공유하는 Watch. 연출이 켜져 있을 때만 이 레이어가 들고 있고,
-          Hero/About은 각자 앵커만 남겨둔다. 그래서 화면의 Watch는 언제나 하나다.
-        */}
-        {scrollSceneEnabled && <WatchStage onOpenAllFaces={handleOpenAllFaces} />}
+      <div ref={contentRef} className="portfolio-route" inert={busy || undefined} aria-busy={busy}>
+        <Suspense fallback={<div className="portfolio-route-loading" aria-label="페이지 준비 중" />}>
+        {route.page === 'home' ? (
+          <HomePage key={route.key} skipIntro={introDone.current} destination={route.destination}
+            onIntroDone={handleIntroDone} onReady={handleReady} onOpenProject={openProject} />
+        ) : (
+          <TchaikimCaseStudy key={route.key} onNavigate={navigate}
+            nextProject={{ title: nextFace.title, href: nextFace.detailPath }}
+            brandExperience={<BrandExperienceVideo
+              src="/projects/tchaikim/tchaikim_brand_scroll_1080p60_v2.mp4"
+              poster="/projects/tchaikim/brand-poster.jpg" />} />
+        )}
+        </Suspense>
       </div>
-
-      {allFacesMounted && (
-        <AllFaces
-          open={allFacesOpen}
-          onRequestClose={closeAllFaces}
-          onClosed={handleAllFacesClosed}
-          onProjectSelect={handleProjectSelect}
-        />
-      )}
+      <div ref={overlayRef} className="page-transition" data-active={busy} aria-hidden="true" />
     </>
   )
 }

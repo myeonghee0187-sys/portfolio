@@ -371,6 +371,7 @@ uniform float uContact;       // case 바깥 접촉 그림자의 세기. WebGL W
 uniform vec2 uAmbientCenter;  // 빛의 중심(canvas CSS px) = 화면 가운데 = Watch 중심
 uniform float uAmbientUnit;   // About 좌표계 1단위의 px(About.css의 --about-u)
 uniform float uDisplayInteraction;
+uniform float uNavZoom;
 uniform float uAmbient;       // 세기 = .about__ambient의 opacity(sharedAmbient.level)
 
 // Apple Watch Portfolio material. project가 무엇이든 이 색만 쓴다.
@@ -523,7 +524,7 @@ vec3 displayMedia(vec2 p) {
 /* ---------- D. DISPLAY : display rect 기준 cover로 꽉 채워 선명하게 ---------- */
 vec3 displayColor(vec2 p, float dDisp) {
   // hover(+1): 1.007배 + 밝기 4%. 누르는 동안(-1): 0.99배로 살짝 가라앉는다.
-  float zoom = uDisplayInteraction < 0.0 ? 0.99 : 1.0 + uDisplayInteraction * 0.007;
+  float zoom = (uDisplayInteraction < 0.0 ? 0.99 : 1.0 + uDisplayInteraction * 0.007) + uNavZoom;
   vec3 c = displayMedia(uDisplay.xy + (p - uDisplay.xy) / zoom);
   // 영상 색은 그대로, 대비·밝기만 조금 올린다. 바깥 gallery보다 항상 선명하다.
   c = clamp((c - 0.5) * 1.06 + 0.5, 0.0, 1.0) * 1.04;
@@ -767,6 +768,7 @@ export type FacesRenderState = {
   /** SHARED ICE AMBIENT의 세기(= About .about__ambient의 opacity)와 중심(canvas CSS px). */
   ambient: { level: number; cx: number; cy: number }
   interaction?: number
+  navZoom?: number
   /** project plane 자체의 휨(px). */
   bend: number
   /** 부호 있는 속도(stage 폭 기준)와 0~1 세기. */
@@ -976,6 +978,7 @@ export default class FacesScene {
         uAmbientUnit: { value: 1 },
         uAmbient: { value: 0 },
         uDisplayInteraction: { value: 0 },
+        uNavZoom: { value: 0 },
       },
     })
     const quad = new THREE.Mesh(this.compositeGeometry, this.composite)
@@ -1218,6 +1221,7 @@ export default class FacesScene {
     u.uSpeed.value = state.speed
     u.uAmbient.value = state.ambient.level
     u.uDisplayInteraction.value = state.interaction ?? 0
+    u.uNavZoom.value = state.navZoom ?? 0
     u.uAmbientCenter.value.set(state.ambient.cx, state.ambient.cy)
     this.renderer.render(this.compositeScene, this.camera)
   }

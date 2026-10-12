@@ -48,7 +48,7 @@ export default function Hero({ inlineWatch }: HeroProps) {
       </div>
 
       <div className="hero__inner">
-        <h1 className="hero__headline">
+        <h1 className="hero__headline" tabIndex={-1}>
           <span>ONE</span>
           <span>DESIGNER</span>
           <span>MANY FACES</span>

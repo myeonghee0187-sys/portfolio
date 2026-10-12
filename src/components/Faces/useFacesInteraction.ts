@@ -98,6 +98,7 @@ type FacesInteractionOptions = {
   /** ALL FACES navigation만 metadata를 즉시 commit한다. */
   onNavigationCommit: (index: number) => void
   controllerRef: MutableRefObject<FacesNavigationController | null>
+  onOpenProject?: (projectId: string) => void
 }
 
 /**
@@ -125,6 +126,7 @@ export default function useFacesInteraction({
   onActiveChange,
   onNavigationCommit,
   controllerRef,
+  onOpenProject,
 }: FacesInteractionOptions) {
   useLayoutEffect(() => {
     const section = sectionRef.current
@@ -141,14 +143,22 @@ export default function useFacesInteraction({
     let pointerId = -1
     let lastX = 0
     let downX = 0
+    let downY = 0
     let dragging = false
     let pressedAllowed = false
+    let pressedProject = -1
+    // Survives pointerup: the browser dispatches click after drag has ended.
+    let gestureCancelled = false
     let hovering = false
     let pressing = false
     let interaction = 0
-    /* Watch display 위쪽의 future detail-page affordance. */
+    let exiting = false
+    const transition = { navZoom: 0 }
+    let exitTween: gsap.core.Tween | null = null
     const ctaBar = stage.querySelector<HTMLElement>('.faces__display-cta')
-    const explore = stage.querySelector<HTMLButtonElement>('.faces__cta--explore')
+    const explore = stage.querySelector<HTMLAnchorElement>('.faces__cta--explore')
+    const displayLink = stage.querySelector<HTMLAnchorElement>('.faces__display-link')
+    const links = [displayLink, explore].filter((link): link is HTMLAnchorElement => Boolean(link))
     const viewport = section.closest<HTMLElement>('.panels__viewport')
     const panelsSection = section.closest<HTMLElement>('.panels')
     const target = () => scrollOffset + dragOffset
@@ -248,19 +258,29 @@ export default function useFacesInteraction({
     let lastReady: boolean | undefined
     let lastShown = -1
     const updateLink = () => {
-      const ready = presentationReady()
-      if (explore && lastReady !== ready) {
-        explore.tabIndex = ready ? 0 : -1
+      const shown = shownProject()
+      const project = FACE_PROJECTS[shown]
+      const ready = presentationReady() && Boolean(project.detailPath) && !isAllFacesOpen() && !exiting
+      if (lastReady !== ready || shown !== lastShown) {
+        for (const link of links) {
+          link.tabIndex = ready ? 0 : -1
+          link.setAttribute('aria-disabled', String(!ready))
+          link.dataset.ready = String(ready)
+          if (ready && project.detailPath) link.setAttribute('href', project.detailPath)
+          else link.removeAttribute('href')
+        }
         ctaBar?.setAttribute('data-ready', String(ready))
         lastReady = ready
       }
-      const shown = shownProject()
-      if (explore && shown !== lastShown) {
-        const label = `Explore ${FACE_PROJECTS[shown].title} project`
-        explore.setAttribute('aria-label', label)
-        explore.title = label
+      if (shown !== lastShown) {
+        const label = `Explore ${project.title} project`
+        for (const link of links) {
+          link.setAttribute('aria-label', label)
+          link.title = label
+          link.dataset.projectId = project.id
+        }
         // project별 CTA 대비 보정(JADUYA의 밝은 영상 위에서만 scrim을 조금 진하게, Faces.css).
-        if (ctaBar) ctaBar.dataset.projectId = FACE_PROJECTS[shown].id
+        if (ctaBar) ctaBar.dataset.projectId = project.id
         lastShown = shown
       }
       if (import.meta.env.DEV) {
@@ -333,14 +353,22 @@ export default function useFacesInteraction({
         ctaBar.style.setProperty('--display-h', (d.hy * 2) + 'px')
         ctaBar.style.setProperty('--display-radius', d.r + 'px')
       }
+      if (watch && displayLink) {
+        const d = watch.display
+        displayLink.style.left = (d.cx - d.hx) + 'px'
+        displayLink.style.top = (d.cy - d.hy) + 'px'
+        displayLink.style.width = (d.hx * 2) + 'px'
+        displayLink.style.height = (d.hy * 2) + 'px'
+        displayLink.style.borderRadius = d.r + 'px'
+      }
       const ambient = ambientState()
       // loop 경계에서 두 element를 섞는 동안에는 매 frame 다시 그린다.
       if (scene.tickLoops(now)) videoDirty = true
-      const key = `${current.toFixed(2)} ${interaction.toFixed(3)} ${ambient.level.toFixed(4)} ${ambient.cy.toFixed(1)} ${
+      const key = `${current.toFixed(2)} ${interaction.toFixed(3)} ${transition.navZoom.toFixed(5)} ${ambient.level.toFixed(4)} ${ambient.cy.toFixed(1)} ${
         watch ? `${watch.outer.cx.toFixed(1)} ${watch.outer.cy.toFixed(1)} ${watch.unit.toFixed(4)}` : ''
       }`
       if (key !== lastKey || videoDirty || !canWatchFrames) {
-        scene.render({ position: current, bend, velocity, speed, watch, ambient, interaction })
+        scene.render({ position: current, bend, velocity, speed, watch, ambient, interaction, navZoom: transition.navZoom })
         lastKey = key
         videoDirty = false
       }
@@ -445,6 +473,7 @@ export default function useFacesInteraction({
     /* ---------- ALL FACES -> FACES navigation ---------- */
 
     let navigationToken = 0
+    const pendingPreparations = new Set<() => void>()
     const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
     const focusTargetFor = (projectId: string) =>
       stage.querySelector<HTMLElement>(`[data-face-heading="${CSS.escape(projectId)}"]`)
@@ -475,8 +504,10 @@ export default function useFacesInteraction({
         video.removeEventListener('loadeddata', onReady)
         video.removeEventListener('canplay', onReady)
         video.removeEventListener('error', onError)
+        pendingPreparations.delete(cancel)
         resolve(prepared && token === navigationToken)
       }
+      const cancel = () => finish(false)
       const onReady = () => {
         if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) finish(true)
       }
@@ -488,6 +519,7 @@ export default function useFacesInteraction({
       video.addEventListener('loadeddata', onReady, { once: true })
       video.addEventListener('canplay', onReady, { once: true })
       video.addEventListener('error', onError, { once: true })
+      pendingPreparations.add(cancel)
     })
 
     const cancelPointerInteraction = () => {
@@ -496,6 +528,7 @@ export default function useFacesInteraction({
       dragging = false
       pressing = false
       pressedAllowed = false
+      gestureCancelled = true
       stage.classList.remove('is-dragging')
     }
 
@@ -516,22 +549,18 @@ export default function useFacesInteraction({
       interaction = 0
       lastKey = ''
       videoDirty = false
-      lastShown = shownProject()
-      if (ctaBar) {
-        ctaBar.dataset.projectId = FACE_PROJECTS[index].id
-        ctaBar.setAttribute('data-ready', 'true')
-      }
-      if (explore) {
-        const label = `Explore ${FACE_PROJECTS[index].title} project`
-        explore.setAttribute('aria-label', label)
-        explore.title = label
-        explore.tabIndex = 0
-      }
-      lastReady = true
+      lastShown = -1
+      lastReady = undefined
+      updateLink()
     }
 
     const controller: FacesNavigationController = {
       navigateToFace: async (projectId) => {
+        // A cancelled route transition may restore this still-mounted scene.
+        exitTween?.kill()
+        transition.navZoom = 0
+        exiting = false
+        pendingPreparations.forEach((cancel) => cancel())
         const index = faceIndexById(projectId)
         const focusTarget = focusTargetFor(projectId)
         const token = ++navigationToken
@@ -617,16 +646,20 @@ export default function useFacesInteraction({
 
     const onPointerDown = (event: PointerEvent) => {
       // pin 중에만. 한 바퀴를 몇 번 돌아도 document scroll은 그대로다.
-      if (!event.isPrimary || event.button !== 0 || !trigger?.isActive || panelTiming.handoff > 0) return
+      if (!event.isPrimary || event.button !== 0 || exiting || !trigger?.isActive || panelTiming.handoff > 0) return
       pointerId = event.pointerId
       downX = lastX = event.clientX
+      downY = event.clientY
+      gestureCancelled = false
       pressedAllowed = presentationReady()
+      pressedProject = shownProject()
       // display가 눌려 가라앉는 반응은 CTA를 누를 때만(영상 자체는 눌리는 대상이 아니다).
       pressing = pressedAllowed && Boolean(ctaBar?.contains(event.target as Node))
     }
 
     const onPointerMove = (event: PointerEvent) => {
       if (event.pointerId !== pointerId) return
+      if (Math.hypot(event.clientX - downX, event.clientY - downY) >= DRAG_THRESHOLD) gestureCancelled = true
       if (!dragging) {
         if (Math.abs(event.clientX - downX) < DRAG_THRESHOLD) return
         dragging = true
@@ -640,6 +673,8 @@ export default function useFacesInteraction({
 
     const endDrag = (event: PointerEvent) => {
       if (event.pointerId !== pointerId) return
+      gestureCancelled ||= dragging || event.type === 'pointercancel' ||
+        Math.hypot(event.clientX - downX, event.clientY - downY) >= DRAG_THRESHOLD
       pointerId = -1
       pressing = false
       if (!dragging) return
@@ -652,18 +687,48 @@ export default function useFacesInteraction({
     // 영상 / 텍스트의 기본 drag가 pointer drag를 가로채지 않게 한다.
     const onDragStart = (event: DragEvent) => event.preventDefault()
 
+    const onClick = (event: MouseEvent) => {
+      const link = event.target instanceof Element ? event.target.closest('a') : null
+      if (!links.some((candidate) => candidate === link)) return
+      const project = FACE_PROJECTS[shownProject()]
+      const invalidGesture = event.detail !== 0 && (gestureCancelled || !pressedAllowed || pressedProject !== shownProject())
+      if (invalidGesture || !presentationReady() || !project.detailPath || isAllFacesOpen() || exiting) {
+        event.preventDefault()
+        return
+      }
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      if (onOpenProject) {
+        event.preventDefault()
+        onOpenProject(project.id)
+      }
+    }
+
+    const onProjectExit = (event: Event) => {
+      const projectId = (event as CustomEvent<{ projectId?: string }>).detail?.projectId
+      if (projectId !== FACE_PROJECTS[shownProject()].id || !FACE_PROJECTS[shownProject()].detailPath) return
+      exiting = true
+      cancelPointerInteraction()
+      updateLink()
+      exitTween?.kill()
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        exitTween = gsap.to(transition, { navZoom: 0.035, duration: 0.32, ease: 'power2.out' })
+      }
+    }
+
     const onEnter = () => { hovering = true }
     const onLeave = () => { hovering = false; pressing = false }
-    if (explore) {
-      explore.addEventListener('pointerenter', onEnter)
-      explore.addEventListener('pointerleave', onLeave)
-      explore.addEventListener('focus', onEnter)
-      explore.addEventListener('blur', onLeave)
+    for (const link of links) {
+      link.addEventListener('pointerenter', onEnter)
+      link.addEventListener('pointerleave', onLeave)
+      link.addEventListener('focus', onEnter)
+      link.addEventListener('blur', onLeave)
     }
+    stage.addEventListener('click', onClick)
+    window.addEventListener('portfolio-project-exit', onProjectExit)
     stage.addEventListener('pointerdown', onPointerDown)
-    stage.addEventListener('pointermove', onPointerMove)
-    stage.addEventListener('pointerup', endDrag)
-    stage.addEventListener('pointercancel', endDrag)
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', endDrag)
+    window.addEventListener('pointercancel', endDrag)
     stage.addEventListener('dragstart', onDragStart)
 
     /*
@@ -710,22 +775,31 @@ export default function useFacesInteraction({
 
     return () => {
       navigationToken += 1
+      pendingPreparations.forEach((cancel) => cancel())
+      exitTween?.kill()
       if (controllerRef.current === controller) controllerRef.current = null
       if (import.meta.env.DEV) delete debug.__faces
       cancelAnimationFrame(refreshId)
       unsubscribe()
       stop()
-      if (explore) {
-        explore.removeEventListener('pointerenter', onEnter)
-        explore.removeEventListener('pointerleave', onLeave)
-        explore.removeEventListener('focus', onEnter)
-        explore.removeEventListener('blur', onLeave)
+      for (const link of links) {
+        link.removeEventListener('pointerenter', onEnter)
+        link.removeEventListener('pointerleave', onLeave)
+        link.removeEventListener('focus', onEnter)
+        link.removeEventListener('blur', onLeave)
+        link.removeAttribute('href')
+        link.tabIndex = -1
+        link.setAttribute('aria-disabled', 'true')
+        link.dataset.ready = 'false'
       }
+      ctaBar?.setAttribute('data-ready', 'false')
       if (pointerId >= 0 && stage.hasPointerCapture(pointerId)) stage.releasePointerCapture(pointerId)
       stage.removeEventListener('pointerdown', onPointerDown)
-      stage.removeEventListener('pointermove', onPointerMove)
-      stage.removeEventListener('pointerup', endDrag)
-      stage.removeEventListener('pointercancel', endDrag)
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', endDrag)
+      window.removeEventListener('pointercancel', endDrag)
+      stage.removeEventListener('click', onClick)
+      window.removeEventListener('portfolio-project-exit', onProjectExit)
       stage.removeEventListener('dragstart', onDragStart)
       stage.classList.remove('is-dragging')
       ctx.revert()
@@ -733,5 +807,5 @@ export default function useFacesInteraction({
       if (canWatchFrames) allVideos.forEach((video, i) => video.cancelVideoFrameCallback(frameHandles[i]))
       scene.dispose()
     }
-  }, [enabled, sectionRef, stageRef, canvasRef, onActiveChange, onNavigationCommit, controllerRef])
+  }, [enabled, sectionRef, stageRef, canvasRef, onActiveChange, onNavigationCommit, controllerRef, onOpenProject])
 }

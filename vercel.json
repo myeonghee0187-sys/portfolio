@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/projects/tchaikim", "destination": "/index.html" },
+    { "source": "/projects/tchaikim/", "destination": "/index.html" }
+  ]
+}

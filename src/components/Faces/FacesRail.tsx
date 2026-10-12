@@ -6,6 +6,8 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent,
+  type PointerEvent,
 } from 'react'
 import useMediaQuery from '../../hooks/useMediaQuery'
 import { FACE_PROJECTS, type FaceProject } from './facesData'
@@ -14,15 +16,32 @@ import { useAllFacesOpen } from '../AllFaces/allFacesStore'
 import { faceIndexById, type FacesNavigationController } from './facesNavigation'
 
 /** Mobile, touch, and reduced-motion Faces use measured native document/rail geometry. */
-const FacesRail = forwardRef<FacesNavigationController>(function FacesRail(_props, ref) {
+type FacesRailProps = { onOpenProject?: (projectId: string) => void }
+
+const FacesRail = forwardRef<FacesNavigationController, FacesRailProps>(function FacesRail({ onOpenProject }, ref) {
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const allFacesOpen = useAllFacesOpen()
   const railRef = useRef<HTMLOListElement>(null)
   const slideRefs = useRef<(HTMLLIElement | null)[]>([])
   const navigationToken = useRef(0)
+  const pendingPreparations = useRef(new Set<() => void>())
+  const exiting = useRef(false)
+  const gesture = useRef({ pointerId: -1, x: 0, y: 0, scrollLeft: 0, projectId: '', cancelled: false })
 
-  useEffect(() => () => {
-    navigationToken.current += 1
+  useEffect(() => {
+    const pending = pendingPreparations.current
+    const onProjectExit = (event: Event) => {
+      const projectId = (event as CustomEvent<{ projectId?: string }>).detail?.projectId
+      if (!FACE_PROJECTS.some((project) => project.id === projectId && project.detailPath)) return
+      exiting.current = true
+      if (railRef.current) railRef.current.dataset.exitingProject = projectId
+    }
+    window.addEventListener('portfolio-project-exit', onProjectExit)
+    return () => {
+      navigationToken.current += 1
+      pending.forEach((cancel) => cancel())
+      window.removeEventListener('portfolio-project-exit', onProjectExit)
+    }
   }, [])
 
   const prepareSlideFrame = useCallback((slide: HTMLLIElement, token: number) => new Promise<boolean>((resolve) => {
@@ -59,9 +78,11 @@ const FacesRail = forwardRef<FacesNavigationController>(function FacesRail(_prop
       settled = true
       clearTimeout(timeout)
       cleanup()
+      pendingPreparations.current.delete(cancel)
       if (pauseAfterPreparation && !activeVideo.paused) activeVideo.pause()
       resolve(prepared && token === navigationToken.current)
     }
+    const cancel = () => finish(false)
     const onReady = () => {
       if (activeVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) finish(true)
     }
@@ -73,11 +94,15 @@ const FacesRail = forwardRef<FacesNavigationController>(function FacesRail(_prop
     activeVideo.addEventListener('loadeddata', onReady, { once: true })
     activeVideo.addEventListener('canplay', onReady, { once: true })
     activeVideo.addEventListener('error', onError, { once: true })
+    pendingPreparations.current.add(cancel)
     if (activeVideo.paused) activeVideo.play().catch(() => {})
   }), [])
 
   useImperativeHandle(ref, () => ({
     navigateToFace: async (projectId) => {
+      pendingPreparations.current.forEach((cancel) => cancel())
+      exiting.current = false
+      if (railRef.current) delete railRef.current.dataset.exitingProject
       const index = faceIndexById(projectId)
       const rail = railRef.current
       const slide = slideRefs.current[index]
@@ -147,8 +172,54 @@ const FacesRail = forwardRef<FacesNavigationController>(function FacesRail(_prop
     },
   }), [prepareSlideFrame])
 
+  const onPointerDown = (event: PointerEvent<HTMLOListElement>) => {
+    if (!event.isPrimary || event.button !== 0) return
+    const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[data-project-id]') : null
+    gesture.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      scrollLeft: event.currentTarget.scrollLeft,
+      projectId: link?.dataset.projectId ?? '',
+      cancelled: false,
+    }
+  }
+  const trackGesture = (event: PointerEvent<HTMLOListElement>) => {
+    const down = gesture.current
+    if (event.pointerId !== down.pointerId) return
+    down.cancelled ||= event.type === 'pointercancel' ||
+      Math.hypot(event.clientX - down.x, event.clientY - down.y) >= 7 ||
+      Math.abs(event.currentTarget.scrollLeft - down.scrollLeft) >= 7
+  }
+  const onClick = (event: MouseEvent<HTMLOListElement>) => {
+    const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[data-project-id]') : null
+    if (!link || !event.currentTarget.contains(link)) return
+    const project = FACE_PROJECTS.find((candidate) => candidate.id === link.dataset.projectId)
+    const down = gesture.current
+    const invalidGesture = event.detail !== 0 && (down.cancelled || down.projectId !== project?.id ||
+      Math.abs(event.currentTarget.scrollLeft - down.scrollLeft) >= 7)
+    if (!project?.detailPath || exiting.current || allFacesOpen || invalidGesture) {
+      event.preventDefault()
+      return
+    }
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    if (onOpenProject) {
+      event.preventDefault()
+      onOpenProject(project.id)
+    }
+  }
+
   return (
-    <ol ref={railRef} className="faces__rail">
+    <ol
+      ref={railRef}
+      className="faces__rail"
+      onPointerDownCapture={onPointerDown}
+      onPointerMoveCapture={trackGesture}
+      onPointerUpCapture={trackGesture}
+      onPointerCancelCapture={trackGesture}
+      onClick={onClick}
+      onDragStart={(event) => event.preventDefault()}
+    >
       {FACE_PROJECTS.map((project, index) => (
         <RailSlide
           key={project.id}
@@ -183,21 +254,30 @@ const RailSlide = forwardRef<HTMLLIElement, { project: FaceProject; canPlay: boo
     return (
       <li ref={setRefs} className="faces__slide" style={{ '--aspect': project.aspect } as CSSProperties} data-project-id={project.id}>
         {/* #t keeps Safari's first frame visible before playback begins. */}
-        <LoopVideo className="faces__visual" src={`${project.media}#t=0.001`} playing={canPlay && inView} />
+        {project.detailPath ? (
+          <a className="faces__visual-link" href={project.detailPath} data-project-id={project.id} aria-label={`Explore ${project.title} project`} draggable={false}>
+            <LoopVideo className="faces__visual" src={`${project.media}#t=0.001`} playing={canPlay && inView} />
+          </a>
+        ) : (
+          <LoopVideo className="faces__visual" src={`${project.media}#t=0.001`} playing={canPlay && inView} />
+        )}
         <div className="faces__slide-meta">
           <p className="faces__meta-index">{project.index}</p>
           <h3 className="faces__meta-title" data-face-heading={project.id} tabIndex={-1}>{project.title}</h3>
           <p className="faces__meta-category">{project.category}</p>
-          <button
-            type="button"
+          <a
+            href={project.detailPath}
+            data-project-id={project.id}
             className="faces__cta faces__cta--explore"
             aria-label={`Explore ${project.title} project`}
             title={`Explore ${project.title} project`}
-            aria-disabled="true"
+            aria-disabled={project.detailPath ? undefined : true}
+            tabIndex={project.detailPath ? undefined : -1}
+            draggable={false}
           >
             <span>EXPLORE PROJECT</span>
             <span className="faces__cta-arrow" aria-hidden="true">&#8599;</span>
-          </button>
+          </a>
         </div>
       </li>
     )

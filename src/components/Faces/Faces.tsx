@@ -11,6 +11,7 @@ type FacesProps = {
   interactive: boolean
   /** Intro가 끝났는지. About과 같은 이유로 측정은 스크롤바가 생긴 뒤에 한다. */
   ready: boolean
+  onOpenProject?: (projectId: string) => void
 }
 
 /**
@@ -111,7 +112,7 @@ function FacesMeta({ active, navigationRevision }: { active: number; navigationR
  *   세로 scroll = page 진행. pin 동안 project 전체(FACE_PROJECTS)를 한 바퀴 돌고 다음으로 넘어간다.
  *   drag        = 자유 탐색. 몇 바퀴든 돈다.
  */
-const Faces = forwardRef<FacesNavigationController, FacesProps>(function Faces({ interactive, ready }, ref) {
+const Faces = forwardRef<FacesNavigationController, FacesProps>(function Faces({ interactive, ready, onOpenProject }, ref) {
   const sectionRef = useRef<HTMLElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -133,6 +134,7 @@ const Faces = forwardRef<FacesNavigationController, FacesProps>(function Faces({
     onActiveChange: setActive,
     onNavigationCommit: commitNavigation,
     controllerRef: interactiveControllerRef,
+    onOpenProject,
   })
 
   useImperativeHandle(ref, () => ({
@@ -158,22 +160,26 @@ const Faces = forwardRef<FacesNavigationController, FacesProps>(function Faces({
         {interactive ? (
           <div className="faces__scene">
             <canvas ref={canvasRef} className="faces__canvas" aria-hidden="true" />
-            {/*
-              Future detail-page affordance. It stays focusable and explicitly
-              unavailable until a project detail route exists.
-            */}
+            {/* Both links follow the displayed WebGL project, not delayed metadata. */}
+            <a
+              className="faces__display-link"
+              aria-label={`Explore ${FACE_PROJECTS[0].title} project`}
+              aria-disabled="true"
+              tabIndex={-1}
+              draggable={false}
+            />
             <div className="faces__display-cta" data-ready="false">
-              <button
-                type="button"
+              <a
                 className="faces__cta faces__cta--explore"
                 aria-label={`Explore ${FACE_PROJECTS[0].title} project`}
                 title={`Explore ${FACE_PROJECTS[0].title} project`}
                 aria-disabled="true"
                 tabIndex={-1}
+                draggable={false}
               >
                 <span>EXPLORE PROJECT</span>
                 <span className="faces__cta-arrow" aria-hidden="true">&#8599;</span>
-              </button>
+              </a>
             </div>
 
             {/* 화면에는 WebGL plane만 보인다. 프로젝트 목록 자체는 DOM에 그대로 있다. */}
@@ -199,7 +205,7 @@ const Faces = forwardRef<FacesNavigationController, FacesProps>(function Faces({
             </div>
           </div>
         ) : (
-          <FacesRail ref={staticControllerRef} />
+          <FacesRail ref={staticControllerRef} onOpenProject={onOpenProject} />
         )}
       </div>
     </section>
