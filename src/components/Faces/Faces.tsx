@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { FACE_PROJECTS } from './facesData'
 import FacesRail from './FacesRail'
 import useFacesInteraction from './useFacesInteraction'
+import type { FacesNavigationController } from './facesNavigation'
 import './Faces.css'
 
 type FacesProps = {
@@ -17,9 +18,25 @@ type FacesProps = {
  * 바뀔 때는 이전 글자가 먼저 빠지고(opacity 0, -8px) 그 다음에 새 글자가 들어온다(+8px -> 0).
  * 두 제목이 한 자리에서 겹쳐 읽히는 순간이 없다.
  */
-function FacesMeta({ active }: { active: number }) {
+function FacesMeta({ active, navigationRevision }: { active: number; navigationRevision: number }) {
   const ref = useRef<HTMLDivElement>(null)
   const [shown, setShown] = useState(active)
+  const tweenRef = useRef<gsap.core.Tween | null>(null)
+  const committedRevision = useRef(navigationRevision)
+  const skipAnimation = useRef(false)
+  const immediateShown = useRef<number | null>(null)
+
+  // Overlay navigation commits the requested copy immediately. The opaque
+  // overlay hides the swap, and the revision cancels any scroll-owned tween.
+  useLayoutEffect(() => {
+    if (navigationRevision === committedRevision.current) return
+    committedRevision.current = navigationRevision
+    skipAnimation.current = true
+    immediateShown.current = active
+    tweenRef.current?.kill()
+    setShown(active)
+    gsap.set(ref.current, { autoAlpha: 1, y: 0 })
+  }, [active, navigationRevision])
 
   // 새 글자가 자리에 들어온다. 첫 렌더에서는 그냥 보인다.
   const isFirst = useRef(true)
@@ -28,13 +45,20 @@ function FacesMeta({ active }: { active: number }) {
       isFirst.current = false
       return
     }
+    if (immediateShown.current === shown) {
+      immediateShown.current = null
+      gsap.set(ref.current, { autoAlpha: 1, y: 0 })
+      return
+    }
     const tween = gsap.fromTo(
       ref.current,
       { autoAlpha: 0, y: 8 },
       { autoAlpha: 1, y: 0, duration: 0.24, ease: 'power2.out' },
     )
+    tweenRef.current = tween
     return () => {
       tween.kill()
+      if (tweenRef.current === tween) tweenRef.current = null
     }
   }, [shown])
 
@@ -42,6 +66,10 @@ function FacesMeta({ active }: { active: number }) {
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    if (navigationRevision !== committedRevision.current || skipAnimation.current) {
+      skipAnimation.current = false
+      return
+    }
     const tween =
       active === shown
         ? // 빠지는 도중에 원래 project로 돌아온 경우. 그대로 다시 보이게만 한다.
@@ -53,16 +81,18 @@ function FacesMeta({ active }: { active: number }) {
             ease: 'power1.in',
             onComplete: () => setShown(active),
           })
+    tweenRef.current = tween
     return () => {
       tween.kill()
+      if (tweenRef.current === tween) tweenRef.current = null
     }
-  }, [active, shown])
+  }, [active, shown, navigationRevision])
 
   const project = FACE_PROJECTS[shown]
 
   return (
     // 스크린리더는 아래 목록을 읽는다. 이 block은 시각용이다.
-    <div className="faces__meta" aria-hidden="true">
+    <div className="faces__meta" aria-hidden="true" data-shown-project={project.id}>
       <div ref={ref} className="faces__meta-block">
         <p className="faces__meta-index">{project.index}</p>
         <p className="faces__meta-title">{project.title}</p>
@@ -81,11 +111,19 @@ function FacesMeta({ active }: { active: number }) {
  *   세로 scroll = page 진행. pin 동안 project 전체(FACE_PROJECTS)를 한 바퀴 돌고 다음으로 넘어간다.
  *   drag        = 자유 탐색. 몇 바퀴든 돈다.
  */
-export default function Faces({ interactive, ready }: FacesProps) {
+const Faces = forwardRef<FacesNavigationController, FacesProps>(function Faces({ interactive, ready }, ref) {
   const sectionRef = useRef<HTMLElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const interactiveControllerRef = useRef<FacesNavigationController | null>(null)
+  const staticControllerRef = useRef<FacesNavigationController | null>(null)
   const [active, setActive] = useState(0)
+  const [navigationRevision, setNavigationRevision] = useState(0)
+
+  const commitNavigation = useCallback((index: number) => {
+    setActive(index)
+    setNavigationRevision((revision) => revision + 1)
+  }, [])
 
   useFacesInteraction({
     enabled: interactive && ready,
@@ -93,7 +131,16 @@ export default function Faces({ interactive, ready }: FacesProps) {
     stageRef,
     canvasRef,
     onActiveChange: setActive,
+    onNavigationCommit: commitNavigation,
+    controllerRef: interactiveControllerRef,
   })
+
+  useImperativeHandle(ref, () => ({
+    navigateToFace: (projectId: string) => {
+      const controller = interactive ? interactiveControllerRef.current : staticControllerRef.current
+      return controller?.navigateToFace(projectId) ?? Promise.resolve({ status: 'unavailable', focusTarget: null })
+    },
+  }), [interactive])
 
   /*
    * section / stage는 두 모드에서 같은 element로 남긴다.
@@ -112,54 +159,28 @@ export default function Faces({ interactive, ready }: FacesProps) {
           <div className="faces__scene">
             <canvas ref={canvasRef} className="faces__canvas" aria-hidden="true" />
             {/*
-              Watch display 위쪽 safe area의 작은 text CTA. 영상 자체는 visual일 뿐 눌리지 않는다(drag 영역).
-                LIVE SITE ↗    완성된 결과물(새 탭)
-                CASE STUDY ↗   실제 Case Study 경로가 있는 project에만 나타난다(지금은 없다 — 가짜 링크를 만들지 않는다)
-              위치 / 폭은 매 frame display와 같게, href / 이름은 display가 채우고 있는 project로 useFacesInteraction이
-              직접 쓴다(처음 값은 첫 project). project 하나가 display에 자리를 잡았을 때만 눌리고 보인다.
-              짧게 누르면 click, 7px 넘게 움직이면 drag다.
+              Future detail-page affordance. It stays focusable and explicitly
+              unavailable until a project detail route exists.
             */}
             <div className="faces__display-cta" data-ready="false">
-              <a
-                className="faces__cta faces__cta--live"
-                href={FACE_PROJECTS[0].liveUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`${FACE_PROJECTS[0].title} 라이브 사이트 새 창에서 보기`}
+              <button
+                type="button"
+                className="faces__cta faces__cta--explore"
+                aria-label={`Explore ${FACE_PROJECTS[0].title} project`}
+                title={`Explore ${FACE_PROJECTS[0].title} project`}
                 aria-disabled="true"
                 tabIndex={-1}
-                draggable={false}
               >
-                <span>LIVE SITE</span>
+                <span>EXPLORE PROJECT</span>
                 <span className="faces__cta-arrow" aria-hidden="true">&#8599;</span>
-              </a>
-              {/*
-                CASE STUDY는 caseStudyUrl이 있는 project에서만 보인다(TCHAIKIM / JADUYA). 없는 project(F45)에서는
-                hidden(display: none)이라 자리도 남지 않고, LIVE SITE 하나만 가운데에 선다.
-              */}
-              {FACE_PROJECTS.some((p) => p.caseStudyUrl) && (
-                <a
-                  className="faces__cta faces__cta--case"
-                  href={FACE_PROJECTS[0].caseStudyUrl ?? undefined}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`${FACE_PROJECTS[0].title} 케이스 스터디 새 창에서 보기`}
-                  aria-disabled="true"
-                  tabIndex={-1}
-                  draggable={false}
-                  hidden={!FACE_PROJECTS[0].caseStudyUrl}
-                >
-                  <span>CASE STUDY</span>
-                  <span className="faces__cta-arrow" aria-hidden="true">&#8599;</span>
-                </a>
-              )}
+              </button>
             </div>
 
             {/* 화면에는 WebGL plane만 보인다. 프로젝트 목록 자체는 DOM에 그대로 있다. */}
             <ol className="faces__sr">
               {FACE_PROJECTS.map((project) => (
                 <li key={project.id}>
-                  <h3>
+                  <h3 data-face-heading={project.id} tabIndex={-1}>
                     {project.index} {project.title}
                   </h3>
                   <p>{project.category}</p>
@@ -173,14 +194,16 @@ export default function Faces({ interactive, ready }: FacesProps) {
               여기에는 그 크기만큼의 빈 자리만 있다.
             */}
             <div className="faces__footer">
-              <FacesMeta active={active} />
+              <FacesMeta active={active} navigationRevision={navigationRevision} />
               <div className="faces__crown-slot" aria-hidden="true" />
             </div>
           </div>
         ) : (
-          <FacesRail />
+          <FacesRail ref={staticControllerRef} />
         )}
       </div>
     </section>
   )
-}
+})
+
+export default Faces

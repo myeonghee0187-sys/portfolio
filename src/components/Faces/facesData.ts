@@ -18,7 +18,7 @@ export type FaceProject = {
   /** 프로젝트 영상. 소리는 쓰지 않는다(muted). */
   media: string
   liveUrl: string
-  /** Case Study(Figma Deck) 주소. 없는 project는 CASE STUDY CTA를 렌더링하지 않는다. */
+  /** 향후 상세 화면에서 재사용할 Case Study(Figma Deck) 주소. */
   caseStudyUrl?: string
   /**
    * 영상의 원본 비율(가로 / 세로). loadedmetadata의 videoWidth / videoHeight로 다시 확인하지만,

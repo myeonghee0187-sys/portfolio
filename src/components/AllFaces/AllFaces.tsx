@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import gsap from 'gsap'
 import { FACE_PROJECTS } from '../Faces/facesData'
@@ -39,13 +39,13 @@ type AllFacesProps = {
   open: boolean
   /** 닫기(CLOSE / ESC)를 요청한다. 부모가 open을 false로 바꾼다. */
   onRequestClose: () => void
-  /** 닫힘 motion이 끝났다. 부모가 이때 unmount한다. */
-  onClosed: () => void
+  /** 닫힘 motion이 끝났다. 부모가 unmount한 뒤 전달한 target으로 focus를 복원한다. */
+  onClosed: (returnFocus: HTMLElement | null) => void
   /**
    * project를 골랐을 때(click / Enter). Case Study 화면이 아직 없어서 지금은 연결하지 않는다 —
    * 가짜 상세 화면을 만들지 않는다.
    */
-  onProjectSelect?: (projectId: string) => void
+  onProjectSelect?: (projectId: string) => Promise<boolean>
 }
 
 /** 그룹 중심에서 dial 쪽(orbit 바깥쪽)을 향한 ENTER_DISTANCE 길이의 출발 offset. */
@@ -61,10 +61,14 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
   const closeRef = useRef<HTMLButtonElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
   const orbitRef = useRef<HTMLDivElement>(null)
-  const itemRefs = useRef<(HTMLElement | null)[]>([])
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
   // 연 button(Crown). effect가 아니라 첫 render 때 잡는다 — effect는 두 번 돌 수 있고, 그때는 이미 CLOSE에 focus가 있다.
   const returnFocus = useRef<HTMLElement | null>(document.activeElement as HTMLElement | null)
   const [hovered, setHovered] = useState(-1)
+  const [selecting, setSelecting] = useState(false)
+  const selectionStarted = useRef(false)
+  const openingTween = useRef<gsap.core.Timeline | null>(null)
+  const selectionTween = useRef<gsap.core.Tween | null>(null)
   /*
    * 이번에 열린 동안의 구도. 구도(A / B / C)는 여는 동작에서 이미 정해졌고(allFacesStore), 여기서는 읽기만 한다.
    * 데스크톱 / 모바일 좌표는 열 때 한 번 고른다 — 열려 있는 동안 창 크기가 바뀌어도 dial이 다른 자리로 뛰지 않는다.
@@ -81,6 +85,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
     closeRef.current?.focus({ preventScroll: true })
     const items = itemRefs.current.filter(Boolean) as HTMLElement[]
     const tl = gsap.timeline()
+    openingTween.current = tl
     tl.fromTo(rootRef.current, { opacity: 0 }, { opacity: 1, duration: reduced ? 0.3 : 0.45, ease: 'power2.out' }, 0)
     tl.fromTo(barRef.current, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power1.out' }, reduced ? 0 : 0.15)
     tl.fromTo(orbitRef.current, { opacity: 0 }, { opacity: 1, duration: reduced ? 0.3 : 0.9, ease: 'power2.out' }, 0.05)
@@ -104,6 +109,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
     tl.set(items, { clearProps: 'opacity,transform' })
     return () => {
       tl.kill()
+      if (openingTween.current === tl) openingTween.current = null
     }
   }, [projects, reduced, scene])
 
@@ -118,6 +124,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
     if (open) {
       // 닫히는 도중에 다시 열렸다. 지금 자리에서 그대로 되돌아온다.
       if (closingStarted.current) {
+        closingStarted.current = false
         const back = gsap.timeline()
         back.to(rootRef.current, { opacity: 1, duration: 0.3, ease: 'power2.out' }, 0)
         back.to(items, { scale: 1, duration: 0.3, ease: 'power2.out' }, 0)
@@ -128,15 +135,14 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
       return
     }
     closingStarted.current = true
+    const closeDuration = reduced ? 0.08 : 0.45
     const tl = gsap.timeline({
       onComplete: () => {
-        const target = returnFocus.current
-        if (target && target.isConnected) target.focus({ preventScroll: true })
-        onClosedRef.current()
+        onClosedRef.current(selectionStarted.current ? null : returnFocus.current)
       },
     })
-    tl.to(items, { scale: reduced ? 1 : 0.97, duration: 0.45, ease: 'power2.in' }, 0)
-    tl.to(rootRef.current, { opacity: 0, duration: 0.45, ease: 'power2.in' }, 0)
+    tl.to(items, { scale: reduced ? 1 : 0.97, duration: closeDuration, ease: reduced ? 'none' : 'power2.in' }, 0)
+    tl.to(rootRef.current, { opacity: 0, duration: closeDuration, ease: reduced ? 'none' : 'power2.in' }, 0)
     return () => {
       tl.kill()
     }
@@ -150,34 +156,79 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
     selectRef.current = onProjectSelect
   })
 
+  const requestClose = useCallback(() => {
+    if (!open || closingStarted.current || selectionStarted.current) return
+    closingStarted.current = true
+    requestCloseRef.current()
+  }, [open])
+
+  const selectProject = useCallback(async (projectId: string) => {
+    if (!open || closingStarted.current || selectionStarted.current || !selectRef.current) return
+    const selectedIndex = projects.findIndex((project) => project.id === projectId)
+    selectionStarted.current = true
+    setSelecting(true)
+    setHovered(-1)
+    openingTween.current?.kill()
+    gsap.set(rootRef.current, { opacity: 1 })
+    const content = [barRef.current, orbitRef.current, ...itemRefs.current].filter(Boolean)
+    selectionTween.current?.kill()
+    selectionTween.current = gsap.to(content, {
+      autoAlpha: 0,
+      scale: reduced ? 1 : 0.985,
+      duration: reduced ? 0.05 : 0.22,
+      ease: 'power2.in',
+    })
+    let success = false
+    try {
+      success = await selectRef.current(projectId)
+    } catch {
+      success = false
+    }
+    if (success) return
+
+    // Readiness exhausted while the opaque background protected the page.
+    // Restore this existing selector without inventing an error surface; the
+    // user can retry the dial or use CLOSE/Escape normally.
+    selectionTween.current?.kill()
+    selectionTween.current = gsap.to(content, {
+      autoAlpha: 1,
+      scale: 1,
+      duration: reduced ? 0.05 : 0.22,
+      ease: reduced ? 'none' : 'power2.out',
+      onComplete: () => {
+        // A failed selection can interrupt the opening offsets. Return every
+        // selector element to its CSS-owned idle/hover composition, including
+        // the projects' baseline .78 opacity, instead of leaving GSAP inline
+        // opacity/visibility/transform values behind.
+        gsap.set(content, { clearProps: 'opacity,visibility,transform' })
+        selectionTween.current = null
+        selectionStarted.current = false
+        setSelecting(false)
+        requestAnimationFrame(() => itemRefs.current[selectedIndex]?.focus({ preventScroll: true }))
+      },
+    })
+  }, [open, projects, reduced])
+
+  useEffect(() => () => {
+    selectionTween.current?.kill()
+  }, [])
+
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
-    const itemIndexOf = (target: EventTarget | null) =>
-      itemRefs.current.findIndex((el) => el && target instanceof Node && el.contains(target))
-
-    /* ESC 닫기, Enter로 project 고르기, Tab은 이 화면 안에서만 돈다. 뒤 page scroll 키는 막는다. */
+    /* ESC 닫기, Tab trap, 뒤 page scroll 키 차단. Native buttons own Enter / Space. */
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
-        requestCloseRef.current()
+        requestClose()
         return
       }
       if (SCROLL_KEYS.has(event.key)) {
         event.preventDefault()
         return
       }
-      if (event.key === ' ' && !(event.target as HTMLElement).matches('button')) {
-        event.preventDefault()
-        return
-      }
-      if (event.key === 'Enter') {
-        const i = itemIndexOf(event.target)
-        if (i >= 0) selectRef.current?.(projects[i].id)
-        return
-      }
       if (event.key !== 'Tab') return
-      const focusable = [...root.querySelectorAll<HTMLElement>('button, [tabindex="0"]')]
+      const focusable = [...root.querySelectorAll<HTMLElement>('button:not(:disabled):not([aria-disabled="true"]), [tabindex="0"]:not([aria-disabled="true"])')]
       if (!focusable.length) return
       const firstEl = focusable[0]
       const lastEl = focusable[focusable.length - 1]
@@ -200,7 +251,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
       document.removeEventListener('touchmove', block, { capture: true })
       document.removeEventListener('keydown', onKeyDown)
     }
-  }, [projects])
+  }, [projects, requestClose])
 
   return createPortal(
     <div
@@ -210,6 +261,7 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
       aria-modal="true"
       aria-labelledby="all-faces-title"
       data-selectable={onProjectSelect ? 'true' : undefined}
+      data-selecting={selecting ? 'true' : undefined}
       data-preset={scene.key}
     >
       <div className="all-faces__stage" data-hovered={hovered >= 0 ? 'true' : undefined}>
@@ -231,43 +283,44 @@ export default function AllFaces({ open, onRequestClose, onClosed, onProjectSele
           const [line1, line2] = DIAL_LINES[project.id] ?? [project.category, '']
           const style = { '--ox': offset.x, '--oy': offset.y } as CSSProperties
           return (
-            <figure
+            <button
+              type="button"
               key={project.id}
               ref={(el) => {
                 itemRefs.current[i] = el
               }}
               className={`all-faces__project${hovered === i ? ' is-hovered' : ''}`}
               style={style}
-              tabIndex={0}
-              aria-label={`FACE ${project.index}, ${project.title}, ${project.category}`}
+              aria-label={`View ${project.title} in Faces`}
+              disabled={selecting || !open}
               onPointerEnter={(e) => e.pointerType === 'mouse' && setHovered(i)}
               onPointerLeave={() => setHovered((h) => (h === i ? -1 : h))}
               onFocus={() => setHovered(i)}
               onBlur={() => setHovered((h) => (h === i ? -1 : h))}
-              onClick={() => onProjectSelect?.(project.id)}
+              onClick={() => void selectProject(project.id)}
             >
               {/*
                 project dial. 층: 몸체(Carbon / Titanium dark) -> 고정 외곽선 -> 옅은 눈금 rim -> 글자. 모두 돌지 않는다.
               */}
-              <div className="all-faces__dial" aria-hidden="true">
+              <span className="all-faces__dial" aria-hidden="true">
                 <span className="all-faces__rim" />
-                <div className="all-faces__dial-content">
+                <span className="all-faces__dial-content">
                   <span className="all-faces__face">FACE {project.index}</span>
                   <span className="all-faces__name">{project.title}</span>
                   <span className="all-faces__desc">
                     <span>{line1}</span>
                     {line2 && <span>{line2}</span>}
                   </span>
-                </div>
-              </div>
-            </figure>
+                </span>
+              </span>
+            </button>
           )
         })}
       </div>
 
       {/* 위쪽 bar에는 CLOSE만 있다 — title은 cluster 가운데의 ALL FACES 하나다. */}
       <div ref={barRef} className="all-faces__bar">
-        <button ref={closeRef} type="button" className="all-faces__close" onClick={onRequestClose}>
+        <button ref={closeRef} type="button" className="all-faces__close" disabled={selecting || !open} onClick={requestClose}>
           CLOSE <span aria-hidden="true">&times;</span>
         </button>
       </div>

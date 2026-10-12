@@ -1,4 +1,4 @@
-import { useLayoutEffect, type RefObject } from 'react'
+import { useLayoutEffect, type MutableRefObject, type RefObject } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { FACE_PROJECTS } from './facesData'
@@ -6,6 +6,7 @@ import FacesScene, { type FacesBox, type FacesWatchGeometry } from './facesScene
 import { sharedAmbient } from '../../hooks/sharedAmbient'
 import { HANDOFF_VIEWPORTS, JOURNEY_VIEWPORTS, PANEL_TRIGGER_ID, panelTiming } from '../../hooks/panelTiming'
 import { isAllFacesOpen, subscribeAllFaces } from '../AllFaces/allFacesStore'
+import { faceIndexById, faceTargetScroll, type FacesNavigationController } from './facesNavigation'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -94,6 +95,9 @@ type FacesInteractionOptions = {
   canvasRef: RefObject<HTMLCanvasElement | null>
   /** active project가 실제로 바뀔 때만 불린다(metadata 전용). scroll 프레임마다 부르지 않는다. */
   onActiveChange: (index: number) => void
+  /** ALL FACES navigation만 metadata를 즉시 commit한다. */
+  onNavigationCommit: (index: number) => void
+  controllerRef: MutableRefObject<FacesNavigationController | null>
 }
 
 /**
@@ -119,6 +123,8 @@ export default function useFacesInteraction({
   stageRef,
   canvasRef,
   onActiveChange,
+  onNavigationCommit,
+  controllerRef,
 }: FacesInteractionOptions) {
   useLayoutEffect(() => {
     const section = sectionRef.current
@@ -135,23 +141,21 @@ export default function useFacesInteraction({
     let pointerId = -1
     let lastX = 0
     let downX = 0
-    let downY = 0
     let dragging = false
-    let suppressClick = false
     let pressedAllowed = false
     let hovering = false
     let pressing = false
     let interaction = 0
-    /* Watch display 위쪽의 text CTA(LIVE SITE / CASE STUDY). 영상 자체는 눌리지 않는다. */
+    /* Watch display 위쪽의 future detail-page affordance. */
     const ctaBar = stage.querySelector<HTMLElement>('.faces__display-cta')
-    const link = stage.querySelector<HTMLAnchorElement>('.faces__cta--live')
-    const caseLink = stage.querySelector<HTMLAnchorElement>('.faces__cta--case')
+    const explore = stage.querySelector<HTMLButtonElement>('.faces__cta--explore')
     const viewport = section.closest<HTMLElement>('.panels__viewport')
     const panelsSection = section.closest<HTMLElement>('.panels')
     const target = () => scrollOffset + dragOffset
 
     let stageWidth = 1
     let loopWidth = 1
+    let geometryRevision = 0
     let trigger: ScrollTrigger | undefined
 
     /* ---------- 측정 (refresh 때만) ---------- */
@@ -163,6 +167,7 @@ export default function useFacesInteraction({
       scene.resize(rect.width, rect.height, Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO))
       scene.layout(rect.height * PLANE_HEIGHT_RATIO, rect.width * GAP_RATIO)
       loopWidth = scene.loopWidth
+      geometryRevision += 1
       lastKey = ''
       // 화면 크기(또는 영상 비율)가 바뀌어도 drag로 옮겨 둔 위상은 그대로 둔다.
       if (oldLoop > 1 && oldLoop !== loopWidth) {
@@ -228,14 +233,14 @@ export default function useFacesInteraction({
 
     /* ---------- 영상 재생: 화면 근처에 있는 것만 ---------- */
 
-    /** display가 지금 채우고 있는 project(display 띠 위치를 반올림한 자리). 링크는 이 project로 간다. */
+    /** display가 지금 채우고 있는 project(display 띠 위치를 반올림한 자리). */
     const shownProject = () => {
       const n = FACE_PROJECTS.length
       return ((Math.round(scene.displaySlot) % n) + n) % n
     }
-    const canActivate = () => Boolean(
+    const presentationReady = () => Boolean(
       trigger?.isActive && window.scrollY <= trigger.start + panelTiming.facesDistance &&
-      panelTiming.handoff < 0.001 && !dragging && !isAllFacesOpen() &&
+      panelTiming.handoff < 0.001 && !dragging &&
       Math.abs(scene.displaySlot - Math.round(scene.displaySlot)) < LINK_SLOT &&
       Math.abs(target() - current) / stageWidth < LINK_SETTLE &&
       Math.abs(trigger.getVelocity()) < LINK_MAX_SPEED
@@ -243,33 +248,19 @@ export default function useFacesInteraction({
     let lastReady: boolean | undefined
     let lastShown = -1
     const updateLink = () => {
-      const ready = canActivate()
-      if (link && lastReady !== ready) {
-        for (const a of [link, caseLink]) {
-          if (!a) continue
-          a.setAttribute('aria-disabled', String(!ready))
-          a.tabIndex = ready ? 0 : -1
-        }
+      const ready = presentationReady()
+      if (explore && lastReady !== ready) {
+        explore.tabIndex = ready ? 0 : -1
         ctaBar?.setAttribute('data-ready', String(ready))
         lastReady = ready
       }
       const shown = shownProject()
-      if (link && shown !== lastShown) {
-        link.href = FACE_PROJECTS[shown].liveUrl
-        link.setAttribute('aria-label', `${FACE_PROJECTS[shown].title} 라이브 사이트 새 창에서 보기`)
+      if (explore && shown !== lastShown) {
+        const label = `Explore ${FACE_PROJECTS[shown].title} project`
+        explore.setAttribute('aria-label', label)
+        explore.title = label
         // project별 CTA 대비 보정(JADUYA의 밝은 영상 위에서만 scrim을 조금 진하게, Faces.css).
         if (ctaBar) ctaBar.dataset.projectId = FACE_PROJECTS[shown].id
-        if (caseLink) {
-          // Case Study 주소가 있는 project에서만 보인다. 없는 project에는 빈 자리 / 비활성 링크를 두지 않는다.
-          const url = FACE_PROJECTS[shown].caseStudyUrl
-          caseLink.hidden = !url
-          if (url) {
-            caseLink.href = url
-            caseLink.setAttribute('aria-label', `${FACE_PROJECTS[shown].title} 케이스 스터디 새 창에서 보기`)
-          } else {
-            caseLink.removeAttribute('href')
-          }
-        }
         lastShown = shown
       }
       if (import.meta.env.DEV) {
@@ -322,7 +313,7 @@ export default function useFacesInteraction({
 
       const t = target()
       dragCurrent += (dragOffset - dragCurrent) * (1 - (1 - EASE) ** frames)
-      const interactionTarget = canActivate() ? (pressing ? -1 : hovering ? 1 : 0) : 0
+      const interactionTarget = presentationReady() ? (pressing ? -1 : hovering ? 1 : 0) : 0
       interaction += (interactionTarget - interaction) * (1 - 0.55 ** frames)
       current += (t - current) * (1 - (1 - EASE) ** frames)
       if (Math.abs(t - current) < 0.05) current = t
@@ -451,6 +442,176 @@ export default function useFacesInteraction({
     measure()
     current = target()
 
+    /* ---------- ALL FACES -> FACES navigation ---------- */
+
+    let navigationToken = 0
+    const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    const focusTargetFor = (projectId: string) =>
+      stage.querySelector<HTMLElement>(`[data-face-heading="${CSS.escape(projectId)}"]`)
+
+    const waitForOpaqueOverlay = async (token: number) => {
+      const deadline = performance.now() + 900
+      while (token === navigationToken && performance.now() < deadline) {
+        const overlay = document.querySelector<HTMLElement>('.all-faces')
+        if (!overlay || Number.parseFloat(getComputedStyle(overlay).opacity) >= 0.99) return true
+        await nextFrame()
+      }
+      return token === navigationToken
+    }
+
+    const prepareSelectedFrame = (index: number, token: number) => new Promise<boolean>((resolve) => {
+      const loop = scene.loops[index]
+      const video = loop.current
+      loop.preload()
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        resolve(token === navigationToken)
+        return
+      }
+      let settled = false
+      const finish = (prepared: boolean) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        video.removeEventListener('loadeddata', onReady)
+        video.removeEventListener('canplay', onReady)
+        video.removeEventListener('error', onError)
+        resolve(prepared && token === navigationToken)
+      }
+      const onReady = () => {
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) finish(true)
+      }
+      const onError = () => finish(false)
+      const timeout = window.setTimeout(
+        () => finish(video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA),
+        700,
+      )
+      video.addEventListener('loadeddata', onReady, { once: true })
+      video.addEventListener('canplay', onReady, { once: true })
+      video.addEventListener('error', onError, { once: true })
+    })
+
+    const cancelPointerInteraction = () => {
+      if (pointerId >= 0 && stage.hasPointerCapture(pointerId)) stage.releasePointerCapture(pointerId)
+      pointerId = -1
+      dragging = false
+      pressing = false
+      pressedAllowed = false
+      stage.classList.remove('is-dragging')
+    }
+
+    const renderCommittedProject = (index: number) => {
+      active = index
+      onActiveChange(index)
+      onNavigationCommit(index)
+      const watch = watchGeometry()
+      scene.render({
+        position: current,
+        bend: 0,
+        velocity: 0,
+        speed: 0,
+        watch,
+        ambient: ambientState(),
+        interaction: 0,
+      })
+      interaction = 0
+      lastKey = ''
+      videoDirty = false
+      lastShown = shownProject()
+      if (ctaBar) {
+        ctaBar.dataset.projectId = FACE_PROJECTS[index].id
+        ctaBar.setAttribute('data-ready', 'true')
+      }
+      if (explore) {
+        const label = `Explore ${FACE_PROJECTS[index].title} project`
+        explore.setAttribute('aria-label', label)
+        explore.title = label
+        explore.tabIndex = 0
+      }
+      lastReady = true
+    }
+
+    const controller: FacesNavigationController = {
+      navigateToFace: async (projectId) => {
+        const index = faceIndexById(projectId)
+        const focusTarget = focusTargetFor(projectId)
+        const token = ++navigationToken
+        if (index < 0 || !trigger || !focusTarget || !(await waitForOpaqueOverlay(token)) || token !== navigationToken) {
+          return { status: 'unavailable', focusTarget: null }
+        }
+
+        const scroll = window.scrollY
+        const inFacesRange = trigger.isActive && scroll >= trigger.start && scroll <= trigger.start + panelTiming.facesDistance
+        const metadataMatches = stage.querySelector<HTMLElement>('.faces__meta')?.dataset.shownProject === projectId
+        const handoffTrigger = ScrollTrigger.getById('faces-journey-handoff')
+        const handoffRestored = panelTiming.handoff < 0.001 && (handoffTrigger?.animation?.progress() ?? 0) < 0.001
+        const sameProject = inFacesRange && active === index && shownProject() === index && metadataMatches && handoffRestored
+
+        // Decode an existing frame before changing document scroll, rail state,
+        // or metadata. A failed attempt therefore leaves the origin intact and
+        // cannot become a false "unchanged" success on App's next retry.
+        if (!(await prepareSelectedFrame(index, token)) || token !== navigationToken) {
+          return { status: 'unavailable', focusTarget: token === navigationToken ? focusTarget : null }
+        }
+
+        if (sameProject) {
+          // Stop an unfinished ease without changing the selected image or page position.
+          dragOffset = current - scrollOffset
+          dragCurrent = dragOffset
+          renderCommittedProject(index)
+          return { status: 'unchanged', focusTarget }
+        }
+
+        cancelPointerInteraction()
+        let committedGeometry = -1
+        const commitAtCurrentGeometry = () => {
+          if (token !== navigationToken || !trigger) return false
+          const requestedScroll = faceTargetScroll(
+            index,
+            trigger.start,
+            entryHold,
+            panelTiming.facesDistance,
+            loopWidth,
+            scene.centers,
+          )
+          if (requestedScroll === null) return false
+          dragOffset = 0
+          dragCurrent = 0
+          window.scrollTo({ top: Math.round(requestedScroll), behavior: 'auto' })
+          ScrollTrigger.update()
+          // A numeric scrub may still be easing from Journey. Completing its
+          // current scrub tween applies the new (Faces) destination immediately.
+          ScrollTrigger.getById('faces-journey-handoff')?.getTween()?.progress(1)
+          scrollOffset = scrollOffsetAt(window.scrollY, trigger.start)
+          current = target()
+          renderCommittedProject(index)
+          committedGeometry = geometryRevision
+          return true
+        }
+        if (!commitAtCurrentGeometry()) return { status: 'unavailable', focusTarget: null }
+        renderCommittedProject(index)
+
+        const deadline = performance.now() + 500
+        let stableFrame = false
+        while (token === navigationToken && performance.now() < deadline) {
+          if (committedGeometry !== geometryRevision) {
+            if (!commitAtCurrentGeometry()) return { status: 'unavailable', focusTarget }
+            stableFrame = false
+          }
+          const shown = shownProject()
+          const committedMeta = stage.querySelector<HTMLElement>('.faces__meta')?.dataset.shownProject
+          if (active === index && shown === index && committedMeta === projectId) {
+            if (stableFrame) return { status: 'ready', focusTarget }
+            stableFrame = true
+          } else {
+            stableFrame = false
+          }
+          await nextFrame()
+        }
+        return { status: 'unavailable', focusTarget }
+      },
+    }
+    controllerRef.current = controller
+
     /* ---------- drag = 자유 탐색(무한) ---------- */
 
 
@@ -459,16 +620,13 @@ export default function useFacesInteraction({
       if (!event.isPrimary || event.button !== 0 || !trigger?.isActive || panelTiming.handoff > 0) return
       pointerId = event.pointerId
       downX = lastX = event.clientX
-      downY = event.clientY
-      suppressClick = false
-      pressedAllowed = canActivate()
+      pressedAllowed = presentationReady()
       // display가 눌려 가라앉는 반응은 CTA를 누를 때만(영상 자체는 눌리는 대상이 아니다).
       pressing = pressedAllowed && Boolean(ctaBar?.contains(event.target as Node))
     }
 
     const onPointerMove = (event: PointerEvent) => {
       if (event.pointerId !== pointerId) return
-      if (Math.hypot(event.clientX - downX, event.clientY - downY) >= DRAG_THRESHOLD) suppressClick = true
       if (!dragging) {
         if (Math.abs(event.clientX - downX) < DRAG_THRESHOLD) return
         dragging = true
@@ -484,7 +642,6 @@ export default function useFacesInteraction({
       if (event.pointerId !== pointerId) return
       pointerId = -1
       pressing = false
-      if (event.type === 'pointercancel') suppressClick = true
       if (!dragging) return
       // 놓으면 target은 그 자리에 머물고, current가 짧게 따라잡으며 선다. 관성은 없다.
       dragging = false
@@ -495,19 +652,13 @@ export default function useFacesInteraction({
     // 영상 / 텍스트의 기본 drag가 pointer drag를 가로채지 않게 한다.
     const onDragStart = (event: DragEvent) => event.preventDefault()
 
-    const onClick = (event: MouseEvent) => {
-      const pointerClickBlocked = event.detail > 0 && (suppressClick || !pressedAllowed)
-      if (!canActivate() || pointerClickBlocked) event.preventDefault()
-    }
     const onEnter = () => { hovering = true }
     const onLeave = () => { hovering = false; pressing = false }
-    const ctaLinks = [link, caseLink].filter(Boolean) as HTMLAnchorElement[]
-    for (const a of ctaLinks) {
-      a.addEventListener('click', onClick)
-      a.addEventListener('pointerenter', onEnter)
-      a.addEventListener('pointerleave', onLeave)
-      a.addEventListener('focus', onEnter)
-      a.addEventListener('blur', onLeave)
+    if (explore) {
+      explore.addEventListener('pointerenter', onEnter)
+      explore.addEventListener('pointerleave', onLeave)
+      explore.addEventListener('focus', onEnter)
+      explore.addEventListener('blur', onLeave)
     }
     stage.addEventListener('pointerdown', onPointerDown)
     stage.addEventListener('pointermove', onPointerMove)
@@ -550,7 +701,7 @@ export default function useFacesInteraction({
           pinEnd: (trigger?.start ?? 0) + panelTiming.facesDistance,
           panelsEnd: trigger?.end ?? 0,
           handoff: panelTiming.handoff,
-          ready: canActivate(),
+          ready: presentationReady(),
           progress: trigger?.progress ?? 0,
           active,
         }
@@ -558,16 +709,17 @@ export default function useFacesInteraction({
     }
 
     return () => {
+      navigationToken += 1
+      if (controllerRef.current === controller) controllerRef.current = null
       if (import.meta.env.DEV) delete debug.__faces
       cancelAnimationFrame(refreshId)
       unsubscribe()
       stop()
-      for (const a of ctaLinks) {
-        a.removeEventListener('click', onClick)
-        a.removeEventListener('pointerenter', onEnter)
-        a.removeEventListener('pointerleave', onLeave)
-        a.removeEventListener('focus', onEnter)
-        a.removeEventListener('blur', onLeave)
+      if (explore) {
+        explore.removeEventListener('pointerenter', onEnter)
+        explore.removeEventListener('pointerleave', onLeave)
+        explore.removeEventListener('focus', onEnter)
+        explore.removeEventListener('blur', onLeave)
       }
       if (pointerId >= 0 && stage.hasPointerCapture(pointerId)) stage.releasePointerCapture(pointerId)
       stage.removeEventListener('pointerdown', onPointerDown)
@@ -581,5 +733,5 @@ export default function useFacesInteraction({
       if (canWatchFrames) allVideos.forEach((video, i) => video.cancelVideoFrameCallback(frameHandles[i]))
       scene.dispose()
     }
-  }, [enabled, sectionRef, stageRef, canvasRef, onActiveChange])
+  }, [enabled, sectionRef, stageRef, canvasRef, onActiveChange, onNavigationCommit, controllerRef])
 }
