@@ -51,11 +51,6 @@
 }
 
 /*
- * Watch display 위의 투명한 링크 hit area. 모양은 display 구멍과 정확히 같고(둥근 모서리까지),
- * case와 rim은 눌리지 않는다. WebGL canvas 위에 있어 pointer를 직접 받는다.
- * hover의 밝기 / 1.007배 / rim 반사는 WebGL이 그린다(useFacesInteraction의 interaction). 보이는 글자는 없다.
- */
-/*
  * Watch display 위쪽 safe area의 text CTA 막대. 폭은 display와 같고(JS), 높이는 display 높이의 약 17%다.
  * 위쪽 모서리를 display와 같은 반경으로 잘라 display 밖으로 새지 않는다. 아주 옅은 막이 밝은 영상 위에서도 글자를 읽히게 한다.
  * project 하나가 display에 자리를 잡았을 때만 나타난다(data-ready) — 넘어가는 동안에는 눌리지도 보이지도 않는다.
@@ -87,16 +82,19 @@
 }
 
 /*
- * 글자 CTA 하나(LIVE SITE ↗ / CASE STUDY ↗). 밑줄은 글자와 화살표에 따로 긋지 않고, anchor 전체 폭에 선 하나(::after)로
+ * 글자 CTA 하나(EXPLORE PROJECT ↗). 밑줄은 글자와 화살표에 따로 긋지 않고, button 전체 폭에 선 하나(::after)로
  * 긋는다 — 글자 / 간격 / 화살표 아래가 끊기지 않고 한 줄로 이어진다. 평소에는 옅고, hover / focus에서 글자와 같은 색으로 선명해진다.
  */
 .faces__cta {
+  appearance: none;
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   min-height: 44px;
   padding: 0 4px;
+  border: 0;
+  background: none;
   font: 600 clamp(10px, 0.74vw, 13px) / 1 'Inter', sans-serif;
   letter-spacing: 0.16em;
   color: #f3f4f4;
@@ -149,7 +147,7 @@
 
 /*
  * JADUYA — 밝은 영상의 위쪽에서 CTA가 묻히지 않도록 이 project에서만 대비를 올린다(F45 / TCHAIKIM은 그대로).
- * 층: 영상 -> 이 scrim(display 위쪽 72 ~ 100px, CTA bar의 배경) -> LIVE SITE / CASE STUDY. 영상 전체는 어둡게 하지 않는다.
+ * 층: 영상 -> 이 scrim(display 위쪽 72 ~ 100px, CTA bar의 배경) -> EXPLORE PROJECT. 영상 전체는 어둡게 하지 않는다.
  */
 .faces__display-cta[data-project-id='jaduya'] {
   height: clamp(72px, calc(var(--display-h, 400px) * 0.19), 100px);
@@ -311,4 +309,16 @@
 
 .faces__slide-meta {
   margin-top: 16px;
+}
+
+.faces__slide-meta .faces__cta--explore {
+  margin-top: 12px;
+  padding: 0;
+  color: #f3f4f4;
+  pointer-events: auto;
+}
+
+.faces__slide-meta .faces__cta--explore::after {
+  right: 0;
+  left: 0;
 }

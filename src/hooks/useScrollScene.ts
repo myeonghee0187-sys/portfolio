@@ -626,8 +626,10 @@ export default function useScrollScene(enabled: boolean) {
             // 정면으로 다 돌아선 뒤에만 Crown 시간(13 : 30)이 보인다. 돌아서는 도중의 기울기를 따라가지 않는다.
             crown.classList.toggle('watch__crown--front-settled', front > 0.995)
           }
-          // Watch에 다시 결합한 Crown은 부품이다. 눌리지 않는다.
-          setController(facesProgress > 0.55 && crownLink.attach < 0.5)
+          // FACES 이후의 Crown remains the global project-navigation entry,
+          // including while Contact visually re-attaches it to the Watch.
+          setController(facesProgress > 0.55)
+          crown.classList.toggle('watch__crown--attached-controller', facesProgress > 0.55 && crownLink.attach >= 0.5)
         }
         crownLink.refresh = applyCrown
 
@@ -825,7 +827,7 @@ export default function useScrollScene(enabled: boolean) {
         const glass = watch.querySelector<HTMLElement>('.watch-display-transition-reflection')
         for (const prop of ['opacity', 'visibility', '--display-reflection-x']) glass?.style.removeProperty(prop)
         crown?.removeEventListener('animationend', clearCue)
-        crown?.classList.remove('watch__crown--controller', 'watch__crown--cue', 'watch__crown--front-settled')
+        crown?.classList.remove('watch__crown--controller', 'watch__crown--attached-controller', 'watch__crown--cue', 'watch__crown--front-settled')
         // 방향은 tween이 아니라 applyCrown이 직접 쓴 값이라 여기서 지운다.
         crownLink.refresh = () => {}
         if (crownSide && crownFront) gsap.set([crownSide, crownFront], { clearProps: 'transform,opacity,visibility' })

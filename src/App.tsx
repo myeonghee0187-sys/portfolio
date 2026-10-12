@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import IntroVideo from './components/IntroVideo'
 import Header from './components/Header'
 import Hero from './components/Hero'
@@ -13,6 +13,7 @@ import { FACE_PROJECTS } from './components/Faces/facesData'
 import Contact from './components/Contact'
 import AllFaces from './components/AllFaces/AllFaces'
 import { closeAllFaces, openAllFaces, useAllFacesOpen } from './components/AllFaces/allFacesStore'
+import { navigateToFaceWithRetries, type FacesNavigationController } from './components/Faces/facesNavigation'
 
 export default function App() {
   const [isIntroDone, setIsIntroDone] = useState(false)
@@ -27,19 +28,40 @@ export default function App() {
    */
   const allFacesOpen = useAllFacesOpen()
   const [allFacesMounted, setAllFacesMounted] = useState(false)
+  const facesRef = useRef<FacesNavigationController>(null)
+  const selectionFocusRef = useRef<HTMLElement | null>(null)
   if (allFacesOpen && !allFacesMounted) setAllFacesMounted(true)
-  const handleAllFacesClosed = useCallback(() => setAllFacesMounted(false), [])
+  const handleAllFacesClosed = useCallback((returnFocus: HTMLElement | null) => {
+    setAllFacesMounted(false)
+    const focusTarget = selectionFocusRef.current ?? returnFocus
+    selectionFocusRef.current = null
+    if (focusTarget) requestAnimationFrame(() => {
+      if (focusTarget.isConnected) focusTarget.focus({ preventScroll: true })
+    })
+  }, [])
 
   const handleIntroFinish = useCallback(() => setIsIntroDone(true), [])
 
   /** FACES 이후 고정되는 정면 Digital Crown의 click handler. */
   const handleOpenAllFaces = useCallback(() => openAllFaces(), [])
 
-  /*
-   * ALL FACES에서 project를 골랐을 때. Case Study 화면(route / handler)이 아직 없어서 연결하지 않는다 —
-   * 가짜 URL / modal을 만들지 않는다. 화면이 생기면 여기서 projectId로 열면 된다.
-   */
-  const handleProjectSelect: ((projectId: string) => void) | undefined = undefined
+  const handleProjectSelect = useCallback(async (projectId: string) => {
+    const result = await navigateToFaceWithRetries(
+      projectId,
+      () => facesRef.current,
+      3,
+      // A responsive/reduced-motion switch can replace the controller while
+      // the previous one is preparing media. Retry against the controller
+      // mounted by the next committed frame.
+      () => new Promise<void>((resolve) => window.setTimeout(resolve, 80)),
+    )
+    const success = result.status !== 'unavailable'
+    if (success) {
+      selectionFocusRef.current = result.focusTarget
+      closeAllFaces()
+    }
+    return success
+  }, [])
 
   /*
    * Splash Cursor는 커서가 있는 데스크톱 전용이고, 순수 장식이라 reduced motion에서는 끈다.
@@ -100,7 +122,12 @@ export default function App() {
         />
       )}
 
-      <div className="site" data-all-faces-open={allFacesOpen} data-all-faces-count={FACE_PROJECTS.length}>
+      <div
+        className="site"
+        data-all-faces-open={allFacesOpen}
+        data-all-faces-count={FACE_PROJECTS.length}
+        inert={allFacesMounted ? true : undefined}
+      >
         <Header />
         <main>
           <Hero inlineWatch={!scrollSceneEnabled} />
@@ -108,7 +135,7 @@ export default function App() {
           {/* 가로 트랙 연출도 About과 같은 조건에서만 켠다. 아니면 native 가로 scroll 목록이다. */}
           <div className={scrollSceneEnabled ? 'panels panels--interactive' : 'panels'}>
             <div className="panels__viewport">
-              <Faces interactive={scrollSceneEnabled} ready={isIntroDone} />
+              <Faces ref={facesRef} interactive={scrollSceneEnabled} ready={isIntroDone} />
               <Journey interactive={scrollSceneEnabled} ready={isIntroDone} />
             </div>
           </div>

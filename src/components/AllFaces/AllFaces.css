@@ -137,12 +137,18 @@
  * 네모난 box의 모서리는 hover / click 대상이 아니다 — pointer는 원(__dial)만 받는다.
  */
 .all-faces__project {
+  appearance: none;
   position: absolute;
   top: calc(var(--gy) + var(--oy) * var(--d) - var(--d) / 2);
   left: calc(var(--gx) + var(--ox) * var(--d) - var(--d) / 2);
   width: var(--d);
   height: var(--d);
   margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
   outline: none;
   pointer-events: none;
   opacity: 0.78;
@@ -166,6 +172,7 @@
 .all-faces__dial {
   --rim-color: rgb(164 169 173 / 0.32);
   position: relative;
+  display: block;
   box-sizing: border-box;
   width: 100%;
   height: 100%;
@@ -180,6 +187,11 @@
     border-color 300ms ease,
     background-color 300ms ease,
     box-shadow 300ms ease;
+}
+
+.all-faces__project:disabled .all-faces__dial,
+.all-faces__close:disabled {
+  cursor: default;
 }
 
 .all-faces__project.is-hovered .all-faces__dial {
