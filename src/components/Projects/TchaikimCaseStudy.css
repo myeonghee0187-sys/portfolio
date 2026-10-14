@@ -11,7 +11,8 @@
   --tchai-ink: #08090a;
   --tchai-green: #1f433f;
   --tchai-sage: #638985;
-  --tchai-display-font: 'Lamoric Rowen', 'Lamoric_Rowen', 'Times New Roman', serif;
+  --tchai-display-font: 'Wanted Sans', 'Apple SD Gothic Neo', sans-serif;
+  --tchai-hero-height: max(720px, min(1080px, 100svh));
   position: relative;
   overflow: clip;
   background: var(--tchai-paper);
@@ -60,13 +61,13 @@
 
 .tchai-section-heading p {
   font-family: 'Inter', sans-serif;
-  font-size: clamp(18px, 1.667vw, 32px);
+  font-size: clamp(16px, 1.354vw, 26px);
   font-weight: 300;
   text-transform: uppercase;
 }
 
 .tchai-section-heading h2 {
-  font-size: clamp(28px, 2.5vw, 48px);
+  font-size: clamp(26px, 2.083vw, 40px);
   font-weight: 520;
   letter-spacing: -0.025em;
 }
@@ -74,7 +75,7 @@
 /* Hero */
 .tchai-hero {
   position: relative;
-  height: max(720px, min(1080px, 100svh));
+  height: var(--tchai-hero-height);
   min-height: 720px;
   overflow: hidden;
   background: #d7d1c9;
@@ -126,8 +127,7 @@
   width: min(35vw, 673px);
 }
 
-.tchai-hero__kicker,
-.tchai-hero__subtitle {
+.tchai-hero__kicker {
   margin: 0;
   color: var(--tchai-green);
 }
@@ -146,14 +146,6 @@
 .tchai-hero__title img {
   width: 100%;
   height: auto;
-}
-
-.tchai-hero__subtitle {
-  margin-top: 18px;
-  font-family: 'Inter', sans-serif;
-  font-size: clamp(12px, 0.938vw, 18px);
-  font-weight: 400;
-  letter-spacing: 0.02em;
 }
 
 .tchai-hero__meta {
@@ -190,7 +182,7 @@
   position: relative;
   display: grid;
   place-items: center;
-  min-height: 642px;
+  min-height: 514px;
   overflow: hidden;
   background: var(--tchai-paper);
 }
@@ -205,12 +197,13 @@
 
 .tchai-overview > img {
   object-fit: cover;
-  object-position: center 74%;
-  opacity: 0.34;
+  top: calc(-1 * var(--tchai-hero-height));
+  height: calc(var(--tchai-hero-height) * 1.46667);
+  object-position: center;
 }
 
 .tchai-overview > span {
-  background: linear-gradient(180deg, var(--tchai-paper), rgb(255 253 249 / 0.4) 32%, rgb(255 253 249 / 0.4) 68%, var(--tchai-paper));
+  background: linear-gradient(180deg, var(--tchai-paper), rgb(255 253 249 / 0.5) 28%, rgb(255 253 249 / 0.5) 72%, var(--tchai-paper));
 }
 
 .tchai-overview__copy {
@@ -224,49 +217,49 @@
 }
 
 .tchai-overview__copy > p:first-child {
-  margin: 0 0 40px;
+  margin: 0 0 32px;
   font-family: 'Inter', sans-serif;
-  font-size: clamp(15px, 1.042vw, 20px);
+  font-size: clamp(14px, 0.938vw, 18px);
 }
 
 .tchai-overview__copy h2 {
-  margin: 0 0 60px;
+  margin: 0 0 46px;
   color: var(--tchai-green);
-  font-size: clamp(30px, 2.5vw, 48px);
+  font-size: clamp(28px, 2.188vw, 42px);
   font-weight: 520;
   line-height: 1;
 }
 
 .tchai-overview__copy > p:last-child {
   margin: 0;
-  font-size: clamp(17px, 1.25vw, 24px);
+  font-size: clamp(16px, 1.094vw, 21px);
   line-height: 1.45;
 }
 
 /* Problem and solution */
 .tchai-problem {
   position: relative;
-  min-height: 1380px;
-  padding: 360px clamp(40px, 6.25vw, 120px) 240px;
+  min-height: 0;
+  padding: 250px clamp(40px, 6.25vw, 120px) 160px;
   overflow: hidden;
   background: linear-gradient(180deg, var(--tchai-paper) 0%, #d5dfdc 55%, var(--tchai-sage) 132%);
 }
 
 .tchai-problem__group {
   position: relative;
-  width: min(1143px, 70vw);
+  width: min(954px, 70vw);
 }
 
 .tchai-problem__group h3 {
   margin: 0 0 12px;
   font-family: 'Inter', sans-serif;
-  font-size: clamp(34px, 2.5vw, 48px);
+  font-size: clamp(30px, 2.083vw, 40px);
   font-weight: 500;
   line-height: 1;
 }
 
 .tchai-problem__group--to-be {
-  margin: 180px 0 0 auto;
+  margin: 130px 0 0 auto;
 }
 
 .tchai-problem__row {
@@ -276,13 +269,13 @@
 
 .tchai-problem__circle {
   display: flex;
-  flex: 0 0 min(26vw, 400px);
+  flex: 0 0 min(23vw, 330px);
   aspect-ratio: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin: 0 -20px 0 0;
+  margin: 0 -18px 0 0;
   border: 2px solid #8fa689;
   border-radius: 50%;
   background: #e9ebe2;
@@ -296,7 +289,7 @@
 
 .tchai-problem__circle p {
   margin: 0;
-  font-size: clamp(17px, 1.25vw, 24px);
+  font-size: clamp(16px, 1.094vw, 21px);
   line-height: 1.3;
 }
 
@@ -310,7 +303,7 @@
   position: relative;
   display: grid;
   place-items: center;
-  min-height: 560px;
+  min-height: 420px;
   overflow: hidden;
   background: linear-gradient(180deg, #a0b6b2, var(--tchai-paper));
 }
@@ -331,7 +324,7 @@
   z-index: 1;
   margin: 0;
   padding: 40px;
-  font-size: clamp(24px, 2.5vw, 48px);
+  font-size: clamp(22px, 2.083vw, 40px);
   font-weight: 630;
   line-height: 1.4;
   text-align: center;
@@ -339,7 +332,7 @@
 
 /* Concept */
 .tchai-concept {
-  padding: clamp(120px, 10.42vw, 200px) 0;
+  padding: clamp(90px, 8.333vw, 160px) 0;
   overflow: hidden;
   background: var(--tchai-paper);
 }
@@ -349,8 +342,8 @@
   grid-template-columns: 1.73fr 1fr 2.09fr 1fr 1.73fr;
   align-items: start;
   gap: clamp(8px, 1.042vw, 20px);
-  width: min(calc(100% - 48px), 1740px);
-  margin: clamp(100px, 10.42vw, 200px) auto 0;
+  width: min(calc(100% - 80px), 1600px);
+  margin: clamp(76px, 7.292vw, 140px) auto 0;
 }
 
 .tchai-concept__image {
@@ -397,7 +390,7 @@
 /* Main page */
 .tchai-main-point {
   position: relative;
-  padding: clamp(120px, 10.42vw, 200px) 0 clamp(120px, 11.5vw, 220px);
+  padding: clamp(90px, 8.333vw, 160px) 0 clamp(90px, 9.167vw, 176px);
   overflow: hidden;
   background: var(--tchai-paper);
 }
@@ -408,15 +401,13 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.09;
-  filter: blur(30px);
-  transform: scale(1.08);
+  object-position: center top;
 }
 
 .tchai-main-point__scene {
   position: relative;
   z-index: 1;
-  width: min(62.5vw, 1200px);
+  width: min(56.25vw, 1080px);
   aspect-ratio: 1200 / 3112;
   margin: 20px auto 0;
 }
@@ -449,7 +440,7 @@
   position: absolute;
   z-index: 3;
   margin: 0;
-  font-size: clamp(15px, 1.042vw, 20px);
+  font-size: clamp(14px, 0.938vw, 18px);
   font-weight: 520;
   line-height: 1.35;
 }
@@ -469,7 +460,7 @@
 .tchai-callout--main-start {
   top: 16.29%;
   left: -17.75%;
-  width: 360px;
+  width: 32%;
 }
 
 .tchai-connector--main-start {
@@ -481,7 +472,7 @@
 .tchai-callout--main-visual {
   top: 35.96%;
   left: 94.5%;
-  width: 330px;
+  width: 29%;
 }
 
 .tchai-connector--main-visual {
@@ -494,7 +485,7 @@
 .tchai-callout--main-story {
   top: 53.18%;
   left: -17.75%;
-  width: 326px;
+  width: 28%;
 }
 
 .tchai-connector--main-story {
@@ -505,14 +496,14 @@
 
 /* Shop page */
 .tchai-shop-point {
-  padding: clamp(120px, 10.42vw, 200px) 0;
+  padding: clamp(90px, 8.333vw, 160px) 0;
   overflow: hidden;
   background: var(--tchai-paper);
 }
 
 .tchai-shop-point__scene {
   position: relative;
-  width: min(80.31vw, 1542px);
+  width: min(72.281vw, 1388px);
   aspect-ratio: 1542 / 2630;
   /* The Figma stage includes the 92px heading at y=0; overlap it so all callout coordinates stay native. */
   margin: -92px auto 0;
@@ -560,7 +551,7 @@
 .tchai-shop-point__crop--bottom img {
   position: absolute;
   left: 0;
-  bottom: 0;
+  top: 0;
 }
 
 .tchai-callout--shop-new {
@@ -622,8 +613,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 1180px;
-  padding: clamp(120px, 10.42vw, 200px) clamp(20px, 5vw, 96px) clamp(160px, 12vw, 230px);
+  padding: clamp(110px, 8.33vw, 160px) clamp(20px, 5vw, 96px) clamp(110px, 8.33vw, 160px);
   overflow: hidden;
   background: linear-gradient(180deg, var(--tchai-paper), #f2eee7 75%, #e9e5dd);
 }
@@ -641,77 +631,38 @@
   z-index: 1;
   margin: 20px 0 0;
   color: #505452;
-  font-size: clamp(17px, 1.25vw, 24px);
+  font-size: clamp(16px, 1.094vw, 21px);
   text-align: center;
 }
 
+/* Original frontal product photograph; the source screen spans x30–730, y54–448. */
 .tchai-brand__desktop {
   position: relative;
-  z-index: 1;
-  width: min(100%, 1500px, calc((100vh - 300px) * 1.7778));
-  width: min(100%, 1500px, calc((100svh - 300px) * 1.7778));
-  margin-top: clamp(88px, 8vw, 154px);
-  padding: clamp(8px, 0.7vw, 13px) clamp(8px, 0.7vw, 13px) 0;
-  border: 1px solid rgb(34 38 39 / 0.42);
-  border-radius: clamp(16px, 1.5vw, 29px) clamp(16px, 1.5vw, 29px) 5px 5px;
-  background: linear-gradient(135deg, #34383a, #0e1011 45%, #3e4243);
-  box-shadow: 0 45px 90px rgb(22 25 25 / 0.2), inset 0 1px rgb(255 255 255 / 0.3);
+  width: min(100%, 1100px, calc((100svh - 210px) * 760 / 634));
+  margin-top: clamp(64px, 4.17vw, 80px);
+}
+
+.tchai-brand__frame {
+  display: block;
+  width: 100%;
+  height: auto;
+  mix-blend-mode: multiply;
 }
 
 .tchai-brand__screen {
-  position: relative;
-  width: 100%;
+  position: absolute;
+  z-index: 1;
+  top: 8.51735%;
+  left: 3.94737%;
+  width: 92.10526%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border-radius: clamp(9px, 0.8vw, 15px) clamp(9px, 0.8vw, 15px) 2px 2px;
   background: #111;
 }
 
 .tchai-brand__screen > * {
   width: 100%;
   height: 100%;
-}
-
-.tchai-brand__chin {
-  position: relative;
-  display: grid;
-  place-items: center;
-  height: clamp(34px, 4vw, 76px);
-  margin-inline: calc(clamp(8px, 0.7vw, 13px) * -1);
-  border-radius: 0 0 5px 5px;
-  background: linear-gradient(180deg, #e5e5e3, #bfc1c0 75%, #969998);
-  box-shadow: inset 0 1px rgb(255 255 255 / 0.82);
-}
-
-.tchai-brand__chin span {
-  width: clamp(18px, 1.8vw, 34px);
-  aspect-ratio: 1;
-  border: 1px solid rgb(25 28 29 / 0.28);
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.2);
-}
-
-.tchai-brand__stand {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  width: 15%;
-  height: clamp(60px, 7vw, 132px);
-  background: linear-gradient(90deg, #929695, #dedfdd 34%, #c3c5c4 68%, #888c8c);
-  clip-path: polygon(25% 0, 75% 0, 88% 100%, 12% 100%);
-  transform: translateX(-50%);
-}
-
-.tchai-brand__foot {
-  position: absolute;
-  top: calc(100% + clamp(55px, 6.5vw, 122px));
-  left: 50%;
-  width: 29%;
-  height: clamp(9px, 1vw, 18px);
-  border-radius: 50% 50% 4px 4px;
-  background: linear-gradient(180deg, #d7d8d6, #8b8f8e);
-  box-shadow: 0 8px 16px rgb(0 0 0 / 0.16);
-  transform: translateX(-50%);
 }
 
 /* Result */
@@ -723,8 +674,7 @@
   background: #eee9e2;
 }
 
-.tchai-result__background,
-.tchai-result__veil {
+.tchai-result__background {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -736,14 +686,11 @@
   object-position: bottom;
 }
 
-.tchai-result__veil {
-  background: rgb(255 253 249 / 0.86);
-}
-
 .tchai-result__devices {
   position: absolute;
   right: 0;
-  bottom: 2%;
+  top: 5.74%;
+  bottom: auto;
   width: min(100%, 1920px);
 }
 
@@ -760,27 +707,19 @@
 .tchai-result__copy {
   position: absolute;
   top: 50%;
-  left: clamp(24px, 4.17vw, 80px);
+  left: clamp(24px, 2.083vw, 40px);
   z-index: 2;
-  width: min(37vw, 710px);
+  width: min(38vw, 650px);
   transform: translateY(-50%);
 }
 
 .tchai-result__copy h2 {
   margin: 0;
-  font-family: 'Inter', sans-serif;
-  font-size: clamp(50px, 5.2vw, 100px);
-  font-weight: 550;
-  line-height: 0.98;
-  letter-spacing: -0.055em;
-}
-
-.tchai-result__copy p {
-  width: min(100%, 560px);
-  margin: 30px 0 0;
-  color: #5f6468;
-  font-size: clamp(16px, 1.15vw, 22px);
-  line-height: 1.5;
+  font-family: 'Wanted Sans', 'Apple SD Gothic Neo', sans-serif;
+  font-size: clamp(34px, 3.021vw, 58px);
+  font-weight: 650;
+  line-height: 1.28;
+  letter-spacing: -0.016em;
 }
 
 @media (max-width: 1100px) {
@@ -790,8 +729,8 @@
   }
 
   .tchai-problem {
-    min-height: 1160px;
-    padding-top: 260px;
+    min-height: 0;
+    padding-top: 190px;
   }
 
   .tchai-problem__group {
@@ -803,7 +742,7 @@
   }
 
   .tchai-main-point__scene {
-    width: min(78vw, 850px);
+    width: min(72vw, 780px);
     height: auto;
     aspect-ratio: 1200 / 3500;
   }
@@ -828,7 +767,7 @@
   .tchai-callout--main-story { right: 0; }
 
   .tchai-shop-point__scene {
-    width: min(92vw, 930px);
+    width: min(86vw, 870px);
     margin: clamp(80px, 10vw, 120px) auto 0;
   }
 
@@ -840,6 +779,7 @@
 }
 
 @media (max-width: 700px) {
+  .tchai-case-study { --tchai-hero-height: 820px; }
   .tchai-section-heading {
     gap: 9px;
     padding-inline: 20px;
@@ -900,8 +840,8 @@
   }
 
   .tchai-overview {
-    min-height: 540px;
-    padding: 88px 0;
+    min-height: 440px;
+    padding: 68px 0;
   }
 
   .tchai-overview__copy > p:first-child {
@@ -925,7 +865,7 @@
 
   .tchai-problem {
     min-height: 0;
-    padding: 150px 20px 140px;
+    padding: 110px 20px 96px;
   }
 
   .tchai-problem__group,
@@ -935,7 +875,7 @@
   }
 
   .tchai-problem__group--to-be {
-    margin-top: 120px;
+    margin-top: 84px;
   }
 
   .tchai-problem__group h3 {
@@ -964,7 +904,7 @@
   }
 
   .tchai-insight {
-    min-height: 400px;
+    min-height: 300px;
   }
 
   .tchai-insight > span {
@@ -981,14 +921,14 @@
   }
 
   .tchai-concept {
-    padding-block: 110px 120px;
+    padding-block: 82px 90px;
   }
 
   .tchai-concept__moodboard {
     grid-template-columns: repeat(6, 1fr);
     gap: 8px;
     width: calc(100% - 24px);
-    margin-top: 80px;
+    margin-top: 58px;
   }
 
   .tchai-concept__image--one { grid-column: 1 / 4; }
@@ -998,7 +938,7 @@
   .tchai-concept__image--five { grid-column: 4 / 7; margin-top: 8%; }
 
   .tchai-main-point {
-    padding-block: 110px 120px;
+    padding-block: 82px 90px;
   }
 
   .tchai-main-point__scene {
@@ -1029,13 +969,13 @@
   .tchai-callout--main-visual { left: 33.333%; }
 
   .tchai-shop-point {
-    padding-block: 110px 130px;
+    padding-block: 82px 100px;
   }
 
   .tchai-shop-point__scene {
     width: 100%;
     aspect-ratio: 402 / 940;
-    margin-top: 76px;
+    margin-top: 58px;
   }
 
   .tchai-shop-point__crop {
@@ -1074,8 +1014,8 @@
   }
 
   .tchai-brand {
-    min-height: 720px;
-    padding: 110px 12px 150px;
+    min-height: 660px;
+    padding: 88px 12px 100px;
   }
 
   .tchai-brand__description {
@@ -1085,7 +1025,7 @@
   }
 
   .tchai-brand__desktop {
-    margin-top: 74px;
+    margin-top: 64px;
   }
 
   .tchai-result {
@@ -1098,9 +1038,10 @@
   }
 
   .tchai-case-study .tchai-result__devices {
-    right: -68%;
-    bottom: 8%;
-    width: 178%;
+    top: 38%;
+    right: 0;
+    bottom: auto;
+    width: 156%;
     max-width: none;
   }
 
@@ -1112,14 +1053,10 @@
   }
 
   .tchai-result__copy h2 {
-    font-size: clamp(44px, 13.5vw, 54px);
+    font-size: clamp(30px, 8.2vw, 36px);
+    line-height: 1.32;
   }
 
-  .tchai-result__copy p {
-    width: 78%;
-    margin-top: 20px;
-    font-size: 15px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

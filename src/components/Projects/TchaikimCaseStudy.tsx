@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { TCHAIKIM_CASE_STUDY_URL } from '../Faces/facesData'
 import FloatingDock from './FloatingDock'
 import NextFace, { type NextFaceProject } from './NextFace'
 import ProjectHeader, { type ProjectNavigateHandler } from './ProjectHeader'
@@ -8,7 +9,9 @@ const ASSET_ROOT = '/projects/tchaikim'
 
 const assets = {
   story6: `${ASSET_ROOT}/story6.png`,
-  story7: `${ASSET_ROOT}/story7.png`,
+  // Native image-only Figma layers preserve the original crop and paint opacity.
+  mainBackground: `${ASSET_ROOT}/main-background.png`,
+  resultBackground: `${ASSET_ROOT}/result-background.png`,
   resultTopFade: `${ASSET_ROOT}/frame1707487159.png`,
   responsiveDevices: `${ASSET_ROOT}/image340.png`,
   wordmark: `${ASSET_ROOT}/tchai-kim-wordmark.svg`,
@@ -19,7 +22,9 @@ const assets = {
   moodDetail: `${ASSET_ROOT}/image.png`,
   mainCapture: `${ASSET_ROOT}/image348.png`,
   macbook: `${ASSET_ROOT}/image344.png`,
+  brandDesktop: `${ASSET_ROOT}/imac-27-2020.jpg`,
   shopCapture: `${ASSET_ROOT}/image349.png`,
+  shopFrontCapture: `${ASSET_ROOT}/image351.png`,
   mainVisualLine: `${ASSET_ROOT}/line77.svg`,
   mainStoryLine: `${ASSET_ROOT}/line78.svg`,
   mainStartLine: `${ASSET_ROOT}/frame1707487150.svg`,
@@ -30,7 +35,6 @@ const assets = {
 }
 
 const LIVE_URL = 'https://myeonghee0187-sys.github.io/tchaikim_all/pages/main/index.html'
-const CASE_STUDY_URL = 'https://www.figma.com/design/n7Nnf14z0HQj8Epvj2ybvP/Tchai-kim?node-id=2048-2381&m=dev'
 
 const problems = [
   ['브랜드를 이해하고', '신뢰할 정보가 부족함'],
@@ -99,12 +103,11 @@ export default function TchaikimCaseStudy({
               <img src={assets.wordmark} alt="" aria-hidden="true" />
               <span className="tchai-visually-hidden">TCHAI KIM</span>
             </h1>
-            <p className="tchai-hero__subtitle">Redefining Tchai Kim for the Global Stage</p>
           </div>
           <dl className="tchai-hero__meta">
-            <div><dt>기간</dt><dd>2026.05 — 2026.08</dd></div>
-            <div><dt>역할</dt><dd>PM · UX/UI SUB · PRESENTATION CONTENT</dd></div>
-            <div><dt>기여도</dt><dd>30%</dd></div>
+            <div><dt>기간</dt><dd>2026.5 – 2026.8</dd></div>
+            <div><dt>역할</dt><dd>PM / UXUI SUB / PRESENTATION CONTENT</dd></div>
+            <div><dt>기여도</dt><dd>팀 프로젝트 30%<br />개인 디벨롭 포함 약 45%</dd></div>
           </dl>
         </section>
 
@@ -151,7 +154,7 @@ export default function TchaikimCaseStudy({
         </section>
 
         <section className="tchai-main-point" aria-labelledby="tchai-main-title">
-          <img className="tchai-main-point__ambient" src={assets.mainCapture} alt="" aria-hidden="true" />
+          <img className="tchai-main-point__ambient" src={assets.mainBackground} alt="" aria-hidden="true" loading="lazy" />
           <SectionHeading eyebrow="MAIN PAGE" title="브랜드 정체성을 보여주는 몰입형 메인 경험" id="tchai-main-title" />
           <div className="tchai-main-point__scene">
             <div className="tchai-main-point__capture">
@@ -188,7 +191,7 @@ export default function TchaikimCaseStudy({
               <span aria-hidden="true" />
             </div>
             <div className="tchai-shop-point__crop tchai-shop-point__crop--bottom">
-              <img src={assets.shopCapture} alt="Tchai Kim shop product grid" loading="lazy" />
+              <img src={assets.shopFrontCapture} alt="Tchai Kim shop product grid" loading="lazy" />
             </div>
             <img className="tchai-connector tchai-connector--shop-filter" src={assets.shopFilterLine} alt="" aria-hidden="true" />
             <img className="tchai-connector tchai-connector--shop-new" src={assets.shopNewLine} alt="" aria-hidden="true" />
@@ -206,28 +209,24 @@ export default function TchaikimCaseStudy({
           <SectionHeading eyebrow="BRAND EXPERIENCE" title="STORY IN MOTION." id="tchai-brand-title" />
           <p className="tchai-brand__description">전통의 결을 따라 흐르는 브랜드 경험</p>
           <div className="tchai-brand__desktop" aria-label="Tchai Kim brand experience video">
+            <img className="tchai-brand__frame" src={assets.brandDesktop} width={760} height={634} alt="" aria-hidden="true" loading="lazy" />
             <div className="tchai-brand__screen">{brandExperience}</div>
-            <div className="tchai-brand__chin" aria-hidden="true"><span /></div>
-            <div className="tchai-brand__stand" aria-hidden="true" />
-            <div className="tchai-brand__foot" aria-hidden="true" />
           </div>
         </section>
 
         <section className="tchai-result" aria-labelledby="tchai-result-title">
-          <img className="tchai-result__background" src={assets.story7} alt="" aria-hidden="true" loading="lazy" />
-          <span className="tchai-result__veil" aria-hidden="true" />
+          <img className="tchai-result__background" src={assets.resultBackground} alt="" aria-hidden="true" loading="lazy" />
           <img className="tchai-result__devices" src={assets.responsiveDevices} alt="" aria-hidden="true" loading="lazy" />
           <img className="tchai-result__top-fade" src={assets.resultTopFade} alt="" aria-hidden="true" loading="lazy" />
           <div className="tchai-result__copy">
-            <h2 id="tchai-result-title">CONNECTING<br />{' '}TRADITION<br />{' '}TO THE WORLD.</h2>
-            <p>트렌드의 한복판에서 전통을 세계로 잇는 경험을 완성했습니다.</p>
+            <h2 id="tchai-result-title">트렌드의 한복판에서<br />{' '}전통을 세계로 잇는<br />{' '}경험을 완성했습니다.</h2>
           </div>
         </section>
 
         <NextFace project={nextProject} onNavigate={onNavigate} />
       </main>
 
-      <FloatingDock liveUrl={LIVE_URL} caseStudyUrl={CASE_STUDY_URL} />
+      <FloatingDock liveUrl={LIVE_URL} caseStudyUrl={TCHAIKIM_CASE_STUDY_URL} />
     </div>
   )
 }
