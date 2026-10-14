@@ -34,12 +34,14 @@ export type FaceProject = {
   focus?: [number, number]
 }
 
+export const TCHAIKIM_CASE_STUDY_URL = 'https://www.figma.com/deck/8K1OMzkKzmEmkV2Kejd43q/기획서-슬라이드?node-id=6242-19&viewport=-109%2C-41%2C0.52&t=JXfN3OlWh2HhE6sZ-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1'
+
 export const FACE_PROJECTS: FaceProject[] = [
   {
     id: 'tchaikim',
     detailPath: '/projects/tchaikim',
     liveUrl: 'https://myeonghee0187-sys.github.io/tchaikim_all/pages/main/index.html',
-    caseStudyUrl: 'https://www.figma.com/design/n7Nnf14z0HQj8Epvj2ybvP/Tchai-kim?node-id=2048-2381&m=dev',
+    caseStudyUrl: TCHAIKIM_CASE_STUDY_URL,
     index: '01',
     title: 'TCHAIKIM',
     category: 'FASHION BRAND WEB REDESIGN',

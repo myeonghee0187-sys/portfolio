@@ -20,7 +20,7 @@ export default function BrandExperienceVideo({ src, poster }: Props) {
   useEffect(() => {
     const video = videoRef.current
     const section = video?.closest('#brand-experience')
-    if (!video || !section || !src) return
+    if (!video || !section || !src || failed) return
     let disposed = false
     let frame = 0
     let playAttempt = 0
@@ -82,7 +82,7 @@ export default function BrandExperienceVideo({ src, poster }: Props) {
       if (reconcileRef.current === reconcile) reconcileRef.current = null
       video.pause()
     }
-  }, [src, reducedMotion])
+  }, [src, reducedMotion, failed])
 
   const toggle = useCallback(() => {
     const video = videoRef.current

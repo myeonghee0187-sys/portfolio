@@ -93,5 +93,44 @@
     "key": "imgLine82",
     "path": "/projects/tchaikim/line82.svg",
     "bytes": 246
+  },
+  {
+    "key": "imgMainBackground",
+    "path": "/projects/tchaikim/main-background.png",
+    "bytes": 1053420,
+    "source": "Figma 9kXZ17uZOK7WinbmInLvUH",
+    "node": "271:720"
+  },
+  {
+    "key": "imgShopFront",
+    "path": "/projects/tchaikim/image351.png",
+    "bytes": 1011441,
+    "source": "Figma 9kXZ17uZOK7WinbmInLvUH",
+    "node": "272:830",
+    "note": "Native image-only export of front crop; source image hash equals image349, with a different crop transform."
+  },
+  {
+    "key": "imgShopFrontSource",
+    "path": "/projects/tchaikim/image351-source.png",
+    "bytes": 2613642,
+    "source": "Figma 9kXZ17uZOK7WinbmInLvUH",
+    "node": "272:830",
+    "note": "Original source preserved for provenance; not requested by the page."
+  },
+  {
+    "key": "imgResultBackground",
+    "path": "/projects/tchaikim/result-background.png",
+    "bytes": 1220731,
+    "source": "Figma 9kXZ17uZOK7WinbmInLvUH",
+    "node": "272:926"
+  },
+  {
+    "key": "brandDesktopFrame",
+    "path": "/projects/tchaikim/imac-27-2020.jpg",
+    "bytes": 58413,
+    "width": 760,
+    "height": 634,
+    "source": "https://cdsassets.apple.com/live/7WUAS350/images/imac/imac-27-2020.jpg",
+    "note": "Original Apple frontal product photograph; live footage overlays its display. No raster editing or generated frame."
   }
 ]
