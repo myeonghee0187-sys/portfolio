@@ -50,3 +50,36 @@ The existing large homepage chunk warning remains. No libraries or package-lock 
 ## Release verification
 
 Production verification is performed against the merged main deployment, separately from these local checks. Git/PR/deployment identities and final scenarios are reported in the task completion message.
+
+## October 14 final details and award
+
+This pass follows the earlier refinement above and supersedes its thin Main boundary and per-link Dock hover. Started from clean main `555653e5de4e7680d096f031310a30ff20338462` on `codex/tchaikim-final-details`.
+
+- Dock keeps its two destinations, new-tab behavior, position and mobile safe areas. The entire capsule now uses layered translucent Frost Blue glass, a Metallic Gray border, top highlight and restrained shadow. Individual links stay transparent during hover and press; only the text receives a readable steel/silver highlight. Fine-pointer hover, separate 2px keyboard focus and reduced-motion handling are verified.
+- Hero adds `수상 / 글로벌 브랜드, 커머스 경험 디자인 부문 최우수상` above period, role and the unchanged two contribution lines. No badge, icon or separate card. The label/value grid and compact spacing retain the existing placement; mobile values wrap inside the viewport.
+- Metadata uses Wanted Sans Variable at weight 450 throughout. Chrome CDP `CSS.getPlatformFontsForNode` confirmed the actual custom Wanted Sans Variable renderer for Korean award text, labels, role and contribution, with no Korean fallback (glyph counts 2/27/36/25). This is rendered-font verification in addition to computed styles and screenshots.
+- Checked all nine handoffs. Problem's prior 132% gradient endpoint did not equal Insight's starting color; both now share `--tchai-sage-handoff: #a0b6b2`. Main's native image fades only at its outer top/bottom edges; its content, photograph and callouts keep their sharpness. Brand ends at paper and Result's native background starts through a short paper mask. No additional blur is applied to section imagery. Sampled left/center/right pixels immediately above/below the eight continuous boundaries differ by 0–1 RGB level. Result → Next Face deliberately retains the approved black footer separation.
+- Main capture has zero border, no inset/spread shadow, and only `0 18px 60px rgb(8 9 10 / .055)`. MacBook, long capture, scene dimensions, connector SVGs and callout positions are unchanged.
+
+### Genuine screen captures and preserved frames
+
+Figma Hero `255:681` and Result `272:927` share the flattened `image340.png` (1672×941, 892,706 bytes), not an editable set of screen layers. That original asset remains byte-for-byte unchanged. `ResponsiveDevices` reuses it in both sections and projects real browser captures onto the measured display corners; clipped foreground outlines preserve the original tablet/phone occlusion, rounded display corners, notch and home indicator. ResizeObserver updates scale only on resize and disconnects on unmount. There is no new scroll listener or animation loop.
+
+The site was captured in its genuine desktop/mobile responsive states, at portrait proportions matching the existing tablet and phone displays. No invented UI, generated imagery, sharpening filter or enlargement of the old screen pixels is used. Tablet capture starts at DPR 4 to select the site's higher-resolution source photograph, then is downsampled to final DPR 2; the other two are captured directly at DPR 2.
+
+| Shared capture | Browser viewport | Output pixels | Bytes |
+| --- | --- | --- | --- |
+| Desktop / Bespoke | 1440×900, DPR 2 | 2850×1972 | 3,380,692 |
+| Portrait / Shop | 460×1000, DPR 4 → 2 | 890×1400 | 844,138 |
+| Mobile / Bespoke | 320×1000, DPR 2 | 610×1400 | 723,152 |
+
+All three are lossless WebP, cached and reused by Hero/Result rather than duplicated. Measured effective pixel resolution exceeds 2× the projected display width at all five requested page viewports. Original frame/control pixels were compared with a browser render of `image340.png` at the identical scale: phone notch, phone bezel over desktop, tablet bezel and desktop chin match exactly, while the display interiors change to the genuine captures. Original site photograph quality still bounds its photo detail; no artificial detail is claimed.
+
+### Final local checks
+
+- Chrome: 1920×1080, 1440×900, 1024×768, 402×874 and 375×812. Compared Figma and prior-production screenshots with the updated Hero, Main, Result, nine boundaries and Dock hover/focus. No horizontal overflow, clipped metadata, title overlap, image failures or Dock off-screen placement.
+- Header direction/focus, direct detail refresh, FACES return, Back/Forward, Crown/All Faces selections, Contact modal and video center-entry/pause/resume/manual pause pass. WebKit 402/375 mobile and reduced-motion manual playback pass. No application console or page errors in those checks.
+- Pure projection tests cover every display corner at all five responsive scales and an interior grid with no perspective poles or orientation reversals. Full suite: 48 tests.
+- No dependencies, source video, homepage shaders, FACES data/order, Crown behavior or Next Face destination changed. JADUYA remains the existing unavailable detail; this task adds no JADUYA page. Physical-device and FPS/heap benchmark claims are not made.
+
+Final lint, TypeScript/build and live verification are recorded with the release identities in the completion report.

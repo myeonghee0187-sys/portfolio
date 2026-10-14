@@ -132,5 +132,47 @@
     "height": 634,
     "source": "https://cdsassets.apple.com/live/7WUAS350/images/imac/imac-27-2020.jpg",
     "note": "Original Apple frontal product photograph; live footage overlays its display. No raster editing or generated frame."
+  },
+  {
+    "key": "screen-desktop",
+    "path": "/projects/tchaikim/screen-desktop.webp",
+    "bytes": 3380692,
+    "width": 2850,
+    "height": 1972,
+    "source": "https://myeonghee0187-sys.github.io/tchaikim_all/pages/main/index.html",
+    "captureViewport": [
+      1440,
+      900
+    ],
+    "captureDeviceScaleFactor": 2,
+    "note": "Native desktop Hero element, 1425×986 CSS pixels; Bespoke slide. Lossless WebP. Shared by Hero and Result; original image340 frame, shadows, notch, home indicator and device overlap remain unchanged."
+  },
+  {
+    "key": "screen-tablet",
+    "path": "/projects/tchaikim/screen-tablet.webp",
+    "bytes": 844138,
+    "width": 890,
+    "height": 1400,
+    "source": "https://myeonghee0187-sys.github.io/tchaikim_all/pages/main/index.html",
+    "captureViewport": [
+      460,
+      1000
+    ],
+    "captureDeviceScaleFactor": 4,
+    "note": "Portrait display ratio matched to the original frame. Native compact Hero is 445×700 CSS pixels; Shop slide. Captured at DPR 4 so the site selects its original 3072×2424 photograph, then downsampled once to 2× output with Lanczos. Lossless WebP. Shared by Hero and Result; original image340 frame, shadows, notch, home indicator and device overlap remain unchanged."
+  },
+  {
+    "key": "screen-mobile",
+    "path": "/projects/tchaikim/screen-mobile.webp",
+    "bytes": 723152,
+    "width": 610,
+    "height": 1400,
+    "source": "https://myeonghee0187-sys.github.io/tchaikim_all/pages/main/index.html",
+    "captureViewport": [
+      320,
+      1000
+    ],
+    "captureDeviceScaleFactor": 2,
+    "note": "Native mobile Hero element, 305×700 CSS pixels; Bespoke slide, mobile menu and two-line heading. Lossless WebP. Shared by Hero and Result; original image340 frame, shadows, notch, home indicator and device overlap remain unchanged."
   }
 ]
