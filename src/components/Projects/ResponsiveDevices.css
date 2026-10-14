@@ -1,0 +1,28 @@
+.responsive-devices {
+  aspect-ratio: 1672 / 941;
+}
+
+.responsive-devices__frame {
+  width: 100%;
+  height: auto;
+}
+
+.responsive-devices__masks {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.responsive-devices__layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.responsive-devices__capture {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none !important;
+  transform-origin: 0 0;
+}

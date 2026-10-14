@@ -3,6 +3,7 @@ import { TCHAIKIM_CASE_STUDY_URL } from '../Faces/facesData'
 import FloatingDock from './FloatingDock'
 import NextFace, { type NextFaceProject } from './NextFace'
 import ProjectHeader, { type ProjectNavigateHandler } from './ProjectHeader'
+import ResponsiveDevices from './ResponsiveDevices'
 import './TchaikimCaseStudy.css'
 
 const ASSET_ROOT = '/projects/tchaikim'
@@ -13,7 +14,6 @@ const assets = {
   mainBackground: `${ASSET_ROOT}/main-background.png`,
   resultBackground: `${ASSET_ROOT}/result-background.png`,
   resultTopFade: `${ASSET_ROOT}/frame1707487159.png`,
-  responsiveDevices: `${ASSET_ROOT}/image340.png`,
   wordmark: `${ASSET_ROOT}/tchai-kim-wordmark.svg`,
   moodEditorial: `${ASSET_ROOT}/media-hover.png`,
   moodSeasonal: `${ASSET_ROOT}/seasonal.png`,
@@ -92,11 +92,7 @@ export default function TchaikimCaseStudy({
         <section className="tchai-hero" data-case-hero aria-labelledby="tchai-title">
           <img className="tchai-hero__background" src={assets.story6} alt="" aria-hidden="true" />
           <span className="tchai-hero__veil" aria-hidden="true" />
-          <img
-            className="tchai-hero__devices"
-            src={assets.responsiveDevices}
-            alt="Tchai Kim website shown on desktop, tablet, and mobile devices"
-          />
+          <ResponsiveDevices className="tchai-hero__devices" />
           <div className="tchai-hero__copy">
             <p className="tchai-hero__kicker">전통의 재해석, 글로벌 경험의 재설계.</p>
             <h1 className="tchai-hero__title" id="tchai-title" tabIndex={-1}>
@@ -105,6 +101,7 @@ export default function TchaikimCaseStudy({
             </h1>
           </div>
           <dl className="tchai-hero__meta">
+            <div className="tchai-hero__award"><dt>수상</dt><dd>글로벌 브랜드, 커머스 경험 디자인 부문 최우수상</dd></div>
             <div><dt>기간</dt><dd>2026.5 – 2026.8</dd></div>
             <div><dt>역할</dt><dd>PM / UXUI SUB / PRESENTATION CONTENT</dd></div>
             <div><dt>기여도</dt><dd>팀 프로젝트 30%<br />개인 디벨롭 포함 약 45%</dd></div>
@@ -216,7 +213,7 @@ export default function TchaikimCaseStudy({
 
         <section className="tchai-result" aria-labelledby="tchai-result-title">
           <img className="tchai-result__background" src={assets.resultBackground} alt="" aria-hidden="true" loading="lazy" />
-          <img className="tchai-result__devices" src={assets.responsiveDevices} alt="" aria-hidden="true" loading="lazy" />
+          <ResponsiveDevices className="tchai-result__devices" decorative />
           <img className="tchai-result__top-fade" src={assets.resultTopFade} alt="" aria-hidden="true" loading="lazy" />
           <div className="tchai-result__copy">
             <h2 id="tchai-result-title">트렌드의 한복판에서<br />{' '}전통을 세계로 잇는<br />{' '}경험을 완성했습니다.</h2>
