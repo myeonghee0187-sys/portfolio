@@ -203,8 +203,7 @@ export default function TchaikimCaseStudy({
 
         <section className="tchai-brand" id="brand-experience" aria-labelledby="tchai-brand-title">
           <span className="tchai-brand__center" data-brand-center aria-hidden="true" />
-          <SectionHeading eyebrow="BRAND EXPERIENCE" title="STORY IN MOTION." id="tchai-brand-title" />
-          <p className="tchai-brand__description">전통의 결을 따라 흐르는 브랜드 경험</p>
+          <SectionHeading eyebrow="Brand Experience" title="전통의 결을 따라 흐르는 브랜드 경험" id="tchai-brand-title" />
           <div className="tchai-brand__desktop" aria-label="Tchai Kim brand experience video">
             <img className="tchai-brand__frame" src={assets.brandDesktop} width={760} height={634} alt="" aria-hidden="true" loading="lazy" />
             <div className="tchai-brand__screen">{brandExperience}</div>
