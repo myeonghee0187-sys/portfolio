@@ -12,10 +12,29 @@ export default function BrandExperienceVideo({ src, poster }: Props) {
   const manualOutsideCenter = useRef(false)
   const blockedRef = useRef(false)
   const reconcileRef = useRef<(() => void) | null>(null)
+  const touchTimerRef = useRef<number | undefined>(undefined)
+  const [touchControls, setTouchControls] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [failed, setFailed] = useState(false)
   const [blocked, setBlocked] = useState(false)
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+
+  useEffect(() => () => window.clearTimeout(touchTimerRef.current), [])
+
+  const hideTouchControls = useCallback(() => {
+    window.clearTimeout(touchTimerRef.current)
+    touchTimerRef.current = undefined
+    setTouchControls(false)
+  }, [])
+
+  const revealTouchControls = () => {
+    window.clearTimeout(touchTimerRef.current)
+    setTouchControls(true)
+    touchTimerRef.current = window.setTimeout(() => {
+      touchTimerRef.current = undefined
+      setTouchControls(false)
+    }, 2400)
+  }
 
   useEffect(() => {
     const video = videoRef.current
@@ -91,23 +110,32 @@ export default function BrandExperienceVideo({ src, poster }: Props) {
     manualOutsideCenter.current = intentRef.current === 'play' && !centeredRef.current
     blockedRef.current = false
     setBlocked(false)
+    hideTouchControls()
     reconcileRef.current?.()
-  }, [failed, src])
+  }, [failed, src, hideTouchControls])
 
   return (
-    <div className="brand-video">
+    <div className="brand-video" data-playing={playing} data-controls-visible={touchControls}
+      onPointerUp={event => {
+        // A touch reveals controls; only the separate button changes playback intent.
+        if (event.pointerType !== 'mouse' && !(event.target as Element).closest('button')) revealTouchControls()
+      }}>
       <img className="brand-video__poster" src={poster} alt="차이킴 브랜드 페이지" />
       {src && !failed && (
         <video ref={videoRef} src={src} poster={poster} muted loop playsInline preload="metadata"
           aria-label="차이킴 Brand Page 스크롤 영상"
           onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}
-          onError={() => { setFailed(true); setPlaying(false) }} />
+          onError={() => { setFailed(true); setPlaying(false); hideTouchControls() }} />
       )}
       {src && !failed && (
         <button type="button" className="brand-video__control" onClick={toggle}
           aria-label={playing ? '브랜드 영상 일시정지' : '브랜드 영상 재생'}
           aria-pressed={playing}>
-          <span aria-hidden="true">{playing ? 'Ⅱ' : '▶'}</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            {playing
+              ? <path d="M8 6v12m8-12v12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              : <path d="m9 5 11 7-11 7Z" fill="currentColor" />}
+          </svg>
         </button>
       )}
       {(failed || blocked) && (

@@ -208,6 +208,8 @@
   top: calc(-1 * var(--tchai-hero-height));
   height: calc(var(--tchai-hero-height) * 1.46667);
   object-position: center;
+  /* Finish fading before the shared Hero photograph ends inside this section. */
+  mask-image: linear-gradient(180deg, #000 calc(100% - clamp(140px, 11vw, 210px)), transparent calc(100% - 20px));
 }
 
 .tchai-overview > span {
@@ -250,7 +252,7 @@
   min-height: 0;
   padding: 250px clamp(40px, 6.25vw, 120px) 160px;
   overflow: hidden;
-  background: linear-gradient(180deg, var(--tchai-paper), #d5dfdc 55%, var(--tchai-sage-handoff));
+  background: linear-gradient(180deg, var(--tchai-paper) clamp(32px, 4.167vw, 80px), #d5dfdc 55%, var(--tchai-sage-handoff));
 }
 
 .tchai-problem__group {
@@ -636,12 +638,12 @@
   pointer-events: none;
 }
 
-.tchai-brand__description {
-  z-index: 1;
-  margin: 20px 0 0;
-  color: #505452;
-  font-size: clamp(16px, 1.094vw, 21px);
-  text-align: center;
+.tchai-brand .tchai-section-heading p {
+  text-transform: none;
+}
+
+.tchai-brand .tchai-section-heading h2 {
+  line-height: 1.2;
 }
 
 /* Original frontal product photograph; the source screen spans x30–730, y54–448. */
@@ -1027,12 +1029,6 @@
   .tchai-brand {
     min-height: 660px;
     padding: 88px 12px 100px;
-  }
-
-  .tchai-brand__description {
-    width: calc(100% - 24px);
-    margin-top: 15px;
-    font-size: 16px;
   }
 
   .tchai-brand__desktop {
