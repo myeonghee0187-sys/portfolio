@@ -34,7 +34,7 @@ export type FaceProject = {
   focus?: [number, number]
 }
 
-export const TCHAIKIM_CASE_STUDY_URL = 'https://www.figma.com/deck/8K1OMzkKzmEmkV2Kejd43q/기획서-슬라이드?node-id=6242-19&viewport=-109%2C-41%2C0.52&t=JXfN3OlWh2HhE6sZ-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1'
+export const TCHAIKIM_CASE_STUDY_URL = 'https://www.figma.com/deck/8K1OMzkKzmEmkV2Kejd43q/기획서-슬라이드?node-id=6242-19&viewport=-109%2C-41%2C0.52&t=gSmMfIF8X21GnG1Q-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1'
 
 export const FACE_PROJECTS: FaceProject[] = [
   {

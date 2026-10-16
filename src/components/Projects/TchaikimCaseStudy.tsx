@@ -102,7 +102,7 @@ export default function TchaikimCaseStudy({
           </div>
           <dl className="tchai-hero__meta">
             <div className="tchai-hero__award"><dt>수상</dt><dd>글로벌 브랜드, 커머스 경험 디자인 부문 최우수상</dd></div>
-            <div><dt>기간</dt><dd>2026.5 – 2026.8</dd></div>
+            <div><dt>기간</dt><dd>2026.7 - 2026.8</dd></div>
             <div><dt>역할</dt><dd>PM / UXUI SUB / PRESENTATION CONTENT</dd></div>
             <div><dt>기여도</dt><dd>팀 프로젝트 30%<br />개인 디벨롭 포함 약 45%</dd></div>
           </dl>

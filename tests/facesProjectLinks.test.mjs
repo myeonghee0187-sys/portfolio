@@ -83,7 +83,7 @@ test('only TCHAIKIM exposes an implemented detail route and approved external li
   const [tchai, ...other] = projects
   assert.equal(tchai.detailPath, '/projects/tchaikim')
   assert.equal(tchai.liveUrl, 'https://myeonghee0187-sys.github.io/tchaikim_all/pages/main/index.html')
-  assert.equal(tchaikimCaseStudyUrl, 'https://www.figma.com/deck/8K1OMzkKzmEmkV2Kejd43q/기획서-슬라이드?node-id=6242-19&viewport=-109%2C-41%2C0.52&t=JXfN3OlWh2HhE6sZ-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1')
+  assert.equal(tchaikimCaseStudyUrl, 'https://www.figma.com/deck/8K1OMzkKzmEmkV2Kejd43q/기획서-슬라이드?node-id=6242-19&viewport=-109%2C-41%2C0.52&t=gSmMfIF8X21GnG1Q-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1')
   assert.equal(tchai.caseStudyUrl, tchaikimCaseStudyUrl)
   assert.ok(other.every(project => project.detailPath === undefined))
 })
