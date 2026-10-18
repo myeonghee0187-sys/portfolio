@@ -5,17 +5,21 @@ export type HomeDestination = {
 }
 
 export type PortfolioRoute = {
-  page: 'home' | 'tchaikim'
+  page: 'home' | 'tchaikim' | 'jaduya'
   key: string
   destination: HomeDestination | null
   scrollY: number
 }
 
 export const TCHAIKIM_PATH = '/projects/tchaikim'
+export const JADUYA_PATH = '/projects/jaduya'
 
 export function routeFromUrl(url: URL, key: string): PortfolioRoute | null {
   if (url.pathname.replace(/\/$/, '') === TCHAIKIM_PATH) {
     return { page: 'tchaikim', key, destination: null, scrollY: 0 }
+  }
+  if (url.pathname.replace(/\/$/, '') === JADUYA_PATH) {
+    return { page: 'jaduya', key, destination: null, scrollY: 0 }
   }
   if (url.pathname !== '/') return null
   const section = url.hash.slice(1)

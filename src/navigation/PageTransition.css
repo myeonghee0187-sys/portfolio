@@ -12,3 +12,6 @@
 html[data-project-page='true'],
 html[data-project-page='true'] body,
 html[data-project-page='true'] #root { background: #fffdf9; }
+html[data-project-id='jaduya'],
+html[data-project-id='jaduya'] body,
+html[data-project-id='jaduya'] #root { background: #fcfaf7; }

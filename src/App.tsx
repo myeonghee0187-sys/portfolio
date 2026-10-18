@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import TchaikimCaseStudy from './components/Projects/TchaikimCaseStudy'
+import JaduyaCaseStudy from './components/Projects/JaduyaCaseStudy'
 import BrandExperienceVideo from './components/Projects/BrandExperienceVideo'
 import { FACE_PROJECTS } from './components/Faces/facesData'
 import { routeForHistory, routeFromUrl, type PortfolioRoute } from './navigation/projectRouting'
@@ -78,8 +79,8 @@ export default function App() {
       visitedEntries.current.set(saved.key, saved)
       history.replaceState({ ...history.state, portfolio: saved }, '', location.href)
     }
-    if (routeRef.current.page === 'home' && next.page === 'tchaikim') {
-      window.dispatchEvent(new CustomEvent('portfolio-project-exit', { detail: { projectId: 'tchaikim' } }))
+    if (routeRef.current.page === 'home' && next.page !== 'home') {
+      window.dispatchEvent(new CustomEvent('portfolio-project-exit', { detail: { projectId: next.page } }))
     }
     await animate(1, reduced ? 0.08 : style === 'dissolve' ? 0.32 : 0.27)
     if (token !== transitionToken.current) return
@@ -93,8 +94,8 @@ export default function App() {
     clearTimeout(timeout)
     if (token !== transitionToken.current) return
     pendingReady.current = null
-    if (next.page === 'tchaikim' && style !== 'editorial' && !reduced) {
-      const copy = contentRef.current?.querySelector('.tchai-hero__copy')
+    if (next.page !== 'home' && style !== 'editorial' && !reduced) {
+      const copy = contentRef.current?.querySelector('.tchai-hero__copy, .jaduya-hero__copy')
       if (copy) entranceTween.current = gsap.fromTo(copy,
         { opacity: 0, y: 8 },
         { opacity: 1, y: 0, duration: .3, delay: .04, clearProps: 'opacity,transform', ease: 'power2.out' },
@@ -110,7 +111,7 @@ export default function App() {
     setBusy(false)
     requestAnimationFrame(() => {
       if (token !== transitionToken.current) return
-      const selector = next.page === 'tchaikim' ? 'h1' : next.destination?.section === 'faces'
+      const selector = next.page !== 'home' ? 'h1' : next.destination?.section === 'faces'
         ? '[data-face-heading="' + (next.destination.faceId ?? 'tchaikim') + '"]'
         : next.destination?.section === 'contact' ? '#contact h2' : '#hero h1'
       contentRef.current?.querySelector<HTMLElement>(selector)?.focus({ preventScroll: true })
@@ -154,10 +155,14 @@ export default function App() {
       }, '', location.href)
     }
     window.addEventListener('popstate', onPop)
+    // A reload captures history state before pagehide in Chromium. Save the
+    // current reading position before that capture; pagehide remains the fallback.
+    window.addEventListener('beforeunload', save)
     window.addEventListener('pagehide', save)
     return () => {
       history.scrollRestoration = restoration
       window.removeEventListener('popstate', onPop)
+      window.removeEventListener('beforeunload', save)
       window.removeEventListener('pagehide', save)
       transitionToken.current += 1
       tweenRef.current?.kill()
@@ -167,11 +172,12 @@ export default function App() {
   }, [transition])
 
   useEffect(() => {
-    document.documentElement.dataset.projectPage = String(route.page === 'tchaikim')
-    document.title = route.page === 'tchaikim' ? 'TCHAI KIM — Song Myeonghee' : 'Song Myeonghee'
+    document.documentElement.dataset.projectPage = String(route.page !== 'home')
+    document.documentElement.dataset.projectId = route.page
+    document.title = route.page === 'home' ? 'Song Myeonghee' : `${route.page === 'tchaikim' ? 'TCHAI KIM' : 'JADUYA'} — Song Myeonghee`
     const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')
-    if (canonical) canonical.href = 'https://portfolio-two-virid-30.vercel.app/' + (route.page === 'tchaikim' ? 'projects/tchaikim' : '')
-    if (route.page !== 'tchaikim') return
+    if (canonical) canonical.href = 'https://portfolio-two-virid-30.vercel.app/' + (route.page !== 'home' ? `projects/${route.page}` : '')
+    if (route.page === 'home') return
     let cancelled = false
     const prepare = async () => {
       const images = [...(contentRef.current?.querySelectorAll<HTMLImageElement>('[data-case-hero] img') ?? [])]
@@ -211,6 +217,8 @@ export default function App() {
         {route.page === 'home' ? (
           <HomePage key={route.key} skipIntro={introDone.current} destination={route.destination}
             onIntroDone={handleIntroDone} onReady={handleReady} onOpenProject={openProject} />
+        ) : route.page === 'jaduya' ? (
+          <JaduyaCaseStudy key={route.key} onNavigate={navigate} />
         ) : (
           <TchaikimCaseStudy key={route.key} onNavigate={navigate}
             nextProject={{ title: nextFace.title, href: nextFace.detailPath }}

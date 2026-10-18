@@ -15,7 +15,10 @@ const url = path => new URL(path, 'https://portfolio.example')
 test('direct detail URLs and explicit homepage sections resolve without fictitious project routes', () => {
   assert.equal(routeFromUrl(url('/projects/tchaikim'), 'a').page, 'tchaikim')
   assert.equal(routeFromUrl(url('/projects/tchaikim/'), 'a').page, 'tchaikim')
-  assert.equal(routeFromUrl(url('/projects/jaduya'), 'a'), null)
+  assert.equal(routeFromUrl(url('/projects/jaduya'), 'a').page, 'jaduya')
+  assert.equal(routeFromUrl(url('/projects/jaduya/'), 'a').page, 'jaduya')
+  assert.equal(routeFromUrl(url('/projects/f45'), 'a'), null)
+  assert.deepEqual(routeFromUrl(url('/?face=jaduya#faces'), 'b').destination, { section: 'faces', faceId: 'jaduya' })
   assert.deepEqual(routeFromUrl(url('/?face=tchaikim#faces'), 'b').destination, { section: 'faces', faceId: 'tchaikim' })
   assert.deepEqual(routeFromUrl(url('/#contact'), 'b').destination, { section: 'contact' })
   assert.equal(routeFromUrl(url('/'), 'b').destination, null)
@@ -28,6 +31,11 @@ test('history restores the selected Face and detail reading position independent
   const detail = routeForHistory(url('/projects/tchaikim'), { page: 'tchaikim', key: 'detail', scrollY: 12400 }, 'fallback')
   assert.equal(detail.scrollY, 12400)
   assert.equal(detail.destination, null)
+  const jaduya = routeForHistory(url('/projects/jaduya'), { page: 'jaduya', key: 'jaduya', scrollY: 1800 }, 'fallback')
+  assert.equal(jaduya.key, 'jaduya')
+  assert.equal(jaduya.scrollY, 1800)
+  assert.equal(jaduya.destination, null)
+  assert.equal(routeForHistory(url('/projects/jaduya'), detail, 'fresh').scrollY, 0, 'one detail must not inherit another project’s position')
 })
 
 test('unrelated history and invalid positions cannot override the current route', () => {

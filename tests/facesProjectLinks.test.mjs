@@ -79,12 +79,15 @@ function fixture({ withHandler = true, exitOnOpen = false } = {}) {
     dispose: () => cleanups.forEach(cleanup => cleanup()), callbacks }
 }
 
-test('only TCHAIKIM exposes an implemented detail route and approved external links', () => {
-  const [tchai, ...other] = projects
+test('implemented TCHAIKIM and JADUYA expose routes and their approved external links', () => {
+  const [tchai, jaduya, ...other] = projects
   assert.equal(tchai.detailPath, '/projects/tchaikim')
   assert.equal(tchai.liveUrl, 'https://myeonghee0187-sys.github.io/tchaikim_all/pages/main/index.html')
   assert.equal(tchaikimCaseStudyUrl, 'https://www.figma.com/deck/8K1OMzkKzmEmkV2Kejd43q/기획서-슬라이드?node-id=6242-19&viewport=-109%2C-41%2C0.52&t=gkQV04wKLDvypaXf-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1')
   assert.equal(tchai.caseStudyUrl, tchaikimCaseStudyUrl)
+  assert.equal(jaduya.detailPath, '/projects/jaduya')
+  assert.equal(jaduya.liveUrl, 'https://jaduya.vercel.app/')
+  assert.equal(new URL(jaduya.caseStudyUrl).pathname.split('/')[2], '1JhaNnsCFGHiULHwL2677r')
   assert.ok(other.every(project => project.detailPath === undefined))
 })
 
@@ -128,8 +131,18 @@ test('keyboard activation works after a cancelled gesture; unavailable projects 
   f.down(); f.cancel()
   assert.equal(f.click({ detail: 0 }).defaultPrevented, true)
   assert.deepEqual(f.opened, ['tchaikim'])
-  assert.equal(f.click({ detail: 0, target: new Anchor('jaduya') }).defaultPrevented, true)
+  assert.equal(f.click({ detail: 0, target: new Anchor('f45') }).defaultPrevented, true)
   assert.deepEqual(f.opened, ['tchaikim'])
+})
+
+test('JADUYA taps dispatch the project id and share the exit lock', () => {
+  const f = fixture({ exitOnOpen: true })
+  f.down({ target: new Anchor('jaduya') }); f.up({ target: new Anchor('jaduya') })
+  f.click({ target: new Anchor('jaduya') })
+  f.click({ detail: 0, target: new Anchor('jaduya') })
+  assert.deepEqual(f.opened, ['jaduya'])
+  assert.equal(f.host.dataset.exitingProject, 'jaduya')
+  f.dispose()
 })
 
 test('modified clicks and links without an SPA callback retain native navigation', () => {
@@ -144,16 +157,18 @@ test('modified clicks and links without an SPA callback retain native navigation
   assert.equal(f.click().defaultPrevented, false)
 })
 
-test('video and CTA are separate semantic links; other projects have no video link', () => {
+test('implemented videos and CTAs are separate semantic links; F45 stays unavailable', () => {
   const f = fixture()
   const slides = f.tree.props.children.map(element => element.type(element.props, null))
-  const [video, meta] = slides[0].props.children
-  assert.equal(video.type, 'a')
-  assert.equal(video.props.href, '/projects/tchaikim')
-  const cta = meta.props.children.at(-1)
-  assert.equal(cta.type, 'a')
-  assert.equal(cta.props.href, video.props.href)
-  for (const slide of slides.slice(1)) {
+  for (const [index, path] of ['/projects/tchaikim', '/projects/jaduya'].entries()) {
+    const [video, meta] = slides[index].props.children
+    assert.equal(video.type, 'a')
+    assert.equal(video.props.href, path)
+    const cta = meta.props.children.at(-1)
+    assert.equal(cta.type, 'a')
+    assert.equal(cta.props.href, video.props.href)
+  }
+  for (const slide of slides.slice(2)) {
     assert.notEqual(slide.props.children[0].type, 'a')
     const disabled = slide.props.children[1].props.children.at(-1)
     assert.equal(disabled.props.href, undefined)

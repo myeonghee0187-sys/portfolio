@@ -23,6 +23,18 @@
   transform: translate3d(0, -110%, 0);
 }
 
+.project-header[data-tone='light'] {
+  color: #08090a;
+}
+
+.project-header[data-tone='light']::before {
+  background: linear-gradient(180deg, rgb(252 250 247 / 0.86), rgb(252 250 247 / 0.25) 58%, transparent);
+}
+
+.project-header[data-tone='light'] .project-header__item:focus-visible {
+  outline-color: #186de5;
+}
+
 .project-header:focus-within {
   transform: translate3d(0, 0, 0);
 }
