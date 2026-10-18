@@ -14,7 +14,7 @@ Design: Figma `9kXZ17uZOK7WinbmInLvUH`, node `2068:363`, inspected 2026-10-18.
 
 - `npm run lint`: passed.
 - `npm run build`: passed, including TypeScript. Existing 722.99 kB homepage chunk warning remains; no homepage scene code was changed.
-- `node --test tests/*.test.mjs`: 49 passed, 0 failed. Route/history and native-rail link tests cover both implemented projects, F45 unavailability, modified clicks, gesture cancellation, and JADUYA exit locking.
+- `node --test tests/*.test.mjs`: 50 passed, 0 failed. Route/history and native-rail link tests cover both implemented projects, F45 unavailability, modified clicks, gesture cancellation, JADUYA exit locking, and hosting rewrites for direct detail URLs.
 - Chrome screenshots and DOM geometry checked at 1920, 1440, 1024, 768, 390, 375, and 320 px. No horizontal document overflow, missing assets, or clipped text. Five phone and six icon source layers retained their aspect ratios.
 - At 1920 px: Hero is 1080 px; Overview is 588.78 px versus Figma 590 px (text line-box rounding); Direction is 1146 px. Phone bounding boxes differ by less than 0.3 px from the Figma layout because natural bitmap proportions are retained. Native green/yellow conclusion shapes meet in the original crossing.
 - Responsive differences are intentional: small screens move metadata above the phones to prevent overlap; widths <=900 px stack matched AS-IS / TO-BE pairs, reuse the original beige wave per pair, and keep a visible connector. A 100 px ending allowance lets the last text scroll clear of the fixed Dock.
@@ -23,8 +23,10 @@ Design: Figma `9kXZ17uZOK7WinbmInLvUH`, node `2068:363`, inspected 2026-10-18.
 - WebKit: 390 px touch/reduced-motion rendering plus native mobile rail → detail → Back → Forward passed. This is browser-engine emulation, not a physical iPhone Safari test.
 - LIVE SITE opened `https://jaduya.vercel.app/` in a new tab and rendered the real JADUYA service.
 
-## External link still requiring owner action
+## Production routing and external links
 
-The existing JADUYA `caseStudyUrl` in facesData was reused unchanged. Its new tab opens Figma's “슬라이드 덱을 찾을 수 없음” page even in the signed-in account. A valid shared Deck URL or corrected Figma permission is required; no replacement URL was invented. This external destination check is not a pass.
+Production direct-route QA caught the need for explicit Vercel SPA rewrites at `/projects/jaduya` and its trailing-slash variant. Both now serve `index.html`, matching the existing TCHAI KIM configuration.
+
+The original JADUYA Deck was unavailable. The owner supplied the replacement shared URL with file key `7l7yOTebIpNQ4Go31Mduar`; facesData now holds that exact URL and FloatingDock reads it from there. The actual Figma page opened successfully and displayed slide 1 of 53. No URL was invented.
 
 Future design sections (Brand Character, Main Page, Core Experience, Interaction Video, other sections, and JADUYA Next Face) remain unimplemented pending the next design instruction.
