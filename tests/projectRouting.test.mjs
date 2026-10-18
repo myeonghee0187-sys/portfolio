@@ -9,8 +9,17 @@ const source = await readFile(new URL('../src/navigation/projectRouting.ts', imp
 const { outputText } = ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 })
-const { routeFromUrl, routeForHistory } = await import('data:text/javascript;base64,' + Buffer.from(outputText).toString('base64'))
+const { routeFromUrl, routeForHistory, TCHAIKIM_PATH, JADUYA_PATH } = await import('data:text/javascript;base64,' + Buffer.from(outputText).toString('base64'))
 const url = path => new URL(path, 'https://portfolio.example')
+
+test('Vercel serves the SPA for every implemented direct detail URL and trailing slash', async () => {
+  const hosting = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'))
+  for (const path of [TCHAIKIM_PATH, JADUYA_PATH]) {
+    for (const suffix of ['', '/']) {
+      assert.ok(hosting.rewrites.some(rule => rule.source === path + suffix && rule.destination === '/index.html'), path + suffix)
+    }
+  }
+})
 
 test('direct detail URLs and explicit homepage sections resolve without fictitious project routes', () => {
   assert.equal(routeFromUrl(url('/projects/tchaikim'), 'a').page, 'tchaikim')

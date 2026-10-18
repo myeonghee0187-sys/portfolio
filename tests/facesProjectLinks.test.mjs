@@ -87,7 +87,7 @@ test('implemented TCHAIKIM and JADUYA expose routes and their approved external 
   assert.equal(tchai.caseStudyUrl, tchaikimCaseStudyUrl)
   assert.equal(jaduya.detailPath, '/projects/jaduya')
   assert.equal(jaduya.liveUrl, 'https://jaduya.vercel.app/')
-  assert.equal(new URL(jaduya.caseStudyUrl).pathname.split('/')[2], '1JhaNnsCFGHiULHwL2677r')
+  assert.equal(new URL(jaduya.caseStudyUrl).pathname.split('/')[2], '7l7yOTebIpNQ4Go31Mduar')
   assert.ok(other.every(project => project.detailPath === undefined))
 })
 
