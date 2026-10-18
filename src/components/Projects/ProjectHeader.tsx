@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FocusEvent, type MouseEvent } from 'react'
 import './ProjectHeader.css'
+import './ProjectFonts.css'
 
 export type ProjectTransitionVariant = 'dissolve' | 'reverse' | 'editorial'
 
@@ -10,6 +11,8 @@ export type ProjectNavigateHandler = (
 
 type ProjectHeaderProps = {
   onNavigate?: ProjectNavigateHandler
+  faceId?: string
+  tone?: 'dark' | 'light'
 }
 
 const DIRECTION_THRESHOLD = 28
@@ -22,7 +25,7 @@ function isUnmodifiedPrimaryClick(event: MouseEvent<HTMLAnchorElement>) {
     && !event.altKey
 }
 
-export default function ProjectHeader({ onNavigate }: ProjectHeaderProps) {
+export default function ProjectHeader({ onNavigate, faceId = 'tchaikim', tone = 'dark' }: ProjectHeaderProps) {
   const [hidden, setHidden] = useState(false)
   const focusedWithin = useRef(false)
   const lastY = useRef(0)
@@ -86,12 +89,13 @@ export default function ProjectHeader({ onNavigate }: ProjectHeaderProps) {
   return (
     <header
       className="project-header"
+      data-tone={tone}
       data-hidden={hidden || undefined}
       onFocusCapture={handleFocus}
       onBlurCapture={handleBlur}
     >
       <nav className="project-header__inner" aria-label="Project navigation">
-        <a className="project-header__item project-header__item--faces" href="/?face=tchaikim#faces" onClick={handleClick}>
+        <a className="project-header__item project-header__item--faces" href={`/?face=${encodeURIComponent(faceId)}#faces`} onClick={handleClick}>
           FACES
         </a>
         <a className="project-header__item project-header__item--name" href="/#hero" onClick={handleClick}>
