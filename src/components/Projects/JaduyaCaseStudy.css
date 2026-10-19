@@ -41,7 +41,7 @@
 /* Native 1920 × 1080 composition; each phone remains a separate source layer. */
 .jaduya-hero {
   position: relative;
-  height: max(680px, calc(1080 * var(--jaduya-u)));
+  height: var(--project-hero-height);
   isolation: isolate;
   overflow: hidden;
 }
@@ -54,8 +54,9 @@
   object-fit: cover;
 }
 .jaduya-hero__veil { background: rgb(252 250 247 / 0.6); }
+.jaduya-hero__visual { position: absolute; inset: 0; }
 .jaduya-hero__phones {
-  --phone-u: var(--jaduya-u);
+  --phone-u: min(var(--jaduya-u), var(--project-hero-height) / 1080);
   position: absolute;
   top: calc(-389 * var(--phone-u));
   right: calc(40.19 * var(--phone-u));
@@ -88,6 +89,7 @@
   position: absolute;
   top: 32.315%;
   left: max(24px, calc(40 * var(--jaduya-u)));
+  z-index: 2;
 }
 .jaduya-hero__copy p {
   margin-bottom: calc(32 * var(--jaduya-u));
@@ -171,7 +173,7 @@
 .jaduya-direction__connector { position: absolute; display: grid; place-items: center; top: calc(323 * var(--jaduya-u)); left: 50%; width: 0; height: calc(139 * var(--jaduya-u)); }
 .jaduya-direction__connector img { position: absolute; top: 50%; left: 50%; width: calc(144 * var(--jaduya-u)); height: auto; transform: translate(-50%, -50%) rotate(90deg); }
 
-.jaduya-conclusion { padding-bottom: max(100px, env(safe-area-inset-bottom, 0px)); }
+.jaduya-conclusion { padding-bottom: max(80px, calc(300 * var(--jaduya-u))); }
 .jaduya-conclusion__curves img { width: 100%; height: auto; }
 .jaduya-conclusion__curves img + img { transform: scaleY(-1); }
 .jaduya-conclusion__card { position: relative; width: 91.6667%; margin: 0 auto; padding: calc(100 * var(--jaduya-u)) 24px; border-radius: calc(40 * var(--jaduya-u)); background: var(--jaduya-yellow); text-align: center; }
@@ -179,7 +181,7 @@
 .jaduya-conclusion__card strong { color: var(--jaduya-red); font-weight: inherit; }
 
 @media (min-width: 641px) and (max-width: 1023px) {
-  .jaduya-hero__phones { --phone-u: 0.4px; right: 24px; top: -70px; }
+  .jaduya-hero__phones { --phone-u: 0.4px; right: 24px; top: calc(50% - 815.2765 * var(--phone-u)); }
   .jaduya-hero__copy h1 { width: 240px; height: 88px; }
   .jaduya-hero__copy { top: 25%; }
   .jaduya-hero__fade { height: 180px; }
@@ -212,14 +214,24 @@
 }
 
 @media (max-width: 640px) {
-  .jaduya-hero { height: calc(600px + 75vw); }
+  .jaduya-hero {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 14px;
+    padding: calc(var(--project-header-space) + 16px) 24px var(--project-dock-space);
+  }
   .jaduya-hero__landscape { object-position: 32% center; }
-  .jaduya-hero__copy { top: 112px; left: 24px; }
-  .jaduya-hero__copy p { font-size: 20px; margin-bottom: 20px; }
-  .jaduya-hero__copy h1 { width: 240px; height: 88px; }
-  .jaduya-hero__phones { --phone-u: min(0.38px, (100vw - 32px) / 1147); top: 350px; left: calc(50% - 477.4 * var(--phone-u)); right: auto; }
-  .jaduya-hero__fade { height: 100px; }
-  .jaduya-hero__meta { left: 24px; right: 24px; top: 258px; bottom: auto; max-width: none; gap: 12px; font-size: 12px; line-height: 1.4; }
+  .jaduya-hero__copy { position: relative; inset: auto; grid-row: 1; }
+  .jaduya-hero__copy p { font-size: 18px; margin-bottom: 14px; }
+  .jaduya-hero__copy h1 { width: clamp(180px, 45vw, 220px); height: auto; }
+  .jaduya-hero__visual { position: relative; inset: auto; grid-row: 3; container-type: size; min-height: 0; }
+  .jaduya-hero__phones {
+    --phone-u: min(100cqw / 1147, 100cqh / 1458.553);
+    top: calc((100cqh - 1458.553 * var(--phone-u)) / 2 - 172 * var(--phone-u));
+    left: calc(50% - 477.4 * var(--phone-u)); right: auto;
+  }
+  .jaduya-hero__fade { height: 48px; pointer-events: none; }
+  .jaduya-hero__meta { position: relative; inset: auto; grid-row: 2; max-width: none; gap: 8px; font-size: 11px; line-height: 1.4; }
   .jaduya-hero__meta > div { gap: 10px; }
   .jaduya-hero__meta dd { min-width: 0; overflow-wrap: anywhere; }
   .jaduya-overview { gap: 72px; padding-bottom: 64px; }

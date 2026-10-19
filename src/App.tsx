@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import TchaikimCaseStudy from './components/Projects/TchaikimCaseStudy'
 import JaduyaCaseStudy from './components/Projects/JaduyaCaseStudy'
 import BrandExperienceVideo from './components/Projects/BrandExperienceVideo'
+import type { NextFaceProject } from './components/Projects/NextFace'
 import { FACE_PROJECTS } from './components/Faces/facesData'
 import { routeForHistory, routeFromUrl, type PortfolioRoute } from './navigation/projectRouting'
 import './navigation/PageTransition.css'
@@ -11,7 +12,15 @@ type TransitionStyle = 'dissolve' | 'reverse' | 'editorial'
 const newKey = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8)
 // Direct case-study visits do not download the homepage's Three/OGL scene bundle.
 const HomePage = lazy(() => import('./HomePage'))
-const nextFace = FACE_PROJECTS[(FACE_PROJECTS.findIndex((project) => project.id === 'tchaikim') + 1) % FACE_PROJECTS.length]
+const nextFaceFor = (id: string): NextFaceProject => {
+  const next = FACE_PROJECTS[(FACE_PROJECTS.findIndex((project) => project.id === id) + 1) % FACE_PROJECTS.length]
+  return {
+    title: next.title,
+    href: next.detailPath ?? `/?face=${encodeURIComponent(next.id)}#faces`,
+    label: next.detailPath ? undefined : 'VIEW IN FACES',
+    transition: next.detailPath ? 'editorial' : 'reverse',
+  }
+}
 
 function snapshot(route: PortfolioRoute): PortfolioRoute {
   let destination = route.destination
@@ -218,10 +227,10 @@ export default function App() {
           <HomePage key={route.key} skipIntro={introDone.current} destination={route.destination}
             onIntroDone={handleIntroDone} onReady={handleReady} onOpenProject={openProject} />
         ) : route.page === 'jaduya' ? (
-          <JaduyaCaseStudy key={route.key} onNavigate={navigate} />
+          <JaduyaCaseStudy key={route.key} onNavigate={navigate} nextProject={nextFaceFor('jaduya')} />
         ) : (
           <TchaikimCaseStudy key={route.key} onNavigate={navigate}
-            nextProject={{ title: nextFace.title, href: nextFace.detailPath }}
+            nextProject={nextFaceFor('tchaikim')}
             brandExperience={<BrandExperienceVideo
               src="/projects/tchaikim/tchaikim_brand_scroll_1080p60_v2.mp4"
               poster="/projects/tchaikim/brand-poster.jpg" />} />

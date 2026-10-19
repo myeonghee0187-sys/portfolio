@@ -254,30 +254,34 @@ const RailSlide = forwardRef<HTMLLIElement, { project: FaceProject; canPlay: boo
     return (
       <li ref={setRefs} className="faces__slide" style={{ '--aspect': project.aspect } as CSSProperties} data-project-id={project.id}>
         {/* #t keeps Safari's first frame visible before playback begins. */}
-        {project.detailPath ? (
-          <a className="faces__visual-link" href={project.detailPath} data-project-id={project.id} aria-label={`Explore ${project.title} project`} draggable={false}>
+        <div className="faces__visual-stack">
+          {project.detailPath ? (
+            <a className="faces__visual-link" href={project.detailPath} data-project-id={project.id} aria-label={`Explore ${project.title} project`} draggable={false}>
+              <LoopVideo className="faces__visual" src={`${project.media}#t=0.001`} playing={canPlay && inView} />
+            </a>
+          ) : (
             <LoopVideo className="faces__visual" src={`${project.media}#t=0.001`} playing={canPlay && inView} />
-          </a>
-        ) : (
-          <LoopVideo className="faces__visual" src={`${project.media}#t=0.001`} playing={canPlay && inView} />
-        )}
+          )}
+          <div className="faces__rail-cta">
+            <a
+              href={project.detailPath}
+              data-project-id={project.id}
+              className="faces__cta faces__cta--explore"
+              aria-label={`Explore ${project.title} project`}
+              title={`Explore ${project.title} project`}
+              aria-disabled={project.detailPath ? undefined : true}
+              tabIndex={project.detailPath ? undefined : -1}
+              draggable={false}
+            >
+              <span>EXPLORE PROJECT</span>
+              <span className="faces__cta-arrow" aria-hidden="true">&#8599;</span>
+            </a>
+          </div>
+        </div>
         <div className="faces__slide-meta">
           <p className="faces__meta-index">{project.index}</p>
           <h3 className="faces__meta-title" data-face-heading={project.id} tabIndex={-1}>{project.title}</h3>
           <p className="faces__meta-category">{project.category}</p>
-          <a
-            href={project.detailPath}
-            data-project-id={project.id}
-            className="faces__cta faces__cta--explore"
-            aria-label={`Explore ${project.title} project`}
-            title={`Explore ${project.title} project`}
-            aria-disabled={project.detailPath ? undefined : true}
-            tabIndex={project.detailPath ? undefined : -1}
-            draggable={false}
-          >
-            <span>EXPLORE PROJECT</span>
-            <span className="faces__cta-arrow" aria-hidden="true">&#8599;</span>
-          </a>
         </div>
       </li>
     )

@@ -2,6 +2,11 @@
   aspect-ratio: 1672 / 941;
 }
 
+.responsive-devices__composition {
+  position: relative;
+  aspect-ratio: 1672 / 941;
+}
+
 .responsive-devices__frame {
   width: 100%;
   height: auto;

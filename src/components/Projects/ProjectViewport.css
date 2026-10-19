@@ -1,0 +1,21 @@
+/* Both brands use the browser's current viewport and the same fixed-UI safe areas. */
+.project-case-study {
+  --project-hero-height: 100vh;
+  --project-hero-height: 100dvh;
+  --project-header-space: calc(104px + env(safe-area-inset-top, 0px));
+  --project-dock-space: calc(94px + env(safe-area-inset-bottom, 0px));
+}
+
+.project-hero { height: var(--project-hero-height); min-height: 0; }
+
+@media (max-width: 640px) {
+  .project-case-study {
+    --project-header-space: calc(72px + env(safe-area-inset-top, 0px));
+    --project-dock-space: calc(82px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Very short landscape windows retain a scrollable, fully accessible composition. */
+@media (max-height: 540px) {
+  .project-case-study { --project-hero-height: 620px; }
+}

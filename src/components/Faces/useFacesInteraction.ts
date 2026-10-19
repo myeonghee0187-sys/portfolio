@@ -279,7 +279,6 @@ export default function useFacesInteraction({
           link.title = label
           link.dataset.projectId = project.id
         }
-        // project별 CTA 대비 보정(JADUYA의 밝은 영상 위에서만 scrim을 조금 진하게, Faces.css).
         if (ctaBar) ctaBar.dataset.projectId = project.id
         lastShown = shown
       }
@@ -352,6 +351,7 @@ export default function useFacesInteraction({
         ctaBar.style.width = (d.hx * 2) + 'px'
         ctaBar.style.setProperty('--display-h', (d.hy * 2) + 'px')
         ctaBar.style.setProperty('--display-radius', d.r + 'px')
+        ctaBar.dataset.positioned = 'true'
       }
       if (watch && displayLink) {
         const d = watch.display
@@ -793,6 +793,7 @@ export default function useFacesInteraction({
         link.dataset.ready = 'false'
       }
       ctaBar?.setAttribute('data-ready', 'false')
+      ctaBar?.removeAttribute('data-positioned')
       if (pointerId >= 0 && stage.hasPointerCapture(pointerId)) stage.releasePointerCapture(pointerId)
       stage.removeEventListener('pointerdown', onPointerDown)
       window.removeEventListener('pointermove', onPointerMove)

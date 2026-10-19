@@ -161,16 +161,18 @@ test('implemented videos and CTAs are separate semantic links; F45 stays unavail
   const f = fixture()
   const slides = f.tree.props.children.map(element => element.type(element.props, null))
   for (const [index, path] of ['/projects/tchaikim', '/projects/jaduya'].entries()) {
-    const [video, meta] = slides[index].props.children
+    const [visual] = slides[index].props.children
+    const [video, overlay] = visual.props.children
     assert.equal(video.type, 'a')
     assert.equal(video.props.href, path)
-    const cta = meta.props.children.at(-1)
+    const cta = overlay.props.children
     assert.equal(cta.type, 'a')
     assert.equal(cta.props.href, video.props.href)
   }
   for (const slide of slides.slice(2)) {
-    assert.notEqual(slide.props.children[0].type, 'a')
-    const disabled = slide.props.children[1].props.children.at(-1)
+    const [visual] = slide.props.children
+    assert.notEqual(visual.props.children[0].type, 'a')
+    const disabled = visual.props.children[1].props.children
     assert.equal(disabled.props.href, undefined)
     assert.equal(disabled.props['aria-disabled'], true)
     assert.equal(disabled.props.tabIndex, -1)

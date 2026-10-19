@@ -71,7 +71,7 @@
 /*
  * Watch display 위쪽 safe area의 text CTA 막대. 폭은 display와 같고(JS), 높이는 display 높이의 약 17%다.
  * 위쪽 모서리를 display와 같은 반경으로 잘라 display 밖으로 새지 않는다. 아주 옅은 막이 밝은 영상 위에서도 글자를 읽히게 한다.
- * project 하나가 display에 자리를 잡았을 때만 나타난다(data-ready) — 넘어가는 동안에는 눌리지도 보이지도 않는다.
+ * 위치 측정이 끝나면 항상 보인다. data-ready는 클릭 가능 여부만 맡는다.
  * pill / 채운 button이 아니라 글자 CTA다.
  */
 .faces__display-cta {
@@ -82,17 +82,17 @@
   justify-content: center;
   gap: clamp(14px, 1.6vw, 28px);
   box-sizing: border-box;
-  height: calc(var(--display-h, 400px) * 0.17);
+  height: clamp(72px, calc(var(--display-h, 400px) * 0.19), 100px);
   padding-top: calc(var(--display-h, 400px) * 0.035);
   border-radius: var(--display-radius, 90px) var(--display-radius, 90px) 0 0;
-  background: linear-gradient(rgb(8 9 10 / 0.42), rgb(8 9 10 / 0.16) 60%, transparent);
-  opacity: 0;
+  background: linear-gradient(rgb(8 9 10 / 0.72), rgb(8 9 10 / 0.42) 55%, transparent);
+  visibility: hidden;
+  opacity: 1;
   pointer-events: none;
-  transition: opacity 240ms ease;
 }
 
-.faces__display-cta[data-ready='true'] {
-  opacity: 1;
+.faces__display-cta[data-positioned='true'] {
+  visibility: visible;
 }
 
 .faces__display-cta[data-ready='true'] .faces__cta:not([hidden]) {
@@ -118,7 +118,7 @@
   color: #f3f4f4;
   text-decoration: none;
   text-shadow: 0 1px 6px rgb(8 9 10 / 0.55);
-  opacity: 0.6;
+  opacity: 1;
   pointer-events: none;
   cursor: pointer;
   -webkit-user-drag: none;
@@ -161,25 +161,6 @@
 .faces__cta:focus-visible {
   outline: 1px solid #186de5;
   outline-offset: 2px;
-}
-
-/*
- * JADUYA — 밝은 영상의 위쪽에서 CTA가 묻히지 않도록 이 project에서만 대비를 올린다(F45 / TCHAIKIM은 그대로).
- * 층: 영상 -> 이 scrim(display 위쪽 72 ~ 100px, CTA bar의 배경) -> EXPLORE PROJECT. 영상 전체는 어둡게 하지 않는다.
- */
-.faces__display-cta[data-project-id='jaduya'] {
-  height: clamp(72px, calc(var(--display-h, 400px) * 0.19), 100px);
-  background: linear-gradient(to bottom, rgb(8 9 10 / 0.62) 0%, rgb(8 9 10 / 0.32) 48%, transparent 100%);
-}
-
-.faces__display-cta[data-project-id='jaduya'] .faces__cta {
-  color: #f3f4f4;
-  opacity: 0.86;
-}
-
-.faces__display-cta[data-project-id='jaduya'] .faces__cta:hover,
-.faces__display-cta[data-project-id='jaduya'] .faces__cta:focus-visible {
-  opacity: 1;
 }
 
 /* 스크린리더용 프로젝트 목록. 화면에는 plane과 아래 metadata로만 보인다. */
@@ -329,16 +310,22 @@
   margin-top: 16px;
 }
 
-.faces__slide-meta .faces__cta--explore {
-  margin-top: 12px;
-  padding: 0;
-  color: #f3f4f4;
-  pointer-events: auto;
+.faces__visual-stack { position: relative; }
+
+.faces__rail-cta {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  min-height: 72px;
+  padding-top: 6px;
+  background: linear-gradient(rgb(8 9 10 / 0.72), rgb(8 9 10 / 0.42) 55%, transparent);
+  pointer-events: none;
 }
 
-.faces__slide-meta .faces__cta--explore::after {
-  right: 0;
-  left: 0;
+.faces__rail-cta .faces__cta:not([aria-disabled='true']) {
+  pointer-events: auto;
 }
 
 .faces__cta[aria-disabled='true'] {
