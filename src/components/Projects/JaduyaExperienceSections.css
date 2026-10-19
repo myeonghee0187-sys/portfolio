@@ -12,14 +12,14 @@
 .jaduya-experience-heading > p {
   color: #08090a;
   font-family: 'Inter', sans-serif;
-  font-size: calc(32 * var(--jaduya-u));
+  font-size: var(--jaduya-label-size);
   font-weight: 300;
   line-height: 1;
 }
 
 .jaduya-experience-heading h2 {
   color: #0a0a0a;
-  font-size: calc(48 * var(--jaduya-u));
+  font-size: var(--jaduya-title-size);
   font-weight: 500;
   line-height: 1;
 }
@@ -31,7 +31,6 @@
   align-items: center;
   gap: calc(40 * var(--jaduya-u));
   padding-inline: calc(120 * var(--jaduya-u));
-  overflow: hidden;
   isolation: isolate;
 }
 
@@ -42,35 +41,6 @@
 .jaduya-main--two {
   padding-top: calc(200 * var(--jaduya-u));
   padding-bottom: calc(300 * var(--jaduya-u));
-}
-
-.jaduya-main__plum {
-  position: absolute;
-  z-index: -1;
-  width: calc(1799 * var(--jaduya-u));
-  height: calc(1799 * var(--jaduya-u));
-  max-width: none;
-  object-fit: cover;
-  opacity: 0.06;
-  pointer-events: none;
-}
-
-.jaduya-main__plum--one-green {
-  top: calc(625 * var(--jaduya-u));
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.jaduya-main__plum--one-ripe {
-  top: calc(-274.5 * var(--jaduya-u));
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.jaduya-main__plum--two-green {
-  top: calc(-1095 * var(--jaduya-u));
-  left: 50%;
-  transform: translateX(-50%);
 }
 
 .jaduya-main__stage {
@@ -146,7 +116,8 @@
 }
 
 .jaduya-main__point-item {
-  position: relative;
+  /* Figma connectors use stage coordinates, independent of rounded card borders. */
+  position: static;
 }
 
 .jaduya-main__point-card {
@@ -171,7 +142,7 @@
 
 .jaduya-main__point-number {
   color: #000;
-  font-size: calc(16 * var(--jaduya-u));
+  font-size: var(--jaduya-detail-size);
   font-weight: 400;
 }
 
@@ -183,12 +154,12 @@
 
 .jaduya-main__point-card h3 {
   color: var(--jaduya-red);
-  font-size: calc(24 * var(--jaduya-u));
+  font-size: var(--jaduya-point-title-size);
   font-weight: 600;
 }
 
 .jaduya-main__point-card > div p {
-  font-size: calc(20 * var(--jaduya-u));
+  font-size: var(--jaduya-body-size);
   font-weight: 500;
 }
 
@@ -205,18 +176,18 @@
 }
 
 .jaduya-main--one .jaduya-main__point-item:nth-child(1) .jaduya-main__connector {
-  top: calc(78.833 * var(--jaduya-u));
-  left: calc(-179.493 * var(--jaduya-u));
+  top: calc(330.332 * var(--jaduya-u));
+  left: calc(838.332 * var(--jaduya-u));
 }
 
 .jaduya-main--one .jaduya-main__point-item:nth-child(2) .jaduya-main__connector {
-  top: calc(77.833 * var(--jaduya-u));
-  left: calc(-179 * var(--jaduya-u));
+  top: calc(591.5 * var(--jaduya-u));
+  left: calc(838.832 * var(--jaduya-u));
 }
 
 .jaduya-main--one .jaduya-main__point-item:nth-child(3) .jaduya-main__connector {
-  top: calc(76.833 * var(--jaduya-u));
-  left: calc(-179.493 * var(--jaduya-u));
+  top: calc(848.332 * var(--jaduya-u));
+  left: calc(838.332 * var(--jaduya-u));
 }
 
 .jaduya-main--one .jaduya-main__connector img,
@@ -236,18 +207,18 @@
 }
 
 .jaduya-main--two .jaduya-main__point-item:nth-child(1) .jaduya-main__connector {
-  top: calc(11 * var(--jaduya-u));
-  left: calc(397.333 * var(--jaduya-u));
+  top: calc(266.832 * var(--jaduya-u));
+  left: calc(659.5 * var(--jaduya-u));
 }
 
 .jaduya-main--two .jaduya-main__point-item:nth-child(2) .jaduya-main__connector {
-  top: calc(-18.5 * var(--jaduya-u));
-  left: calc(397.333 * var(--jaduya-u));
+  top: calc(497.332 * var(--jaduya-u));
+  left: calc(659.5 * var(--jaduya-u));
 }
 
 .jaduya-main--two .jaduya-main__point-item:nth-child(3) .jaduya-main__connector {
-  top: calc(76.333 * var(--jaduya-u));
-  left: calc(397.333 * var(--jaduya-u));
+  top: calc(854.332 * var(--jaduya-u));
+  left: calc(659.5 * var(--jaduya-u));
 }
 
 .jaduya-main--two .jaduya-main__point-item:nth-child(1) .jaduya-main__connector img {
@@ -312,7 +283,7 @@
 .jaduya-home-care__soft-edge--right {
   top: calc(1474 * var(--jaduya-u));
   width: calc(114 * var(--jaduya-u));
-  height: calc(1025 * var(--jaduya-u));
+  height: calc(1052 * var(--jaduya-u));
   filter: blur(calc(8.3 * var(--jaduya-u)));
 }
 
@@ -336,7 +307,7 @@
   position: absolute;
   z-index: 3;
   color: #08090a;
-  font-size: calc(20 * var(--jaduya-u));
+  font-size: var(--jaduya-body-size);
   font-weight: 500;
   line-height: 1.4;
 }
@@ -347,6 +318,10 @@
   color: var(--jaduya-red);
   font-weight: 600;
 }
+.jaduya-home-care__callout--one p { width: calc(312 * var(--jaduya-u)); }
+.jaduya-home-care__callout--two p { width: calc(376 * var(--jaduya-u)); }
+.jaduya-home-care__callout--three p { width: calc(386 * var(--jaduya-u)); }
+.jaduya-home-care__callout--three strong { font-weight: 500; }
 
 .jaduya-home-care__callout--one {
   top: calc(647 * var(--jaduya-u));
@@ -379,19 +354,17 @@
 
 .jaduya-home-care__callout--one .jaduya-home-care__connector,
 .jaduya-home-care__callout--three .jaduya-home-care__connector {
-  right: calc(9.333 * var(--jaduya-u) + 100%);
+  right: calc(11.5 * var(--jaduya-u) + 100%);
 }
 
 .jaduya-home-care__callout--two .jaduya-home-care__connector {
-  left: calc(385.328 * var(--jaduya-u));
+  left: calc(387.5 * var(--jaduya-u));
 }
 
 @media (max-width: 1099px) {
   .jaduya-experience-heading { gap: 12px; }
-  .jaduya-experience-heading > p { font-size: clamp(20px, 3.125vw, 32px); }
   .jaduya-experience-heading h2 {
     max-width: 780px;
-    font-size: clamp(28px, 4.688vw, 48px);
     line-height: 1.3;
     text-wrap: balance;
   }
@@ -400,15 +373,6 @@
     gap: 48px;
     padding: 96px 32px 112px;
   }
-
-  .jaduya-main__plum {
-    width: 1200px;
-    height: 1200px;
-  }
-
-  .jaduya-main__plum--one-green { top: 480px; }
-  .jaduya-main__plum--one-ripe { top: -520px; }
-  .jaduya-main__plum--two-green { top: -620px; }
 
   .jaduya-main__stage {
     flex-direction: column;
@@ -449,9 +413,7 @@
   }
 
   .jaduya-main__point-card > div { gap: 8px; }
-  .jaduya-main__point-number { font-size: 16px; }
-  .jaduya-main__point-card h3 { font-size: 24px; }
-  .jaduya-main__point-card > div p { font-size: 18px; line-height: 1.45; }
+  .jaduya-main__point-card > div p { line-height: 1.4; }
 
   .jaduya-main__connector,
   .jaduya-main--one .jaduya-main__point-item:nth-child(n) .jaduya-main__connector,
@@ -510,11 +472,10 @@
     top: auto;
     left: auto;
     width: 100%;
-    font-size: 18px;
-    line-height: 1.55;
+    line-height: 1.4;
   }
 
-  .jaduya-home-care__callout p { line-height: 1.55; }
+  .jaduya-home-care__callout p { width: auto; line-height: 1.4; }
 
   .jaduya-home-care__connector,
   .jaduya-home-care__callout--one .jaduya-home-care__connector,
@@ -540,11 +501,9 @@
 
 @media (max-width: 640px) {
   .jaduya-main { padding: 80px 20px 96px; }
-  .jaduya-experience-heading > p { font-size: 20px; }
-  .jaduya-experience-heading h2 { font-size: 28px; line-height: 1.35; }
+  .jaduya-experience-heading h2 { line-height: 1.3; }
   .jaduya-main__stage { gap: 36px; }
   .jaduya-main__point-card { padding: 24px 20px; }
-  .jaduya-main__point-card > div p { font-size: 16px; }
 
   .jaduya-home-care {
     gap: 40px;
@@ -553,6 +512,5 @@
   }
 
   .jaduya-home-care__handle { top: 28px; }
-  .jaduya-home-care__callout { font-size: 16px; }
   .jaduya-home-care__callout br { display: none; }
 }

@@ -5,16 +5,6 @@ const BRAND_ASSET_ROOT = '/projects/jaduya/brand'
 export function JaduyaBrandConcept() {
   return (
     <section className="jaduya-brand-concept" aria-labelledby="jaduya-brand-concept-title">
-      <img
-        className="jaduya-brand-concept__plum"
-        src={`${BRAND_ASSET_ROOT}/ripe-plum-outline.png`}
-        width="545"
-        height="545"
-        alt=""
-        aria-hidden="true"
-        loading="lazy"
-      />
-
       <div className="jaduya-brand-concept__heading">
         <p>BRAND CONCEPT</p>
         <h2 id="jaduya-brand-concept-title">혼자여두 괜찮아, 자두야!</h2>

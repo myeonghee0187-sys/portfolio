@@ -51,7 +51,7 @@ function JaduyaHero() {
         <div className="jaduya-hero__award"><dt>수상</dt><dd>UXUI 디자인 &amp; 웹기획 프로젝트 최우수상</dd></div>
         <div><dt>기간</dt><dd className="jaduya-numeric">2026.8 - 2026.9</dd></div>
         <div><dt>역할</dt><dd className="jaduya-role">UI ARCHITECT / PRESENTATION CONTENT</dd></div>
-        <div><dt>팀 내 기여도</dt><dd className="jaduya-numeric">16%</dd></div>
+        <div><dt>기여도</dt><dd>팀 내 <span className="jaduya-numeric">16%</span></dd></div>
       </dl>
     </section>
   )
@@ -132,9 +132,19 @@ export default function JaduyaCaseStudy({ onNavigate, nextProject }: { onNavigat
         <JaduyaOverview />
         <JaduyaDirection />
         <JaduyaConclusion />
-        <JaduyaBrandConcept />
-        <JaduyaMainPageOne />
-        <JaduyaMainPageTwo />
+        <div className="jaduya-design">
+          <div className="jaduya-design__background" aria-hidden="true">
+            <div className="jaduya-design__plum-anchor jaduya-design__plum-anchor--ripe">
+              <img src={`${ASSET_ROOT}/brand/ripe-plum-outline.png`} width="545" height="545" alt="" loading="lazy" />
+            </div>
+            <div className="jaduya-design__plum-anchor jaduya-design__plum-anchor--green">
+              <img src={`${ASSET_ROOT}/experience/main-one-green-plum-outline.png`} width="545" height="545" alt="" loading="lazy" />
+            </div>
+          </div>
+          <JaduyaBrandConcept />
+          <JaduyaMainPageOne />
+          <JaduyaMainPageTwo />
+        </div>
         <JaduyaHomeCare />
         <JaduyaEnding />
       </main>

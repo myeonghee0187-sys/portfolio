@@ -103,24 +103,6 @@ function MainPoints({ points }: { points: MainPoint[] }) {
 export function JaduyaMainPageOne() {
   return (
     <section className="jaduya-main jaduya-main--one" aria-labelledby="jaduya-main-one-title">
-      <img
-        className="jaduya-main__plum jaduya-main__plum--one-green"
-        src={`${EXPERIENCE_ASSET_ROOT}/main-one-green-plum-outline.png`}
-        width="545"
-        height="545"
-        alt=""
-        aria-hidden="true"
-        loading="lazy"
-      />
-      <img
-        className="jaduya-main__plum jaduya-main__plum--one-ripe"
-        src={`${EXPERIENCE_ASSET_ROOT}/main-one-ripe-plum-outline.png`}
-        width="545"
-        height="545"
-        alt=""
-        aria-hidden="true"
-        loading="lazy"
-      />
       <MainSectionHeading id="jaduya-main-one-title" />
       <div className="jaduya-main__stage">
         <figure
@@ -145,15 +127,6 @@ export function JaduyaMainPageOne() {
 export function JaduyaMainPageTwo() {
   return (
     <section className="jaduya-main jaduya-main--two" aria-labelledby="jaduya-main-two-title">
-      <img
-        className="jaduya-main__plum jaduya-main__plum--two-green"
-        src={`${EXPERIENCE_ASSET_ROOT}/main-two-green-plum-outline.png`}
-        width="545"
-        height="545"
-        alt=""
-        aria-hidden="true"
-        loading="lazy"
-      />
       <MainSectionHeading id="jaduya-main-two-title" />
       <div className="jaduya-main__stage">
         <MainPoints points={mainTwoPoints} />

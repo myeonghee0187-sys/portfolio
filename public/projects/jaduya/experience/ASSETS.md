@@ -22,3 +22,5 @@ These 14 files were downloaded without transformation from the temporary URLs re
 | `home-care-connector-left.svg` | `imgLine78`, `2100:148` | 180.167 × 5.33333; `viewBox="0 0 180.167 5.33333"` | 5,440 |
 
 `main-one-green-plum-outline.png` and `main-two-green-plum-outline.png` were supplied by separate Figma context URLs and are byte-identical. Both are retained so each section has a direct, traceable source file. No full-section screenshot is used as a runtime asset.
+
+2026-10-20: the common DESIGN underlay now renders `brand/ripe-plum-outline.png` and `experience/main-one-green-plum-outline.png` once each. The other original plum exports remain as provenance assets; they are no longer repeated as section-local background fragments.
