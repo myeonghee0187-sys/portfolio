@@ -25,18 +25,6 @@
       "source": "assets/images/hero_frame_03_wide.jpg",
       "sha256": "7eb48e0ceffa05ab42d3112aa5b157dbed098c72f49b5617ec2a91310c062ae9",
       "unchanged": true
-    },
-    {
-      "file": "main-frame.png",
-      "source": "portfolio/public/projects/tchaikim/image344.png",
-      "sha256": "1d5ba66dc1ac3c718b094b40a422bf7effd6bfb4406f3ce7131871c03359e254",
-      "unchanged": true
-    },
-    {
-      "file": "evolution-frame.jpg",
-      "source": "portfolio/public/projects/tchaikim/imac-27-2020.jpg",
-      "sha256": "a8340a254cf152c65ccdb6544a8d859b31361b41b53cd161c7466ebf55256072",
-      "unchanged": true
     }
   ],
   "captures": [

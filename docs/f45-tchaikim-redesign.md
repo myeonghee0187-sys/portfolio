@@ -1,3 +1,5 @@
+> F45 current design: [Bold & Vivid redesign](f45-bold-vivid.md). This report describes the preserved earlier iteration.
+
 # F45 KOREA — TCHAIKIM 기반 리디자인
 
 ## 기준과 보존 범위

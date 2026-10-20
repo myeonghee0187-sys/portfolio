@@ -37,30 +37,6 @@
       "source": "assets/images/phone06.png",
       "sha256": "798cb1eda1a8d8e83f572661b2610362d093259338b515daaa990a8ebae7fa20",
       "bytes": 208678
-    },
-    {
-      "file": "montserrat-variable.ttf",
-      "source": "assets/fonts/Montserrat/Montserrat-VariableFont_wght.ttf",
-      "sha256": "498dc34d0fa45288e0ac5345bd385c98bf81c56ee70209aacfb4a22a6510697c",
-      "bytes": 688600
-    },
-    {
-      "file": "pretendard-variable.woff2",
-      "source": "assets/fonts/Pretendard-1.3.9 (2)/web/variable/woff2/PretendardVariable.woff2",
-      "sha256": "9599f12fd42fc0bce1cd50b47a0c022e108d7aa64dd0d1bb0ed44f3282d900b4",
-      "bytes": 2057688
-    },
-    {
-      "file": "Montserrat-OFL.txt",
-      "source": "assets/fonts/Montserrat/OFL.txt",
-      "sha256": "e8ea3e532e2fcccd6fc50989bbb31869e424cd5f00dc4f63f866b08a4c2ebd9c",
-      "bytes": 4401
-    },
-    {
-      "file": "Pretendard-LICENSE.txt",
-      "source": "assets/fonts/Pretendard-1.3.9 (2)/LICENSE.txt",
-      "sha256": "b04538c9abec39a3db75108cf0af0fd9c77032fe8aa2cf38345b4d250e98e38e",
-      "bytes": 4419
     }
   ],
   "captures": [
