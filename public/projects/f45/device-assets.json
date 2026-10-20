@@ -1,0 +1,78 @@
+{
+  "capturedAt": "2026-10-20T10:40:39Z",
+  "sourceUrl": "https://myeonghee0187-sys.github.io/f45_korea/",
+  "captureMethod": {
+    "browser": "Google Chrome via Playwright",
+    "deviceScaleFactor": 2,
+    "fullPage": false,
+    "scrollPosition": [0, 0],
+    "runtimeEncoding": "lossless WebP",
+    "pixelVerification": "decoded RGBA bytes match the original PNG captures"
+  },
+  "frame": {
+    "asset": "/projects/f45/devices-frame.png",
+    "copiedFrom": "/projects/tchaikim/image340.png",
+    "dimensions": [1672, 941],
+    "sha256": "ab7f94c3b4a28c8c9884874d857f2b3d6ce2c7b2179742c7f4c4eab71fbd2b2a",
+    "byteIdenticalToSource": true
+  },
+  "screens": [
+    {
+      "id": "desktop",
+      "asset": "/projects/f45/screen-desktop.webp",
+      "viewport": [1425, 986],
+      "pixels": [2850, 1972],
+      "byteSize": 2304902,
+      "sha256": "6f163224b67f067977c837fa27e9332cb3746e828b8a3e99174b393ea89fca17",
+      "decodedRgbaSha256": "ad4c7cfa70f50d129683fc051a73eff3d78fb9f947174e7b73a08d6587a80a3e",
+      "responsiveMode": "desktop-video",
+      "validation": {
+        "videoDisplay": "block",
+        "videoReadyState": 4,
+        "videoCurrentTimeSeconds": 3.97565,
+        "heroImagesDisplay": "none",
+        "pageErrors": [],
+        "consoleErrors": [],
+        "failedRequests": []
+      }
+    },
+    {
+      "id": "tablet",
+      "asset": "/projects/f45/screen-tablet.webp",
+      "viewport": [445, 700],
+      "pixels": [890, 1400],
+      "byteSize": 709240,
+      "sha256": "f52d4bc4f073d940862b812d66776f6d88a2caaf3fc659deecb2e8f6fa341d3a",
+      "decodedRgbaSha256": "ec6fbb88b91ed0d9d89ab4ab133a670bab3d34e0342164fd78983209141bdd90",
+      "responsiveMode": "mobile-images",
+      "validation": {
+        "videoDisplay": "none",
+        "heroImagesDisplay": "block",
+        "activeHeroSource": "/assets/images/hero_frame_01_wide.jpg",
+        "activeHeroNaturalDimensions": [1536, 1200],
+        "pageErrors": [],
+        "consoleErrors": [],
+        "failedRequests": []
+      }
+    },
+    {
+      "id": "mobile",
+      "asset": "/projects/f45/screen-mobile.webp",
+      "viewport": [305, 700],
+      "pixels": [610, 1400],
+      "byteSize": 415742,
+      "sha256": "fc8698b808e78921c99d914d1ec5dded19f68c7512b083a0a8408d20bf09e6c8",
+      "decodedRgbaSha256": "1dbf3b03373fd020d96c98f69570492af9d45f9ca9571c0a80fca910afe2c5a3",
+      "responsiveMode": "mobile-images",
+      "validation": {
+        "videoDisplay": "none",
+        "heroImagesDisplay": "block",
+        "activeHeroSource": "/assets/images/hero_frame_01.jpg",
+        "activeHeroNaturalDimensions": [430, 600],
+        "pageErrors": [],
+        "consoleErrors": [],
+        "failedRequests": []
+      }
+    }
+  ]
+}

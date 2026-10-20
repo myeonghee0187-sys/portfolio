@@ -4,8 +4,14 @@ Source: [myeonghee0187-sys/f45_korea](https://github.com/myeonghee0187-sys/f45_k
 
 `asset-map.json` records the original repository paths, file sizes and SHA-256 checksums. The three `hero_frame_*` photographs, `intro_k.jpg`, two app-guide phone PNGs and font files are unmodified copies from that revision. The app screens belong to the original website's external-app guide; they are not invented portfolio UI.
 
-The eight WebP images are actual Chrome captures of the [deployed F45 website](https://myeonghee0187-sys.github.io/f45_korea/) on 2026-10-20. Desktop viewport: 1440 × 1000; mobile: 390 × 844. `main-*` capture the first viewport. `why-*`, `phase-*`, `location-*` and `care-*` capture the corresponding real sections at natural dimensions. Fixed header / skip-link overlays were hidden only while capturing individual sections; the website's content, colors and UI were not rewritten. PNG captures were converted to WebP at quality 92 without resizing. Mobile PHASE and Location Finder captures replace their desktop counterparts at widths up to 640px.
+The initial eight WebP images are actual Chrome captures of the [deployed F45 website](https://myeonghee0187-sys.github.io/f45_korea/) on 2026-10-20. Desktop viewport: 1440 × 1000; mobile: 390 × 844. `main-*` capture the first viewport. `why-*`, `phase-*`, `location-*` and `care-*` capture the corresponding real sections at natural dimensions. Fixed header / skip-link overlays were hidden only while capturing individual sections; the website's content, colors and UI were not rewritten. PNG captures were converted to WebP at quality 92 without resizing.
 
 Font licenses are preserved as `Montserrat-OFL.txt` and `Pretendard-LICENSE.txt`. The font-face names are scoped to the F45 page and do not replace the existing portfolio fonts.
 
 NONFICTION reference images are research material only. None is included in this directory or the runtime bundle. No Figma whole-section render is used as a substitute for the Case Study's semantic HTML layout.
+
+## TCHAIKIM-based redesign
+
+The redesign supersedes the initial editorial layout. `redesign-assets.json` records additional unmodified F45 photographs, the unchanged notebook / iMac product frames copied from the portfolio's TCHAIKIM assets, and a fresh 390 × 844 capture of the mobile WHY section (`why-mobile.webp`, natural 390 × 2589). WHY and PHASE switch to their actual mobile captures at widths up to 700px.
+
+`device-assets.json` records the unchanged three-device frame and fresh live F45 desktop / tablet / mobile captures. Their natural viewport dimensions match the existing screen projection geometry; PNG captures are converted to lossless WebP with identical decoded RGBA pixels, without resizing. Only F45 screen content is shown in the F45 compositions. No TCHAIKIM source, stylesheet or original asset is edited. The original UI captures / photos remain in this directory even where superseded, preserving the prior implementation's assets.

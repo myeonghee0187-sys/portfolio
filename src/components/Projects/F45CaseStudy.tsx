@@ -2,48 +2,41 @@ import { FACE_PROJECTS } from '../Faces/facesData'
 import FloatingDock from './FloatingDock'
 import ProjectHeader, { type ProjectNavigateHandler } from './ProjectHeader'
 import NextFace, { type NextFaceProject } from './NextFace'
+import F45Devices from './F45Devices'
 import './F45CaseStudy.css'
 
 const ASSETS = '/projects/f45'
 const project = FACE_PROJECTS.find(face => face.id === 'f45')!
-const screenSizes = {
-  'why-desktop': [1440, 2982],
-  'phase-desktop': [1440, 1022],
-  'location-desktop': [1440, 1201],
-  'care-mobile': [390, 1298],
+
+const screens = {
+  why: { desktop: 'why-desktop', size: [1440, 2982], mobile: 'why-mobile', mobileSize: [390, 2589] },
+  phase: { desktop: 'phase-desktop', size: [1440, 1022], mobile: 'phase-mobile', mobileSize: [390, 691] },
+  location: { desktop: 'location-desktop', size: [1440, 1201], mobile: 'location-mobile', mobileSize: [390, 856] },
 } as const
-const mobileScreens: Partial<Record<keyof typeof screenSizes, readonly [string, number, number]>> = {
-  'phase-desktop': ['phase-mobile', 390, 691],
-  'location-desktop': ['location-mobile', 390, 856],
+
+function Screen({ name, alt }: { name: keyof typeof screens; alt: string }) {
+  const screen = screens[name]
+  return (
+    <picture className="f45-screen">
+      <source media="(max-width: 700px)" srcSet={ASSETS + '/' + screen.mobile + '.webp'} width={screen.mobileSize[0]} height={screen.mobileSize[1]} />
+      <img src={ASSETS + '/' + screen.desktop + '.webp'} alt={alt} width={screen.size[0]} height={screen.size[1]} loading="lazy" decoding="async" />
+    </picture>
+  )
 }
 
-function SectionLabel({ number, children }: { number: string; children: string }) {
-  return <p className="f45-section-label"><span>{number}</span>{children}</p>
+function Heading({ eyebrow, title, id }: { eyebrow: string; title: string; id: string }) {
+  return <header className="f45-section-heading"><p>{eyebrow}</p><h2 id={id}>{title}</h2></header>
 }
 
-function Screen({ name, alt }: { name: keyof typeof screenSizes; alt: string }) {
-  const [width, height] = screenSizes[name]
-  const mobile = mobileScreens[name]
-  return <picture className="f45-screen">
-    {mobile && <source media="(max-width: 640px)" srcSet={`${ASSETS}/${mobile[0]}.webp`} width={mobile[1]} height={mobile[2]} />}
-    <img className="f45-ui-image" src={`${ASSETS}/${name}.webp`} alt={alt} width={width} height={height} loading="lazy" decoding="async" />
-  </picture>
-}
-
-function F45Hero() {
+function Hero() {
   return (
     <section className="f45-hero project-hero" data-case-hero aria-labelledby="f45-title">
-      <img className="f45-hero__background" src={`${ASSETS}/hero_frame_01_wide.jpg`} alt="" aria-hidden="true" />
+      <img className="f45-hero__background" src={ASSETS + '/hero_frame_04_wide.jpg'} alt="" aria-hidden="true" />
+      <span className="f45-hero__veil" aria-hidden="true" />
+      <div className="f45-hero__visual"><F45Devices className="f45-hero__devices" fit /></div>
       <div className="f45-hero__copy">
         <p>시작하기 전의 망설임을,<br />함께 움직이는 확신으로</p>
         <h1 id="f45-title" tabIndex={-1}>F45<br />KOREA</h1>
-      </div>
-      <div className="f45-hero__visual" aria-label="F45 KOREA 웹사이트의 데스크톱과 모바일 화면">
-        <div className="f45-hero__browser">
-          <div className="f45-browser-bar" aria-hidden="true"><i /><i /><i /><span>F45 KOREA</span></div>
-          <img src={`${ASSETS}/main-desktop.webp`} alt="F45 KOREA 데스크톱 메인 첫 화면" fetchPriority="high" width="1440" height="1000" />
-        </div>
-        <div className="f45-hero__mobile"><img src={`${ASSETS}/main-mobile.webp`} alt="같은 사이트의 모바일 메인 첫 화면" width="390" height="844" /></div>
       </div>
       <dl className="f45-hero__meta">
         <div><dt>PERIOD</dt><dd>2026.07</dd></div>
@@ -56,146 +49,142 @@ function F45Hero() {
 
 function Overview() {
   return (
-    <section className="f45-overview f45-section" aria-labelledby="f45-overview-title">
-      <SectionLabel number="01">OVERVIEW</SectionLabel>
-      <div className="f45-overview__grid">
-        <h2 id="f45-overview-title">BEFORE<br />THE FIRST<br /><span>WORKOUT.</span></h2>
-        <div className="f45-overview__copy">
-          <p className="f45-lead">운동을 시작하기 전,<br />무엇을 알아야 결정할 수 있을까?</p>
-          <p>강한 운동 이미지 뒤에 가려진 첫 방문의 궁금증에 주목했습니다. 브랜드와 프로그램을 이해하고, 가까운 지점을 살펴보고, 체험 준비와 앱 이용 방법까지 알아갈 수 있도록 웹 경험의 흐름을 정리했습니다.</p>
-          <p>F45의 에너지는 유지하면서도, 처음 방문하는 사람이 스스로 시작을 판단할 수 있는 정보를 앞에 두었습니다.</p>
-          <dl className="f45-overview__scope"><div><dt>QUESTION</dt><dd>체험 전의 불확실함</dd></div><div><dt>APPROACH</dt><dd>이해 → 탐색 → 준비</dd></div><div><dt>OUTPUT</dt><dd>반응형 브랜드 웹사이트</dd></div></dl>
-        </div>
+    <section className="f45-overview" aria-labelledby="f45-overview-title">
+      <img src={ASSETS + '/hero_frame_04_wide.jpg'} alt="" aria-hidden="true" />
+      <span aria-hidden="true" />
+      <div className="f45-overview__copy">
+        <p className="f45-eyebrow">Overview</p>
+        <h2 id="f45-overview-title">FROM INTEREST TO THE FIRST STEP</h2>
+        <p>강한 운동 이미지 너머, 처음 시작하는 사람이 알고 싶은 정보에 집중했습니다.<br className="f45-desktop-break" /> 브랜드 이해부터 프로그램 탐색, 지점 찾기와 체험 준비까지<br className="f45-desktop-break" /> 스스로 시작을 결정할 수 있는 웹 경험을 설계했습니다.</p>
+        <p className="f45-overview__audience">PRIMARY 운동 초보자 · 가격 민감 사용자 <span aria-hidden="true">/</span> SECONDARY 운동 경험자 · F45 미경험자</p>
       </div>
     </section>
   )
 }
 
 const problems = [
-  { title: '심리적 거리', before: '강한 운동 이미지가 먼저 보여, 초보자가 나에게 맞는 운동인지 판단하기 어렵다.', after: '함께하는 분위기와 첫 방문 안내로 시작의 부담을 낮춘다.' },
-  { title: '정보의 빈자리', before: '프로그램과 비용 등 선택에 필요한 정보가 충분히 연결되지 않는다.', after: '프로그램의 성격을 먼저 설명하고, 체험 전 확인할 정보를 정리한다.' },
-  { title: '끊어진 다음 단계', before: '브랜드 소개, 지점 탐색, 체험 신청 사이에서 다음 행동을 찾기 어렵다.', after: '지점 찾기부터 케어 가이드, 외부 앱 안내까지 이어지는 경로를 만든다.' },
+  ['강한 운동 이미지로 인한', '초보자의 진입장벽'],
+  ['프로그램 · 가격 정보 부족으로', '어려운 선택과 판단'],
+  ['지점 탐색과 체험 신청 사이', '끊어진 다음 단계'],
+]
+const strategies = [
+  ['입문자 케어 가이드로', '시작의 부담 완화'],
+  ['프로그램 특징을', '이해하기 쉬운 정보로'],
+  ['지점 찾기에서 앱 안내까지', '체험 준비 경로 연결'],
 ]
 
-function ProblemDefinition() {
+function CircleRow({ items, tone }: { items: string[][]; tone: 'before' | 'after' }) {
   return (
-    <section className="f45-problem f45-section f45-dark" aria-labelledby="f45-problem-title">
-      <SectionLabel number="02">PROBLEM DEFINITION</SectionLabel>
-      <div className="f45-section-intro"><h2 id="f45-problem-title">운동의 강도보다,<br />시작의 불확실함.</h2><p>Lean Product Canvas에서 정의한 문제를<br className="f45-desktop-break" /> 사용자가 결정하기 어려운 세 지점으로 묶었습니다.</p></div>
-      <div className="f45-comparison" role="table" aria-label="기존 경험의 문제와 제안한 방향">
-        <div className="f45-comparison__head" role="row"><span role="columnheader">DECISION BARRIER</span><span role="columnheader">AS IS</span><span role="columnheader">TO BE</span></div>
-        {problems.map((item, index) => <div className="f45-comparison__row" role="row" key={item.title}><h3 role="rowheader"><span>0{index + 1}</span>{item.title}</h3><p role="cell"><span className="f45-mobile-label">AS IS</span>{item.before}</p><p role="cell"><span className="f45-mobile-label">TO BE</span>{item.after}</p></div>)}
-      </div>
-      <p className="f45-source-note">기획 단계의 문제 정의와 해결 방향입니다. 전환율 개선을 측정한 결과를 의미하지 않습니다.</p>
+    <div className={'f45-problem__row f45-problem__row--' + tone}>
+      {items.map((lines, index) => <article className="f45-problem__circle" key={lines[0]}><span>{String(index + 1).padStart(2, '0')}</span><p>{lines[0]}<br />{lines[1]}</p></article>)}
+    </div>
+  )
+}
+
+function ProblemStrategy() {
+  return (
+    <section className="f45-problem" aria-labelledby="f45-problem-title">
+      <h2 id="f45-problem-title" className="f45-visually-hidden">PROBLEM &amp; STRATEGY</h2>
+      <div className="f45-problem__group"><h3>As is</h3><CircleRow items={problems} tone="before" /></div>
+      <div className="f45-problem__group f45-problem__group--after"><h3>To be</h3><CircleRow items={strategies} tone="after" /></div>
+      <p className="f45-problem__note">Lean Product Canvas의 문제 정의를 바탕으로 케어 가이드와 지점·앱 연결을 우선했습니다.<br className="f45-desktop-break" /> 프로그램 소개는 구현했으며, 가격 상세·시간표·코치·후기는 후속 과제입니다.</p>
     </section>
   )
 }
 
-function TargetInsight() {
+function Insight() {
   return (
-    <section className="f45-target f45-section" aria-labelledby="f45-target-title">
-      <SectionLabel number="03">TARGET &amp; INSIGHT</SectionLabel>
-      <div className="f45-section-intro"><h2 id="f45-target-title">다른 출발점,<br />같은 질문.</h2><p>가상의 개인 프로필 대신,<br className="f45-desktop-break" /> 기획서에서 정의한 두 사용자 그룹을 비교했습니다.</p></div>
-      <div className="f45-target__grid">
-        <article className="f45-target__primary"><p className="f45-mini-label">PRIMARY / 시작을 고민하는 사람</p><h3>“처음인 나도<br />따라갈 수 있을까?”</h3><div className="f45-target__detail"><img src={`${ASSETS}/intro_k.jpg`} alt="F45 원본 브랜드 이미지" loading="lazy" width="400" height="400" /><div><h4>운동 초보자 · 가격 민감 사용자</h4><p>강한 이미지에 부담을 느끼고, 시간과 비용에 비해 나에게 맞는 경험인지 먼저 확인하고 싶습니다.</p><p className="f45-target__need">NEED<span>수업 방식 · 준비물 · 첫 방문 안내</span></p></div></div></article>
-        <article className="f45-target__secondary"><p className="f45-mini-label">SECONDARY / 새로운 운동을 찾는 사람</p><h3>“내가 해온 운동과<br />무엇이 다를까?”</h3><h4>운동 경험자 · F45 미경험자</h4><p>다른 운동과의 차별점, 프로그램의 구성, 함께하는 커뮤니티를 살펴본 뒤 선택하고 싶습니다.</p><p className="f45-target__need">NEED<span>프로그램의 성격 · 브랜드의 차이</span></p></article>
-      </div>
-      <div className="f45-insight"><span>KEY INSIGHT</span><p>강함을 증명하기 전에,<br /><strong>시작할 수 있다는 확신을.</strong></p></div>
+    <section className="f45-insight" aria-labelledby="f45-insight-title">
+      <span aria-hidden="true">F45</span>
+      <h2 id="f45-insight-title">강함을 보여주는 것에서,<br /><strong>누구나 시작할 수 있다는 확신으로.</strong></h2>
     </section>
   )
 }
 
-function StrategyPriority() {
-  return (
-    <section className="f45-strategy f45-section" aria-labelledby="f45-strategy-title">
-      <SectionLabel number="04">STRATEGY &amp; PRIORITY</SectionLabel>
-      <div className="f45-section-intro"><h2 id="f45-strategy-title">더 많은 기능보다,<br />먼저 필요한 정보.</h2><p>기획서의 우선순위를 기준으로,<br className="f45-desktop-break" /> 체험 전의 판단과 다음 행동을 먼저 연결했습니다.</p></div>
-      <div className="f45-priority-map">
-        <div className="f45-priority-map__lane"><div className="f45-priority-map__label"><span>PRIMARY</span><p>시작을 돕는<br />핵심 경험</p></div><div className="f45-priority-map__items"><article><span>01</span><div><h3>입문자 케어 가이드</h3><p>방문 전 궁금증과 준비할 정보를 한곳에.</p><small>구현: 6개 항목의 사전 안내</small></div></article><article><span>02</span><div><h3>지점 탐색 → 모바일 앱 안내</h3><p>내가 갈 지점을 찾고, 체험을 위한 다음 단계로.</p><small>구현: 지점 필터 · 기본 상세 · 앱 이용 안내</small></div></article></div></div>
-        <div className="f45-priority-map__lane f45-priority-map__lane--secondary"><div className="f45-priority-map__label"><span>SECONDARY</span><p>판단을 넓히는<br />확장 정보</p></div><div className="f45-priority-map__items"><article><span>03</span><div><h3>가격 · 프로그램 정보</h3><p>비용과 운동의 성격을 비교할 수 있도록.</p><small>프로그램 소개 구현 / 가격 정보는 후속 과제</small></div></article><article><span>04</span><div><h3>지점별 시간표 · 코치 · 후기</h3><p>각 지점의 실제 운영 정보로 선택을 구체화.</p><small>기획 범위 / 현재 배포 사이트에는 미구현</small></div></article></div></div>
-      </div>
-    </section>
-  )
-}
-
-const flow = [
-  ['BRAND', '브랜드 이해', 'WHY F45 KOREA'], ['PROGRAM', '프로그램 탐색', 'PHASE'], ['LOCATION', '지점 찾기', 'LOCATION FINDER'], ['PREPARATION', '첫 방문 준비', 'BEGINNER CARE'], ['MOBILE APP', '앱 이용 안내', 'APP GUIDE'],
+const moodImages = [
+  ['intro_k.jpg', '운동의 에너지를 보여주는 F45 브랜드 이미지'],
+  ['intro_o.jpg', '45분 트레이닝의 시간과 리듬'],
+  ['intro_r.jpg', '함께 응원하는 F45 커뮤니티'],
+  ['intro_e.jpg', '첫 운동을 돕는 코치와의 소통'],
+  ['hero_frame_03_wide.jpg', '실제 사이트에서 사용한 F45 트레이닝 비주얼'],
 ]
 
-function UXStructure() {
+function BrandConcept() {
   return (
-    <section className="f45-flow f45-section f45-dark" aria-labelledby="f45-flow-title">
-      <SectionLabel number="05">UX STRUCTURE</SectionLabel>
-      <div className="f45-section-intro"><h2 id="f45-flow-title">이해에서 탐색으로,<br />탐색에서 준비로.</h2><p>사용자의 질문에 답하는 순서가<br className="f45-desktop-break" /> 웹사이트의 정보 구조가 되었습니다.</p></div>
-      <ol className="f45-flow__steps" aria-label="브랜드 이해부터 앱 안내까지의 사용자 흐름">{flow.map(([english, title, screen], index) => <li key={english}><span className="f45-flow__index">0{index + 1}</span><p>{english}</p><h3>{title}</h3><span>{screen}</span></li>)}</ol>
-      <div className="f45-flow__handoff"><p>WEB EXPERIENCE<span>체험을 판단하는 정보와 준비 과정</span></p><span className="f45-flow__arrow" aria-hidden="true">→</span><p>EXTERNAL F45 APP<span>설치 후 체험권 구매 · 수업 예약</span></p></div>
+    <section className="f45-concept" aria-labelledby="f45-concept-title">
+      <Heading eyebrow="BRAND CONCEPT" title="PLAYFUL COMMUNITY" id="f45-concept-title" />
+      <div className="f45-concept__moodboard" aria-label="F45 브랜드 Moodboard">
+        {moodImages.map(([name, alt], index) => <figure className={'f45-concept__image f45-concept__image--' + (index + 1)} key={name}><img src={ASSETS + '/' + name} alt={alt} width={index === 4 ? 1536 : 400} height={index === 4 ? 1200 : 400} loading="lazy" decoding="async" /></figure>)}
+      </div>
+      <div className="f45-concept__foundation">
+        <p><strong>Montserrat</strong><span>Pretendard</span></p>
+        <ul aria-label="브랜드 컬러"><li><i className="f45-swatch--dark" />Dark <span>#0A0913</span></li><li><i className="f45-swatch--teal" />Teal <span>#008BA3</span></li><li><i className="f45-swatch--purple" />Purple <span>#5B5CEB</span></li><li><i className="f45-swatch--light" />Light <span>#F8F9FA</span></li></ul>
+      </div>
     </section>
   )
 }
 
-function DesignDirection() {
+function MainExperience() {
   return (
-    <section className="f45-direction f45-section" aria-labelledby="f45-direction-title">
-      <SectionLabel number="06">DESIGN DIRECTION</SectionLabel>
-      <h2 id="f45-direction-title">PLAYFUL<br /><span>COMMUNITY.</span></h2>
-      <div className="f45-direction__grid"><div className="f45-direction__type"><p className="f45-mini-label">TYPOGRAPHY</p><p>Montserrat<span>Pretendard</span></p><p className="f45-direction__explanation">명확한 영문 제목과 편안한 국문 설명.<br />운동의 에너지와 정보의 가독성을 함께 전달합니다.</p></div><div className="f45-direction__image"><img src={`${ASSETS}/hero_frame_04_wide.jpg`} alt="함께 웃는 F45 팀을 보여주는 원본 브랜드 비주얼" loading="lazy" width="1536" height="1200" /><p>경쟁의 강도보다, 함께하는 분위기를 보여주는 이미지.</p></div></div>
-      <div className="f45-palette" aria-label="F45 Moodboard 컬러"><div><span>01 / DARK</span><strong>#0A0913</strong></div><div><span>02 / TEAL</span><strong>#008BA3</strong></div><div><span>03 / PURPLE</span><strong>#5B5CEB</strong></div><div><span>04 / LIGHT</span><strong>#F8F9FA</strong></div></div>
+    <section className="f45-main" aria-labelledby="f45-main-title">
+      <img className="f45-main__ambient" src={ASSETS + '/hero_frame_03_wide.jpg'} alt="" aria-hidden="true" loading="lazy" />
+      <Heading eyebrow="MAIN EXPERIENCE" title="브랜드의 차이를 이해하고, 나에게 맞는 운동을 발견하다." id="f45-main-title" />
+      <div className="f45-main__scene">
+        <figure className="f45-main__capture" aria-label="WHY F45 KOREA에서 PHASE로 이어지는 실제 웹사이트 화면">
+          <Screen name="why" alt="KOREA의 다섯 글자를 브랜드의 다섯 장점으로 설명하는 WHY F45 KOREA" />
+          <Screen name="phase" alt="프로그램별 특징을 가로 카드로 탐색하는 PHASE" />
+        </figure>
+        <img className="f45-main__frame" src={ASSETS + '/main-frame.png'} width="1448" height="1086" alt="" aria-hidden="true" loading="lazy" />
+        <div className="f45-main__notes">
+          <p className="f45-callout f45-callout--why"><span>01 / WHY F45 KOREA</span>트레이닝 · 시간 · 관계 · 코치 · 프로그램.<br className="f45-desktop-break" /> 사진과 짧은 설명으로<br className="f45-desktop-break" /> <strong>다섯 가지 차별성</strong>을 전달했습니다.</p>
+          <p className="f45-callout f45-callout--phase"><span>02 / PHASE</span>프로그램의 성격을 먼저 보여주고,<br className="f45-desktop-break" /> <strong>가로 탐색</strong>으로 선택지를 연결했습니다.<br className="f45-desktop-break" /> 마우스 · 키보드 · 터치에 대응합니다.</p>
+        </div>
+      </div>
     </section>
   )
 }
 
-function ApplicationCopy({ number, title, problem, decision }: { number: string; title: string; problem: string; decision: string }) {
-  return <div className="f45-application-copy"><p className="f45-mini-label">DESIGN APPLICATION / {number}</p><h3>{title}</h3><dl><div><dt>PROBLEM</dt><dd>{problem}</dd></div><div><dt>DECISION</dt><dd>{decision}</dd></div></dl></div>
-}
-
-function DesignApplication() {
+function UXExperience() {
   return (
-    <section className="f45-application" aria-labelledby="f45-application-title">
-      <div className="f45-section f45-application__heading"><SectionLabel number="07">DESIGN APPLICATION</SectionLabel><h2 id="f45-application-title">생각을,<br /><span>실제 화면으로.</span></h2><p>문제 정의에서 출발한 네 가지 경험.<br />아래 화면은 실제 배포 사이트와 원본 에셋을 사용했습니다.</p></div>
-      <article className="f45-application__why f45-section">
-        <ApplicationCopy number="01" title="WHY F45 KOREA" problem="운동의 강한 인상만으로는 나와의 적합성을 판단하기 어렵습니다." decision="KOREA의 다섯 글자를 트레이닝, 시간, 관계, 코치, 프로그램의 다섯 장점으로 연결했습니다." />
-        <figure><Screen name="why-desktop" alt="다섯 가지 브랜드 장점을 이미지와 번갈아 배치한 실제 WHY F45 KOREA 화면" /><figcaption>브랜드의 차이를 사진과 짧은 설명으로 읽는 구조</figcaption></figure>
-      </article>
-      <article className="f45-application__phase f45-section f45-dark">
-        <ApplicationCopy number="02" title="PHASE" problem="프로그램 이름만으로는 어떤 운동을 경험하게 될지 알기 어렵습니다." decision="카드마다 프로그램의 성격을 짧게 설명하고, 가로 탐색으로 여러 선택지를 연결했습니다." />
-        <figure><Screen name="phase-desktop" alt="서로 다른 프로그램을 가로 카드로 탐색하는 실제 PHASE 화면" /><figcaption>마우스 · 키보드 · 모바일 가로 스크롤로 프로그램 탐색</figcaption></figure>
-      </article>
-      <article className="f45-application__location f45-section">
-        <ApplicationCopy number="03" title="LOCATION FINDER" problem="관심이 생겨도 방문할 지점과 연락 정보를 바로 찾기 어렵습니다." decision="도시와 지점명·주소로 목록을 좁히고, 기본 상세 정보로 이어지는 경로를 만들었습니다." />
-        <figure><Screen name="location-desktop" alt="도시 선택, 이름·주소 검색, 지점 목록과 참고 지도 이미지가 있는 실제 화면" /><figcaption>목록 필터와 기본 지점 상세를 제공하며, 지도는 참고 이미지입니다.</figcaption></figure>
-        <p className="f45-application__boundary">현재 ‘주변 매장 찾기’는 전체 목록을 복원합니다. 실제 위치 기반 탐색과 거리순 정렬은 후속 개선 과제입니다.</p>
-      </article>
-      <article className="f45-application__care f45-section">
-        <ApplicationCopy number="04" title="BEGINNER CARE / APP GUIDE" problem="처음 방문할 때의 준비와 앱에서 체험을 시작하는 방법이 낯설 수 있습니다." decision="첫 방문 안내를 6개 항목으로 정리하고, 별도의 6단계 앱 가이드로 다음 행동을 설명했습니다." />
-        <div className="f45-care-composition"><figure className="f45-care-composition__guide"><Screen name="care-mobile" alt="설문조사, 준비물, 식사, 입장, 강도, 코치 케어를 안내하는 실제 모바일 웹 화면" /><figcaption>첫 방문 전, 확인할 정보를 순서대로.</figcaption></figure><div className="f45-care-composition__app"><p className="f45-mini-label">WEB → APP</p><h4>이어서 시작하는 방법까지.</h4><div><img src={`${ASSETS}/phone01.png`} alt="원본 가이드의 F45 앱 실행 화면" loading="lazy" width="282" height="570" /><span aria-hidden="true">→</span><img src={`${ASSETS}/phone06.png`} alt="원본 가이드의 외부 F45 앱 예약 화면" loading="lazy" width="282" height="570" /></div><p>설치 → 지점 검색 → 인증 → 멤버십 → 크레딧 구매 → 예약</p><p className="f45-source-note">F45 원본 가이드에 포함된 외부 앱 화면입니다. 웹사이트는 이용 방법과 스토어 링크를 안내합니다.</p></div></div>
-      </article>
+    <section className="f45-ux" aria-labelledby="f45-ux-title">
+      <Heading eyebrow="UX EXPERIENCE" title="가까운 지점에서, 첫 체험의 준비까지." id="f45-ux-title" />
+      <div className="f45-ux__finder">
+        <figure className="f45-ux__desktop"><img src={ASSETS + '/location-desktop.webp'} width="1440" height="1201" alt="도시 선택·지점명과 주소 검색·지점 목록을 함께 보여주는 데스크톱 화면" loading="lazy" decoding="async" /></figure>
+        <figure className="f45-ux__phone f45-phone"><img src={ASSETS + '/location-mobile.webp'} width="390" height="856" alt="같은 지점을 탐색하는 모바일 화면" loading="lazy" decoding="async" /></figure>
+        <div className="f45-ux__finder-notes"><p><span>01</span>지역 선택</p><p><span>02</span>이름·주소 검색</p><p><span>03</span>지점 정보 확인</p></div>
+      </div>
+      <p className="f45-footnote f45-ux__finder-note">지도는 참고 이미지이며, ‘주변 매장 찾기’는 전체 목록을 복원합니다. 위치 기반 검색·거리순 정렬은 후속 과제입니다.</p>
+      <div className="f45-ux__care">
+        <figure className="f45-ux__care-phone f45-phone"><img src={ASSETS + '/care-mobile.webp'} width="390" height="1298" alt="설문조사·준비물·식사·입장·강도·코치 케어를 안내하는 실제 모바일 웹 화면" loading="lazy" decoding="async" /></figure>
+        <div className="f45-ux__care-copy"><p className="f45-eyebrow">BEGINNER CARE → APP GUIDE</p><h3>처음이라도,<br />준비할 수 있도록.</h3><p>설문조사 · 준비물 · 식사 · 입장 · 운동 강도 · 코치 케어.<br className="f45-desktop-break" /> 방문 전에 알아둘 여섯 가지를 먼저 안내합니다.</p><div className="f45-ux__app"><img src={ASSETS + '/phone01.png'} width="282" height="570" alt="원본 앱 가이드의 F45 앱 실행 화면" loading="lazy" /><span aria-hidden="true">→</span><img src={ASSETS + '/phone06.png'} width="282" height="570" alt="원본 앱 가이드의 외부 앱 예약 화면" loading="lazy" /></div><p className="f45-ux__app-steps">설치 → 지점 검색 → 인증 → 멤버십 → 체험권 이용</p><p className="f45-footnote">웹사이트는 첫 방문 정보와 앱 이용 절차를 안내합니다.<br className="f45-desktop-break" /> 실제 체험권 구매와 수업 예약은 외부 F45 앱에서 진행합니다.</p></div>
+      </div>
     </section>
   )
 }
 
-const validation = [
-  { label: '2026.07', title: '첫 개인 프로젝트의 시작.', body: '학원 정규 과정에서 진행한 첫 개인 프로젝트로, 웹 기획부터 UX/UI 디자인과 최초 웹사이트 제작까지 직접 맡았습니다.', detail: '브랜드 이해부터 체험 결정까지 이어지는 흐름을 설계하고, 디자인을 실제 웹 환경으로 옮겼습니다.' },
-  { label: '2026.08–09', title: '정규 과정 이후, 독립적으로 고도화하다.', body: '정규 과정이 끝난 뒤에도 개인적으로 디자인과 웹사이트 기능을 추가 개발했습니다. 최초 디자인을 실제 웹 환경에 구현한 이후, 반응형·인터랙션·모바일 사용성을 스스로 검수하며 개선해 나갔습니다.', detail: '데스크톱 영상과 모바일 이미지 구성을 나누고, PHASE와 앱 안내의 터치·키보드 탐색을 보완했습니다. Safari 가장자리 제스처와의 충돌을 고려한 터치 처리도 개선했습니다.' },
-  { label: 'WORKING WITH AI', title: '기획·디자인 의도를, 구현과 검수로.', body: '웹 기획과 UX/UI 디자인을 직접 진행하고, 코드 구현과 오류 수정에는 AI 개발 도구의 도움을 받았습니다.', detail: '구현 결과를 실제 브라우저에서 디자인 의도와 대조하며 반응형·인터랙션·모바일 사용성을 검수했습니다. 개선 우선순위와 최종 결과의 판단은 직접 맡았습니다.' },
-  { label: 'DESIGN NOTES', title: '피드백을 읽고, 적용 범위를 구분하다.', body: 'Figma 메모에는 모바일 가격 위계, FAQ 행간, 주차 안내의 굵기 등에 관한 의견이 남아 있습니다.', detail: '테스트 일자와 대상 시안이 확인되지 않아, 최종 배포 성과나 개선 완료 수치로 제시하지 않았습니다.' },
-  { label: 'NEXT ITERATION', title: '남아 있는 불확실함을 다음 과제로.', body: '실제 위치 기반 지점 탐색, 가격, 시간표, 코치와 후기 정보를 다음 개선 대상으로 남겼습니다.', detail: '원본 기획의 가설은 유지하되, 전환율이나 체험 신청 증가를 측정한 성과는 주장하지 않습니다.' },
-]
-
-function Validation() {
+function Evolution() {
   return (
-    <section className="f45-validation f45-section f45-dark" aria-labelledby="f45-validation-title">
-      <SectionLabel number="08">IMPLEMENTATION &amp; QA</SectionLabel>
-      <div className="f45-section-intro"><h2 id="f45-validation-title">설계한 것,<br />확인한 것,<br /><span>다음에 검증할 것.</span></h2><p>2026년 7월의 최초 제작부터,<br className="f45-desktop-break" /> 8~9월에 독립적으로 진행한 추가 개발과 고도화까지.</p></div>
-      <div className="f45-validation__list">{validation.map((item, index) => <article key={item.label}><p><span>0{index + 1}</span>{item.label}</p><div><h3>{item.title}</h3><p>{item.body}</p><p className="f45-validation__detail">{item.detail}</p></div></article>)}</div>
+    <section className="f45-evolution" aria-labelledby="f45-evolution-title">
+      <Heading eyebrow="EVOLUTION" title="디자인을 웹으로, 웹을 더 나은 경험으로." id="f45-evolution-title" />
+      <div className="f45-evolution__layout">
+        <div className="f45-evolution__devices" aria-label="고도화한 F45의 데스크톱과 모바일 프로그램 탐색 화면">
+          <div className="f45-evolution__desktop"><img className="f45-evolution__frame" src={ASSETS + '/evolution-frame.jpg'} width="760" height="634" alt="" aria-hidden="true" loading="lazy" /><div className="f45-evolution__screen"><img src={ASSETS + '/phase-desktop.webp'} width="1440" height="1022" alt="PC의 실제 PHASE 프로그램 탐색 화면" loading="lazy" /></div></div>
+          <div className="f45-evolution__phone f45-phone"><img src={ASSETS + '/phase-mobile.webp'} width="390" height="691" alt="네이티브 가로 터치 탐색을 지원하는 모바일 PHASE" loading="lazy" /></div>
+        </div>
+        <div className="f45-evolution__story"><div><p className="f45-eyebrow">2026.07</p><h3>첫 개인 프로젝트의 출발.</h3><p>학원 정규 과정에서 웹 기획·UX/UI 디자인·최초 웹사이트 제작을 진행했습니다.</p></div><div><p className="f45-eyebrow">2026.08–09</p><h3>과정이 끝난 뒤,<br />독립적으로 고도화하다.</h3><p>실제 웹 환경에서 반응형·인터랙션·모바일 사용성을 스스로 검수하며 디자인과 기능을 추가 개선했습니다.</p><ul><li>PC 영상 / 모바일 이미지 구성 분리</li><li>PHASE·앱 안내의 터치·키보드 탐색 보완</li><li>Safari 가장자리 제스처와의 충돌 대응</li></ul></div><p className="f45-evolution__ai"><strong>WORKING WITH AI</strong>코드 구현과 오류 수정에는 AI 개발 도구의 도움을 받았습니다. 디자인 방향과 개선 우선순위, 실제 브라우저 검수와 최종 판단은 직접 맡았습니다.</p></div>
+      </div>
+      <p className="f45-footnote f45-evolution__note">Figma의 가격 위계·FAQ·주차 안내 피드백은 테스트 시안과 일자가 확인되지 않아 최종 배포 성과로 제시하지 않았습니다. 전환율이나 체험 신청 증가 수치도 주장하지 않습니다.</p>
     </section>
   )
 }
 
-function Ending() {
+function Result() {
   return (
-    <section className="f45-ending" aria-labelledby="f45-ending-title">
-      <div className="f45-ending__copy"><p className="f45-mini-label">FROM UNCERTAINTY TO THE FIRST STEP</p><h2 id="f45-ending-title">시작하기 전의<br />망설임을 줄이고,<br /><span>함께 움직이는 경험으로.</span></h2><p>브랜드를 이해하는 순간부터 첫 방문을 준비하는 순간까지.<br className="f45-desktop-break" /> 체험을 결정할 수 있는 정보의 흐름을 만들었습니다.</p></div>
-      <img src={`${ASSETS}/hero_frame_05_wide.jpg`} alt="F45 스튜디오에서 함께하는 팀의 원본 대표 이미지" loading="lazy" width="1536" height="1200" />
+    <section className="f45-result" aria-labelledby="f45-result-title">
+      <img className="f45-result__background" src={ASSETS + '/hero_frame_05_wide.jpg'} width="1536" height="1200" alt="" aria-hidden="true" loading="lazy" />
+      <span className="f45-result__veil" aria-hidden="true" />
+      <div className="f45-result__visual"><F45Devices className="f45-result__devices" fit decorative /></div>
+      <div className="f45-result__copy"><h2 id="f45-result-title">시작을 망설이는 순간부터,<br />함께 움직이는 경험까지.<br /><span>기획을 실제 웹으로<br />완성했습니다.</span></h2></div>
     </section>
   )
 }
@@ -204,7 +193,7 @@ export default function F45CaseStudy({ onNavigate, nextProject }: { onNavigate?:
   return (
     <div className="f45-case-study project-case-study">
       <ProjectHeader onNavigate={onNavigate} faceId="f45" tone="light" />
-      <main><F45Hero /><Overview /><ProblemDefinition /><TargetInsight /><StrategyPriority /><UXStructure /><DesignDirection /><DesignApplication /><Validation /><Ending /></main>
+      <main><Hero /><Overview /><ProblemStrategy /><Insight /><BrandConcept /><MainExperience /><UXExperience /><Evolution /><Result /></main>
       {nextProject && <NextFace project={nextProject} onNavigate={onNavigate} />}
       <FloatingDock liveUrl={project.liveUrl} />
     </div>
