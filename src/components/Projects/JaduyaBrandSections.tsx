@@ -1,3 +1,5 @@
+import { useRef } from 'react'
+import useEndingPathReveal from '../../hooks/useEndingPathReveal'
 import './JaduyaBrandSections.css'
 
 const BRAND_ASSET_ROOT = '/projects/jaduya/brand'
@@ -38,11 +40,15 @@ export function JaduyaBrandConcept() {
 }
 
 export function JaduyaEnding() {
+  const sectionRef = useRef<HTMLElement>(null)
+  const roadRef = useRef<HTMLDivElement>(null)
+  useEndingPathReveal(sectionRef, roadRef)
+
   return (
-    <section className="jaduya-ending" aria-label="자두야 프로젝트 결론">
+    <section ref={sectionRef} className="jaduya-ending" aria-label="자두야 프로젝트 결론">
       <div className="jaduya-ending__road-stage" aria-hidden="true">
         <div className="jaduya-ending__road-rotation">
-          <div className="jaduya-ending__road-frame">
+          <div ref={roadRef} className="jaduya-ending__road-frame">
             <img
               src={`${BRAND_ASSET_ROOT}/ending-road.png`}
               width="1448"

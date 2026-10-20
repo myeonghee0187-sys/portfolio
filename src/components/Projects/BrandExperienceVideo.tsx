@@ -11,6 +11,7 @@ export default function BrandExperienceVideo({ src, poster }: Props) {
   const centeredRef = useRef(false)
   const manualOutsideCenter = useRef(false)
   const blockedRef = useRef(false)
+  const resumeTimeRef = useRef(0)
   const reconcileRef = useRef<(() => void) | null>(null)
   const touchTimerRef = useRef<number | undefined>(undefined)
   const [touchControls, setTouchControls] = useState(false)
@@ -51,12 +52,18 @@ export default function BrandExperienceVideo({ src, poster }: Props) {
       if (!wanted()) {
         playAttempt += 1
         playPending = false
+        if (video.currentTime > 0) resumeTimeRef.current = video.currentTime
         video.pause()
         return
       }
       if (!video.paused || playPending || blockedRef.current) return
       const token = ++playAttempt
       playPending = true
+      // Explicitly restore the position: WebKit can suspend offscreen media while
+      // its currentTime getter still reports the old position until play().
+      if (resumeTimeRef.current > 0 && video.readyState >= 1) {
+        video.currentTime = resumeTimeRef.current
+      }
       void video.play().then(() => {
         if (token === playAttempt && !wanted()) video.pause()
       }).catch(() => {
@@ -71,9 +78,10 @@ export default function BrandExperienceVideo({ src, poster }: Props) {
     reconcileRef.current = reconcile
     const measure = () => {
       frame = 0
-      const rect = section.getBoundingClientRect()
+      const rect = video.getBoundingClientRect()
       const delta = Math.abs(rect.top + rect.height / 2 - window.innerHeight / 2)
-      // The actual section CENTER enters the middle 20%; a wider exit band prevents jitter.
+      // Measure the screen itself, so section padding cannot keep an offscreen video playing.
+      // Enter the middle 20%; a wider exit band prevents jitter.
       const limit = window.innerHeight * (centeredRef.current ? 0.14 : 0.10)
       const wasCentered = centeredRef.current
       centeredRef.current = delta <= limit
@@ -86,6 +94,7 @@ export default function BrandExperienceVideo({ src, poster }: Props) {
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure) }
     const resizeObserver = new ResizeObserver(schedule)
     resizeObserver.observe(section)
+    resizeObserver.observe(video)
     window.addEventListener('scroll', schedule, { passive: true })
     window.addEventListener('resize', schedule, { passive: true })
     document.addEventListener('visibilitychange', reconcile)
@@ -125,6 +134,10 @@ export default function BrandExperienceVideo({ src, poster }: Props) {
         <video ref={videoRef} src={src} poster={poster} muted loop playsInline preload="metadata"
           aria-label="차이킴 Brand Page 스크롤 영상"
           onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)}
+          onTimeUpdate={event => {
+            const video = event.currentTarget
+            if (!video.paused) resumeTimeRef.current = video.currentTime
+          }}
           onError={() => { setFailed(true); setPlaying(false); hideTouchControls() }} />
       )}
       {src && !failed && (
