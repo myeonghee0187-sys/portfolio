@@ -20,7 +20,7 @@ No source assets, dependencies, page routing, Header, Dock, main portfolio, watc
 
 Inspection confirmed `main-two-home-phone.png` already contains the expanded sheet UI; `main-two-raised-sheet.png` contains the widget editing cards. Moving only those cards would not represent the sheet opening.
 
-The existing phone base and frame remain stationary. Two original screen images are reused inside a precisely clipped screen window: the Main Page 01 home fills the exposed background, and a clipped copy of the existing Main Page 02 UI moves with the original editing cards and halo. No bitmap was edited or regenerated. The moving composition is hidden at completion, leaving the original expanded rendering exactly intact. Reduced motion and no-JavaScript rendering also retain the original final composition.
+The existing phone base and frame remain stationary. Two original screen images are reused inside a precisely clipped screen window: the Main Page 01 home fills the exposed background, and a clipped copy of the existing Main Page 02 UI moves with the original editing cards and halo. No bitmap was edited or regenerated. The moving composition is hidden at completion, leaving the original expanded rendering exactly intact. Reduced motion and the component markup before scroll enhancement also retain the original final composition.
 
 Only Y translation changes. At 1920×1080 the travel is 167.44px → 83.72px → 0px; at 390×844 it is 97.72px → 48.86px → 0px. Phone, point cards, connectors and all surrounding layout remain stationary in document coordinates. Reverse scroll retraces the same values; fast seeking reaches the corresponding state directly. The screen window clips UI at the phone edges without moving the outer frame or exposing an empty area.
 
