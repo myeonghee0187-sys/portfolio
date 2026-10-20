@@ -46,9 +46,9 @@ function F45Hero() {
         <div className="f45-hero__mobile"><img src={`${ASSETS}/main-mobile.webp`} alt="같은 사이트의 모바일 메인 첫 화면" width="390" height="844" /></div>
       </div>
       <dl className="f45-hero__meta">
-        <div><dt>기간</dt><dd>2026.7 — 2026.9</dd></div>
-        <div><dt>유형</dt><dd>RESPONSIVE WEB REDESIGN</dd></div>
-        <div><dt>컨셉</dt><dd>Playful Community</dd></div>
+        <div><dt>PERIOD</dt><dd>2026.07</dd></div>
+        <div><dt>MY ROLE</dt><dd>WEB PLANNING · UX/UI DESIGN · FRONT-END IMPLEMENTATION</dd></div>
+        <div><dt>CONTRIBUTION</dt><dd>100% (PERSONAL PROJECT)</dd></div>
       </dl>
     </section>
   )
@@ -174,16 +174,18 @@ function DesignApplication() {
 }
 
 const validation = [
+  { label: '2026.07', title: '첫 개인 프로젝트의 시작.', body: '학원 정규 과정에서 진행한 첫 개인 프로젝트로, 웹 기획부터 UX/UI 디자인과 최초 웹사이트 제작까지 직접 맡았습니다.', detail: '브랜드 이해부터 체험 결정까지 이어지는 흐름을 설계하고, 디자인을 실제 웹 환경으로 옮겼습니다.' },
+  { label: '2026.08–09', title: '정규 과정 이후, 독립적으로 고도화하다.', body: '정규 과정이 끝난 뒤에도 개인적으로 디자인과 웹사이트 기능을 추가 개발했습니다. 최초 디자인을 실제 웹 환경에 구현한 이후, 반응형·인터랙션·모바일 사용성을 스스로 검수하며 개선해 나갔습니다.', detail: '데스크톱 영상과 모바일 이미지 구성을 나누고, PHASE와 앱 안내의 터치·키보드 탐색을 보완했습니다. Safari 가장자리 제스처와의 충돌을 고려한 터치 처리도 개선했습니다.' },
+  { label: 'WORKING WITH AI', title: '기획·디자인 의도를, 구현과 검수로.', body: '웹 기획과 UX/UI 디자인을 직접 진행하고, 코드 구현과 오류 수정에는 AI 개발 도구의 도움을 받았습니다.', detail: '구현 결과를 실제 브라우저에서 디자인 의도와 대조하며 반응형·인터랙션·모바일 사용성을 검수했습니다. 개선 우선순위와 최종 결과의 판단은 직접 맡았습니다.' },
   { label: 'DESIGN NOTES', title: '피드백을 읽고, 적용 범위를 구분하다.', body: 'Figma 메모에는 모바일 가격 위계, FAQ 행간, 주차 안내의 굵기 등에 관한 의견이 남아 있습니다.', detail: '테스트 일자와 대상 시안이 확인되지 않아, 최종 배포 성과나 개선 완료 수치로 제시하지 않았습니다.' },
-  { label: 'IMPLEMENTATION', title: '화면 크기보다, 사용하는 방식에 맞추다.', body: '원본 구현은 데스크톱의 영상과 모바일 이미지 구성을 나누고, PHASE와 앱 안내에 터치·키보드 탐색을 지원합니다.', detail: 'Safari 가장자리 제스처와 충돌하지 않도록 둔 터치 처리도 확인했습니다. 물리 기기 검증 결과를 의미하지 않습니다.' },
   { label: 'NEXT ITERATION', title: '남아 있는 불확실함을 다음 과제로.', body: '실제 위치 기반 지점 탐색, 가격, 시간표, 코치와 후기 정보를 다음 개선 대상으로 남겼습니다.', detail: '원본 기획의 가설은 유지하되, 전환율이나 체험 신청 증가를 측정한 성과는 주장하지 않습니다.' },
 ]
 
 function Validation() {
   return (
     <section className="f45-validation f45-section f45-dark" aria-labelledby="f45-validation-title">
-      <SectionLabel number="08">VALIDATION &amp; IMPROVEMENT</SectionLabel>
-      <div className="f45-section-intro"><h2 id="f45-validation-title">설계한 것,<br />확인한 것,<br /><span>다음에 검증할 것.</span></h2><p>기획의 의도, 구현의 사실,<br className="f45-desktop-break" /> 검증이 필요한 가설을 구분합니다.</p></div>
+      <SectionLabel number="08">IMPLEMENTATION &amp; QA</SectionLabel>
+      <div className="f45-section-intro"><h2 id="f45-validation-title">설계한 것,<br />확인한 것,<br /><span>다음에 검증할 것.</span></h2><p>2026년 7월의 최초 제작부터,<br className="f45-desktop-break" /> 8~9월에 독립적으로 진행한 추가 개발과 고도화까지.</p></div>
       <div className="f45-validation__list">{validation.map((item, index) => <article key={item.label}><p><span>0{index + 1}</span>{item.label}</p><div><h3>{item.title}</h3><p>{item.body}</p><p className="f45-validation__detail">{item.detail}</p></div></article>)}</div>
     </section>
   )

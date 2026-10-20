@@ -4,7 +4,7 @@
 
 ## 구현과 근거
 
-신규 `/projects/f45`에 HERO, OVERVIEW, PROBLEM DEFINITION, TARGET & INSIGHT, STRATEGY & PRIORITY, UX STRUCTURE, DESIGN DIRECTION, DESIGN APPLICATION, VALIDATION & IMPROVEMENT, ENDING의 10개 섹션을 구현했다. 섹션별 의도와 자료 노드는 [Reference Audit](./f45-reference-audit.md)에 기록했다.
+신규 `/projects/f45`에 HERO, OVERVIEW, PROBLEM DEFINITION, TARGET & INSIGHT, STRATEGY & PRIORITY, UX STRUCTURE, DESIGN DIRECTION, DESIGN APPLICATION, IMPLEMENTATION & QA, ENDING의 10개 섹션을 구현했다. 섹션별 의도와 자료 노드는 [Reference Audit](./f45-reference-audit.md)에 기록했다.
 
 NONFICTION 전체 콘텐츠 이미지 54개와 GIF 프레임을 구현 전에 확인했다. 큰 제목과 절제된 본문, 얇은 구분선, 비대칭 분석 컬럼, 밝고 어두운 UI 사례의 교차 리듬을 F45의 콘텐츠에 적용했다. 문제 비교표 → 사용자 그룹 비교 → 우선순위 레인 → 연결된 사용자 흐름 → 서체·컬러 구성 → 네 가지 실제 UI 사례 → 검증 기록으로 표현 방식을 바꿨다. 원본의 이미지·브랜드·개별 화면 배치를 복제하지 않았다.
 
@@ -59,10 +59,20 @@ WebKit의 390 × 844, 375 × 667에서도 추가 검수했다. 물리 iPhone / S
 
 Vite는 기존 HomePage 청크의 500kB 초과 경고를 출력한다 (723.16kB, gzip 203.66kB). 빌드 실패는 아니며 해당 청크 크기는 이번 F45 추가 전과 동일하다. 새로운 패키지는 추가하지 않았다.
 
-## 사용자 확인이 필요한 정보
+## 사용자 확인을 반영한 프로젝트 이력
 
-- 역할과 개인 기여도: 원본 자료에 명시되어 있지 않아 HERO에서 생략했다. 확인 후 반영한다.
-- 기간: 원본 `PROJECT_CONTEXT.md`의 2026년 7~9월 작업 기록에 근거한다. 사용자의 최종 표기 확인이 가능하다.
+사용자가 최초 제작과 이후 독립적인 고도화 기간을 확인해주었다. HERO의 세 항목을 `PERIOD: 2026.07`, `MY ROLE: WEB PLANNING · UX/UI DESIGN · FRONT-END IMPLEMENTATION`, `CONTRIBUTION: 100% (PERSONAL PROJECT)`로 갱신했다. 기존 유형·컨셉 설명은 본문의 Overview / Design Direction에 유지된다.
+
+IMPLEMENTATION & QA의 기존 구분선 레이아웃 안에서 `2026.07` 최초 기획·디자인·웹사이트 제작과 `2026.08–09` 정규 과정 종료 후 독립적인 추가 개발·고도화를 나눴다. 최초 디자인을 웹 환경에 구현한 후 스스로 반응형·인터랙션·모바일 사용성을 검수하며 발전시킨 과정을 설명한다. 8~9월을 정규 과정의 연장이나 단순 유지보수로 표현하지 않는다.
+
+AI 활용은 코드 구현·오류 수정의 보조와, 직접 진행한 기획·디자인 의사결정·최종 검수로 설명한다. 원본 `PROJECT_CONTEXT.md`의 Codex 작업 / 브라우저 QA 기록을 근거로 하며, 확인되지 않은 개별 AI 모델·사용 시점·모든 코드의 수작업 작성 여부는 주장하지 않는다. 긴 영문 역할과 레이블이 모바일에서 줄바꿈되도록 HERO 메타데이터의 열 너비만 보완했다. 다른 섹션의 디자인·공통 UI·라우팅·인터랙션은 변경하지 않았다.
+
+이 보완 후에도 Chrome의 필수 8개 해상도와 WebKit 모바일 2개 해상도에서 다시 검수했다. HERO의 제목·비주얼·메타데이터 겹침, 텍스트 넘침, 이미지 오류, 콘솔 오류가 없었다. 메타데이터는 375px 폭에서도 Dock과 겹치지 않고 읽을 수 있다. 본문 섹션 높이는 내용을 추가한 IMPLEMENTATION & QA에서만 늘었으며, 나머지 섹션의 높이는 동일하다. TypeScript / Build, Lint, 52개 테스트 및 `git diff --check`를 다시 통과했다.
+
+최신 증거 파일은 `metadata-update-visual-qa.json`, `metadata-update-layout-comparison.json`과 `metadata-update-section-captures.json`이다. 갱신된 전체 스크린샷은 `metadata-update-f45-full-1920-chrome.png`, `metadata-update-f45-full-390-chrome.png`다. HERO와 IMPLEMENTATION & QA의 개별 화면도 동일 접두사로 보존했다.
+
+## 남은 확인 범위
+
 - 브리프에 언급된 `f45-case-study-implementation.zip`은 제공된 첨부에서 찾지 못했다. 검토되지 않은 초안을 적용했다고 주장하지 않는다.
 - Figma 피드백의 테스트 일자 / 대상 시안, 실제 위치 탐색 / 가격 / 시간표 / 코치 / 후기는 미검증 또는 원본 사이트의 후속 과제다.
 
