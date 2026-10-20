@@ -199,9 +199,10 @@
     position: relative;
     inset: auto;
     width: min(100%, 560px);
-    height: auto;
+    /* Preserve the existing bubble silhouette with the requested 24px copy. */
+    height: calc(48px + max(50.4px, calc(134.4 * var(--jaduya-u))));
     min-height: 0;
-    padding: 24px;
+    padding: 0 24px;
     border-radius: 24px;
     white-space: normal;
   }
@@ -297,7 +298,8 @@
   }
 
   .jaduya-brand-concept__card {
-    padding: 20px 16px;
+    height: 90.4px;
+    padding: 0 16px;
     line-height: 1.4;
   }
 

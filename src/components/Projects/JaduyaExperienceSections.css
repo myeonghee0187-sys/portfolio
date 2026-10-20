@@ -236,6 +236,36 @@
   height: calc(5.33333 * var(--jaduya-u));
 }
 
+@media (min-width: 1100px) {
+  /* Trim only the phone-facing leg: keep SVG dash size, bend and card anchor. */
+  .jaduya-main--two .jaduya-main__connector {
+    overflow: clip;
+  }
+
+  .jaduya-main--two .jaduya-main__connector::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: calc(5.33333 * var(--jaduya-u));
+    height: calc(5.33333 * var(--jaduya-u));
+    border-radius: 50%;
+    background: #c7753b;
+    content: '';
+  }
+
+  .jaduya-main--two .jaduya-main__point-item:nth-child(1) .jaduya-main__connector {
+    width: calc(151.667 * var(--jaduya-u));
+  }
+
+  .jaduya-main--two .jaduya-main__point-item:nth-child(2) .jaduya-main__connector {
+    width: calc(152.167 * var(--jaduya-u));
+  }
+
+  .jaduya-main--two .jaduya-main__point-item:nth-child(3) .jaduya-main__connector {
+    width: calc(147.167 * var(--jaduya-u));
+  }
+}
+
 .jaduya-home-care {
   position: relative;
   display: flex;

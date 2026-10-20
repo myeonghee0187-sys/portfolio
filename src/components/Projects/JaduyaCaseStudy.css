@@ -18,7 +18,7 @@
   --jaduya-point-title-size: clamp(16px, calc(24 * var(--jaduya-u)), 24px);
   --jaduya-body-size: clamp(14px, calc(20 * var(--jaduya-u)), 20px);
   --jaduya-detail-size: clamp(11px, calc(16 * var(--jaduya-u)), 16px);
-  --jaduya-bubble-size: clamp(18px, calc(48 * var(--jaduya-u)), 48px);
+  --jaduya-bubble-size: 24px;
   --jaduya-ending-size: clamp(22px, calc(64 * var(--jaduya-u)), 64px);
   max-width: 1920px;
   margin-inline: auto;
