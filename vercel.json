@@ -3,6 +3,8 @@
     { "source": "/projects/tchaikim", "destination": "/index.html" },
     { "source": "/projects/tchaikim/", "destination": "/index.html" },
     { "source": "/projects/jaduya", "destination": "/index.html" },
-    { "source": "/projects/jaduya/", "destination": "/index.html" }
+    { "source": "/projects/jaduya/", "destination": "/index.html" },
+    { "source": "/projects/f45", "destination": "/index.html" },
+    { "source": "/projects/f45/", "destination": "/index.html" }
   ]
 }

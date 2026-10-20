@@ -79,8 +79,8 @@ function fixture({ withHandler = true, exitOnOpen = false } = {}) {
     dispose: () => cleanups.forEach(cleanup => cleanup()), callbacks }
 }
 
-test('implemented TCHAIKIM and JADUYA expose routes and their approved external links', () => {
-  const [tchai, jaduya, ...other] = projects
+test('all three projects expose routes and their approved external links', () => {
+  const [tchai, jaduya, f45] = projects
   assert.equal(tchai.detailPath, '/projects/tchaikim')
   assert.equal(tchai.liveUrl, 'https://myeonghee0187-sys.github.io/tchaikim_all/pages/main/index.html')
   assert.equal(tchaikimCaseStudyUrl, 'https://www.figma.com/deck/8K1OMzkKzmEmkV2Kejd43q/기획서-슬라이드?node-id=6242-19&viewport=-109%2C-41%2C0.52&t=gkQV04wKLDvypaXf-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1')
@@ -88,7 +88,9 @@ test('implemented TCHAIKIM and JADUYA expose routes and their approved external 
   assert.equal(jaduya.detailPath, '/projects/jaduya')
   assert.equal(jaduya.liveUrl, 'https://jaduya.vercel.app/')
   assert.equal(new URL(jaduya.caseStudyUrl).pathname.split('/')[2], '7l7yOTebIpNQ4Go31Mduar')
-  assert.ok(other.every(project => project.detailPath === undefined))
+  assert.equal(f45.detailPath, '/projects/f45')
+  assert.equal(f45.liveUrl, 'https://myeonghee0187-sys.github.io/f45_korea/')
+  assert.equal(f45.caseStudyUrl, undefined)
 })
 
 test('tap dispatches once; synchronous parent exit prevents repeated activation', () => {
@@ -126,13 +128,15 @@ test('vertical movement, native rail scrolling, cancellation, and changed target
   }
 })
 
-test('keyboard activation works after a cancelled gesture; unavailable projects stay unavailable', () => {
+test('keyboard activation works after a cancelled gesture; unknown projects stay unavailable', () => {
   const f = fixture()
   f.down(); f.cancel()
   assert.equal(f.click({ detail: 0 }).defaultPrevented, true)
   assert.deepEqual(f.opened, ['tchaikim'])
   assert.equal(f.click({ detail: 0, target: new Anchor('f45') }).defaultPrevented, true)
-  assert.deepEqual(f.opened, ['tchaikim'])
+  assert.deepEqual(f.opened, ['tchaikim', 'f45'])
+  assert.equal(f.click({ detail: 0, target: new Anchor('unavailable') }).defaultPrevented, true)
+  assert.deepEqual(f.opened, ['tchaikim', 'f45'])
 })
 
 test('JADUYA taps dispatch the project id and share the exit lock', () => {
@@ -157,10 +161,10 @@ test('modified clicks and links without an SPA callback retain native navigation
   assert.equal(f.click().defaultPrevented, false)
 })
 
-test('implemented videos and CTAs are separate semantic links; F45 stays unavailable', () => {
+test('all three project videos and CTAs are separate semantic links', () => {
   const f = fixture()
   const slides = f.tree.props.children.map(element => element.type(element.props, null))
-  for (const [index, path] of ['/projects/tchaikim', '/projects/jaduya'].entries()) {
+  for (const [index, path] of ['/projects/tchaikim', '/projects/jaduya', '/projects/f45'].entries()) {
     const [visual] = slides[index].props.children
     const [video, overlay] = visual.props.children
     assert.equal(video.type, 'a')
@@ -168,13 +172,5 @@ test('implemented videos and CTAs are separate semantic links; F45 stays unavail
     const cta = overlay.props.children
     assert.equal(cta.type, 'a')
     assert.equal(cta.props.href, video.props.href)
-  }
-  for (const slide of slides.slice(2)) {
-    const [visual] = slide.props.children
-    assert.notEqual(visual.props.children[0].type, 'a')
-    const disabled = visual.props.children[1].props.children
-    assert.equal(disabled.props.href, undefined)
-    assert.equal(disabled.props['aria-disabled'], true)
-    assert.equal(disabled.props.tabIndex, -1)
   }
 })
