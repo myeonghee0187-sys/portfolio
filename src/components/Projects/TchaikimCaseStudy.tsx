@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
+import useScrollPointFocus from '../../hooks/useScrollPointFocus'
 import { TCHAIKIM_CASE_STUDY_URL } from '../Faces/facesData'
 import FloatingDock from './FloatingDock'
 import NextFace, { type NextFaceProject } from './NextFace'
@@ -84,6 +85,10 @@ export default function TchaikimCaseStudy({
   onNavigate,
   nextProject = { title: 'JADUYA' },
 }: TchaikimCaseStudyProps) {
+  const mainRef = useRef<HTMLElement>(null)
+  const shopRef = useRef<HTMLElement>(null)
+  useScrollPointFocus(mainRef)
+  useScrollPointFocus(shopRef)
   return (
     <div className="tchai-case-study project-case-study">
       <ProjectHeader onNavigate={onNavigate} />
@@ -150,7 +155,7 @@ export default function TchaikimCaseStudy({
           </div>
         </section>
 
-        <section className="tchai-main-point" aria-labelledby="tchai-main-title">
+        <section ref={mainRef} className="tchai-main-point" aria-labelledby="tchai-main-title">
           <img className="tchai-main-point__ambient" src={assets.mainBackground} alt="" aria-hidden="true" loading="lazy" />
           <SectionHeading eyebrow="MAIN PAGE" title="브랜드 정체성을 보여주는 몰입형 메인 경험" id="tchai-main-title" />
           <div className="tchai-main-point__scene">
@@ -158,20 +163,20 @@ export default function TchaikimCaseStudy({
               <img src={assets.mainCapture} alt="Full-length Tchai Kim main page design" loading="lazy" />
             </div>
             <img className="tchai-main-point__macbook" src={assets.macbook} alt="" aria-hidden="true" loading="lazy" />
-            <img className="tchai-connector tchai-connector--main-start" src={assets.mainStartLine} alt="" aria-hidden="true" />
-            <img className="tchai-connector tchai-connector--main-visual" src={assets.mainVisualLine} alt="" aria-hidden="true" />
-            <img className="tchai-connector tchai-connector--main-story" src={assets.mainStoryLine} alt="" aria-hidden="true" />
-            <p className="tchai-callout tchai-callout--main-start">
+            <img className="tchai-connector tchai-connector--main-start" data-scroll-line="main-start" src={assets.mainStartLine} alt="" aria-hidden="true" />
+            <img className="tchai-connector tchai-connector--main-visual" data-scroll-line="main-visual" src={assets.mainVisualLine} alt="" aria-hidden="true" />
+            <img className="tchai-connector tchai-connector--main-story" data-scroll-line="main-story" src={assets.mainStoryLine} alt="" aria-hidden="true" />
+            <p className="tchai-callout tchai-callout--main-start" data-scroll-point="main-start">
               두 브랜드 라인을 첫 화면에서<br />{' '}
               명확히 구분해 <strong>사용자가 원하는 방향</strong>으로<br />{' '}
               <strong>빠르게 탐색</strong>할 수 있도록 구성했습니다.
             </p>
-            <p className="tchai-callout tchai-callout--main-visual">
+            <p className="tchai-callout tchai-callout--main-visual" data-scroll-point="main-visual">
               대형 비주얼과 넉넉한 여백을 활용해<br />{' '}
               차이킴의 <strong>전통성</strong>과 <strong>현대적인 감도</strong>를<br />{' '}
               동시에 전달했습니다.
             </p>
-            <p className="tchai-callout tchai-callout--main-story">
+            <p className="tchai-callout tchai-callout--main-story" data-scroll-point="main-story">
               스크롤을 따라 브랜드 스토리와 콘텐츠가<br />{' '}
               자연스럽게 이어지도록 구성해<br />{' '}
               단순 탐색을 넘어 <strong>브랜드 경험</strong>으로<br />{' '}
@@ -180,7 +185,7 @@ export default function TchaikimCaseStudy({
           </div>
         </section>
 
-        <section className="tchai-shop-point" aria-labelledby="tchai-shop-title">
+        <section ref={shopRef} className="tchai-shop-point" aria-labelledby="tchai-shop-title">
           <SectionHeading eyebrow="SHOP PAGE" title="브랜드 스토리와 상품 탐색을 연결한 쇼핑 경험" id="tchai-shop-title" />
           <div className="tchai-shop-point__scene">
             <div className="tchai-shop-point__crop tchai-shop-point__crop--top">
@@ -190,14 +195,14 @@ export default function TchaikimCaseStudy({
             <div className="tchai-shop-point__crop tchai-shop-point__crop--bottom">
               <img src={assets.shopFrontCapture} alt="Tchai Kim shop product grid" loading="lazy" />
             </div>
-            <img className="tchai-connector tchai-connector--shop-filter" src={assets.shopFilterLine} alt="" aria-hidden="true" />
-            <img className="tchai-connector tchai-connector--shop-new" src={assets.shopNewLine} alt="" aria-hidden="true" />
-            <img className="tchai-connector tchai-connector--shop-new-vertical" src={assets.shopVerticalLine} alt="" aria-hidden="true" />
-            <img className="tchai-connector tchai-connector--shop-fit" src={assets.shopFitLine} alt="" aria-hidden="true" />
-            <img className="tchai-connector tchai-connector--shop-fit-vertical" src={assets.shopVerticalLine} alt="" aria-hidden="true" />
-            <p className="tchai-callout tchai-callout--shop-new">신상품을 크게 보여<br />{' '}<strong>주목도</strong>를 높였습니다.</p>
-            <p className="tchai-callout tchai-callout--shop-filter">검색 · 필터로<br />{' '}<strong>탐색 효율</strong>을 높였습니다.</p>
-            <p className="tchai-callout tchai-callout--shop-fit"><strong>모델 착용 이미지</strong>를 중심으로<br />{' '}상품의 핏과 스타일을<br />{' '}<strong>쉽게 확인</strong>하도록 했습니다.</p>
+            <img className="tchai-connector tchai-connector--shop-filter" data-scroll-line="shop-filter" src={assets.shopFilterLine} alt="" aria-hidden="true" />
+            <img className="tchai-connector tchai-connector--shop-new" data-scroll-line="shop-new" src={assets.shopNewLine} alt="" aria-hidden="true" />
+            <img className="tchai-connector tchai-connector--shop-new-vertical" data-scroll-line="shop-new" src={assets.shopVerticalLine} alt="" aria-hidden="true" />
+            <img className="tchai-connector tchai-connector--shop-fit" data-scroll-line="shop-fit" src={assets.shopFitLine} alt="" aria-hidden="true" />
+            <img className="tchai-connector tchai-connector--shop-fit-vertical" data-scroll-line="shop-fit" src={assets.shopVerticalLine} alt="" aria-hidden="true" />
+            <p className="tchai-callout tchai-callout--shop-new" data-scroll-point="shop-new">신상품을 크게 보여<br />{' '}<strong>주목도</strong>를 높였습니다.</p>
+            <p className="tchai-callout tchai-callout--shop-filter" data-scroll-point="shop-filter">검색 · 필터로<br />{' '}<strong>탐색 효율</strong>을 높였습니다.</p>
+            <p className="tchai-callout tchai-callout--shop-fit" data-scroll-point="shop-fit"><strong>모델 착용 이미지</strong>를 중심으로<br />{' '}상품의 핏과 스타일을<br />{' '}<strong>쉽게 확인</strong>하도록 했습니다.</p>
           </div>
         </section>
 

@@ -463,6 +463,16 @@
   font-weight: 680;
 }
 
+.tchai-callout[data-scroll-active] { color: var(--tchai-green); }
+
+.tchai-callout[data-scroll-active] strong {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.24em;
+}
+
+.tchai-connector[data-scroll-active] { filter: brightness(0.65) saturate(1.2); }
+
 .tchai-connector {
   position: absolute;
   z-index: 3;
