@@ -300,32 +300,12 @@
 .jaduya-home-care__phone img {
   width: 100%;
   height: auto;
-}
-
-.jaduya-home-care__soft-edge {
-  position: absolute;
-  z-index: 2;
-  pointer-events: none;
-  background: #f3ebde;
-}
-
-.jaduya-home-care__soft-edge--left,
-.jaduya-home-care__soft-edge--right {
-  top: calc(1474 * var(--jaduya-u));
-  width: calc(114 * var(--jaduya-u));
-  height: calc(1052 * var(--jaduya-u));
-  filter: blur(calc(8.3 * var(--jaduya-u)));
-}
-
-.jaduya-home-care__soft-edge--left { left: calc(632 * var(--jaduya-u)); }
-.jaduya-home-care__soft-edge--right { left: calc(1185 * var(--jaduya-u)); }
-
-.jaduya-home-care__soft-edge--bottom {
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: calc(129 * var(--jaduya-u));
-  filter: blur(calc(17.7 * var(--jaduya-u)));
+  /* Fade the PNG's blank extension margins, keeping the phone and UI opaque. */
+  mask-image:
+    linear-gradient(to bottom, #000 52.5%, transparent 54%),
+    linear-gradient(to right, transparent 18%, #000 22% 79%, transparent 83%),
+    linear-gradient(to bottom, #000 97.4%, transparent);
+  mask-composite: add, intersect;
 }
 
 .jaduya-home-care__callouts {
@@ -482,8 +462,6 @@
     height: auto;
     aspect-ratio: 726 / 2167;
   }
-
-  .jaduya-home-care__soft-edge { display: none; }
 
   .jaduya-home-care__callouts {
     position: relative;

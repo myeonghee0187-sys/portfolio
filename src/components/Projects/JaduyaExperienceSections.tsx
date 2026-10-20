@@ -184,10 +184,6 @@ export function JaduyaHomeCare() {
         />
       </figure>
 
-      <div className="jaduya-home-care__soft-edge jaduya-home-care__soft-edge--left" aria-hidden="true" />
-      <div className="jaduya-home-care__soft-edge jaduya-home-care__soft-edge--right" aria-hidden="true" />
-      <div className="jaduya-home-care__soft-edge jaduya-home-care__soft-edge--bottom" aria-hidden="true" />
-
       <div className="jaduya-home-care__callouts">
         <div className="jaduya-home-care__callout jaduya-home-care__callout--one">
           <span className="jaduya-home-care__connector" aria-hidden="true">

@@ -51,12 +51,12 @@
 .jaduya-brand-concept__card {
   position: absolute;
   display: flex;
-  height: calc(214 * var(--jaduya-u));
+  width: max-content;
   box-sizing: border-box;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: calc(40 * var(--jaduya-u));
+  padding: clamp(16px, calc(24 * var(--jaduya-u)), 24px) clamp(8px, calc(4vw - 28px), 32px);
   background: #f0d7d7;
   font-size: var(--jaduya-bubble-size);
   font-weight: 500;
@@ -66,23 +66,20 @@
 }
 
 .jaduya-brand-concept__card--origin {
-  top: calc(320 * var(--jaduya-u));
-  left: calc(1260 * var(--jaduya-u));
-  width: calc(522 * var(--jaduya-u));
+  top: calc(380 * var(--jaduya-u));
+  left: calc(50% + 210 * var(--jaduya-u));
   border-radius: calc(40 * var(--jaduya-u)) calc(40 * var(--jaduya-u)) calc(40 * var(--jaduya-u)) 0;
 }
 
 .jaduya-brand-concept__card--path {
-  top: calc(534 * var(--jaduya-u));
-  left: calc(73 * var(--jaduya-u));
-  width: calc(587 * var(--jaduya-u));
+  top: calc(610 * var(--jaduya-u));
+  right: calc(50% + 210 * var(--jaduya-u));
   border-radius: calc(40 * var(--jaduya-u)) calc(40 * var(--jaduya-u)) 0 calc(40 * var(--jaduya-u));
 }
 
 .jaduya-brand-concept__card--support {
-  top: calc(778 * var(--jaduya-u));
-  left: calc(1260 * var(--jaduya-u));
-  width: calc(532 * var(--jaduya-u));
+  top: calc(790 * var(--jaduya-u));
+  left: calc(50% + 210 * var(--jaduya-u));
   border-radius: 0 calc(40 * var(--jaduya-u)) calc(40 * var(--jaduya-u)) calc(40 * var(--jaduya-u));
 }
 
@@ -198,11 +195,8 @@
   .jaduya-brand-concept__card {
     position: relative;
     inset: auto;
-    width: min(100%, 560px);
-    /* Preserve the existing bubble silhouette with the requested 24px copy. */
-    height: calc(48px + max(50.4px, calc(134.4 * var(--jaduya-u))));
-    min-height: 0;
-    padding: 0 24px;
+    max-width: 100%;
+    padding: 16px 24px;
     border-radius: 24px;
     white-space: normal;
   }
@@ -212,14 +206,17 @@
   }
 
   .jaduya-brand-concept__card--origin {
+    align-self: flex-end;
     border-bottom-left-radius: 0;
   }
 
   .jaduya-brand-concept__card--path {
+    align-self: flex-start;
     border-bottom-right-radius: 0;
   }
 
   .jaduya-brand-concept__card--support {
+    align-self: flex-end;
     border-top-left-radius: 0;
   }
 
@@ -298,8 +295,7 @@
   }
 
   .jaduya-brand-concept__card {
-    height: 90.4px;
-    padding: 0 16px;
+    padding: 10px 16px;
     line-height: 1.4;
   }
 
