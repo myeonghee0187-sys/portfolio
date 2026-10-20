@@ -2,6 +2,8 @@
 
 2026-10-20. Baseline: `6113666`, on `codex/jaduya-final-integration` / PR #33.
 
+Historical report for `5ad8e32`. Its rectangular Ending reveal has since been removed in PHASE 1; see [design recovery QA](phase1-design-recovery-qa.md). The existing video fixes remain.
+
 ## 1. TCHAIKIM — editorial flow
 
 Preserved the existing Hero → Overview → AS-IS / TO-BE → Insight → Design Concept → Main → Shop → Brand Experience → Ending composition. Fresh Figma reads confirmed the detail root `98:24`, Hero `255:680` and Overview `255:696`. Their shared `story6.png` alignment and existing masks remain unchanged. No new triggers or entrance effects were added to these static sections.
