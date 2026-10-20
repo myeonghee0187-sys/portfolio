@@ -1,5 +1,7 @@
 # TCHAIKIM & JADUYA scroll storytelling QA
 
+> Historical report for `5ad8e32`. The Ending reveal described here is removed by the revised interaction work. See `project-scroll-interactions-v2-qa.md` for the current implementation and four recordings.
+
 2026-10-20. Baseline: `6113666`, on `codex/jaduya-final-integration` / PR #33.
 
 ## 1. TCHAIKIM — editorial flow

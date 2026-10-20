@@ -1,3 +1,6 @@
+import { useRef } from 'react'
+import useBottomSheetScroll from '../../hooks/useBottomSheetScroll'
+import useScrollPointFocus from '../../hooks/useScrollPointFocus'
 import './JaduyaExperienceSections.css'
 
 const EXPERIENCE_ASSET_ROOT = '/projects/jaduya/experience'
@@ -125,8 +128,10 @@ export function JaduyaMainPageOne() {
 }
 
 export function JaduyaMainPageTwo() {
+  const sectionRef = useRef<HTMLElement>(null)
+  useBottomSheetScroll(sectionRef)
   return (
-    <section className="jaduya-main jaduya-main--two" aria-labelledby="jaduya-main-two-title">
+    <section ref={sectionRef} className="jaduya-main jaduya-main--two" aria-labelledby="jaduya-main-two-title">
       <MainSectionHeading id="jaduya-main-two-title" />
       <div className="jaduya-main__stage">
         <MainPoints points={mainTwoPoints} />
@@ -144,10 +149,20 @@ export function JaduyaMainPageTwo() {
               alt=""
               loading="lazy"
             />
+            {/* Reuse original screens inside the phone; keep its frame stationary. */}
+            <span className="jaduya-main__screen-window">
+              <span className="jaduya-main__resting-screen">
+                <img src={`${EXPERIENCE_ASSET_ROOT}/main-one-home-phone.png`} width="758" height="1494" alt="" loading="lazy" />
+              </span>
+              <span className="jaduya-main__sheet-content" data-sheet-layer>
+                <img className="jaduya-main__phone-base" src={`${EXPERIENCE_ASSET_ROOT}/main-two-home-phone.png`} width="724" height="1488" alt="" loading="lazy" />
+              </span>
+            </span>
           </span>
-          <span className="jaduya-main__sheet-halo" aria-hidden="true" />
+          <span className="jaduya-main__sheet-halo" data-sheet-layer aria-hidden="true" />
           <img
             className="jaduya-main__raised-sheet"
+            data-sheet-layer
             src={`${EXPERIENCE_ASSET_ROOT}/main-two-raised-sheet.png`}
             width="622"
             height="350"
@@ -162,8 +177,10 @@ export function JaduyaMainPageTwo() {
 }
 
 export function JaduyaHomeCare() {
+  const sectionRef = useRef<HTMLElement>(null)
+  useScrollPointFocus(sectionRef)
   return (
-    <section className="jaduya-home-care" aria-labelledby="jaduya-home-care-title">
+    <section ref={sectionRef} className="jaduya-home-care" aria-labelledby="jaduya-home-care-title">
       <span className="jaduya-home-care__handle" aria-hidden="true" />
       <header className="jaduya-experience-heading">
         <p>Life Page - Home Care</p>
@@ -185,7 +202,7 @@ export function JaduyaHomeCare() {
       </figure>
 
       <div className="jaduya-home-care__callouts">
-        <div className="jaduya-home-care__callout jaduya-home-care__callout--one">
+        <div className="jaduya-home-care__callout jaduya-home-care__callout--one" data-scroll-point="situation">
           <span className="jaduya-home-care__connector" aria-hidden="true">
             <img
               src={`${EXPERIENCE_ASSET_ROOT}/home-care-connector-right.svg`}
@@ -201,7 +218,7 @@ export function JaduyaHomeCare() {
           </p>
         </div>
 
-        <div className="jaduya-home-care__callout jaduya-home-care__callout--two">
+        <div className="jaduya-home-care__callout jaduya-home-care__callout--two" data-scroll-point="action">
           <span className="jaduya-home-care__connector" aria-hidden="true">
             <img
               src={`${EXPERIENCE_ASSET_ROOT}/home-care-connector-left.svg`}
@@ -217,7 +234,7 @@ export function JaduyaHomeCare() {
           </p>
         </div>
 
-        <div className="jaduya-home-care__callout jaduya-home-care__callout--three">
+        <div className="jaduya-home-care__callout jaduya-home-care__callout--three" data-scroll-point="service">
           <span className="jaduya-home-care__connector" aria-hidden="true">
             <img
               src={`${EXPERIENCE_ASSET_ROOT}/home-care-connector-right.svg`}
