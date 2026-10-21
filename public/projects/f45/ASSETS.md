@@ -1,5 +1,11 @@
 # F45 Case Study assets
 
+## Current Figma implementation
+
+The current page follows portfolio Figma file `9kXZ17uZOK7WinbmInLvUH`, root `79:970`, through the user-selected final `2134:404 concept` frame. `figma-assets.json` maps all 11 unmodified local PNG assets to their original node IDs and exported asset IDs. These are the actual Figma background photographs, three-device composition, six problem/solution illustrations, dotted connector and concept background. Each is used in its original design slot. Whole-section Figma reference screenshots are QA artifacts only and are not runtime page assets.
+
+The page reuses existing Wanted Sans and Inter, including the existing local Inter Regular file under `/projects/jaduya/` without modifying that project. The earlier website captures and device helper assets below remain preserved as historical source material; the current Figma layout does not load them.
+
 Source: [myeonghee0187-sys/f45_korea](https://github.com/myeonghee0187-sys/f45_korea), revision `8ee558edc64fc03a0b88e6518b1acaf9a77b989e`.
 
 `asset-map.json` records the original repository paths, file sizes and SHA-256 checksums. The three `hero_frame_*` photographs, `intro_k.jpg` and two app-guide phone PNGs are unmodified copies from that revision. The app screens belong to the original website's external-app guide; they are not invented portfolio UI.
@@ -12,6 +18,6 @@ NONFICTION reference images are research material only. None is included in this
 
 ## Captures retained from the earlier redesign
 
-The earlier redesign superseded the initial editorial layout. `redesign-assets.json` records additional unmodified F45 photographs and a fresh 390 × 844 capture of the mobile WHY section (`why-mobile.webp`, natural 390 × 2589). The current Bold & Vivid layout separates WHY and PHASE; mobile captures remain available for the responsive presentation.
+The earlier redesign superseded the initial editorial layout. `redesign-assets.json` records additional unmodified F45 photographs and a fresh 390 × 844 capture of the mobile WHY section (`why-mobile.webp`, natural 390 × 2589). The earlier Bold & Vivid layout separated WHY and PHASE. Those captures remain preserved but are not used by the current Figma page.
 
 `device-assets.json` records the unchanged three-device frame and fresh live F45 desktop / tablet / mobile captures. Their natural viewport dimensions match the existing screen projection geometry; PNG captures are converted to lossless WebP with identical decoded RGBA pixels, without resizing. Only F45 screen content is shown in the F45 compositions. No TCHAIKIM source, stylesheet or original asset is edited. Original UI captures / photos remain available even where unused. The obsolete F45-only notebook and Evolution frames were removed; their TCHAIKIM originals are untouched.

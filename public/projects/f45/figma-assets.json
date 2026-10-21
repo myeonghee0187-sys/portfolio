@@ -1,0 +1,124 @@
+{
+  "fileKey": "9kXZ17uZOK7WinbmInLvUH",
+  "assets": [
+    {
+      "filename": "figma-hero-background.png",
+      "nodeId": "2126:353",
+      "assetId": "759095bd-0a30-40e5-aca1-5902887bb0dd",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 1539325
+    },
+    {
+      "filename": "figma-hero-devices.png",
+      "nodeId": "2127:26",
+      "assetId": "22cb08fb-8608-4378-9ccc-f7fab28ef46d",
+      "width": 3200,
+      "height": 2400,
+      "bytes": 3456372
+    },
+    {
+      "filename": "figma-overview-background.png",
+      "nodeId": "2127:18",
+      "assetId": "442a5842-1f7e-4b38-8529-2d62e006bfb4",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 1295997
+    },
+    {
+      "filename": "figma-asis-01.png",
+      "nodeId": "2128:190",
+      "assetId": "3ccfcf46-5a93-4cb9-a5fd-9d197b0ce2b8",
+      "width": 2172,
+      "height": 724,
+      "bytes": 1193265
+    },
+    {
+      "filename": "figma-asis-02.png",
+      "nodeId": "2128:194",
+      "assetId": "3cbdf991-4945-49e5-857f-901b0392fca7",
+      "width": 2172,
+      "height": 724,
+      "bytes": 1478968
+    },
+    {
+      "filename": "figma-asis-03.png",
+      "nodeId": "2128:198",
+      "assetId": "f3da8d4c-ccb1-4eb4-8b46-9f88d1c6372e",
+      "width": 2172,
+      "height": 724,
+      "bytes": 1020191
+    },
+    {
+      "filename": "figma-tobe-01.png",
+      "nodeId": "2128:205",
+      "assetId": "dac688c7-8b60-44de-9dd1-c3ebb6fea436",
+      "width": 2172,
+      "height": 724,
+      "bytes": 1665598
+    },
+    {
+      "filename": "figma-tobe-02.png",
+      "nodeId": "2128:209",
+      "assetId": "a4ed546f-6df6-490a-8a83-23dbdd9929e7",
+      "width": 2172,
+      "height": 724,
+      "bytes": 1552956
+    },
+    {
+      "filename": "figma-tobe-03.png",
+      "nodeId": "2128:213",
+      "assetId": "09781423-5538-423a-ae7d-62a28e365d90",
+      "width": 2172,
+      "height": 724,
+      "bytes": 1180628
+    },
+    {
+      "filename": "figma-connector.png",
+      "nodeId": "2128:217",
+      "assetId": "757b2a38-ef7f-48a5-b03f-60a3050e20b9",
+      "width": 270,
+      "height": 16,
+      "bytes": 1595
+    },
+    {
+      "filename": "figma-concept-background.png",
+      "nodeId": "2134:405",
+      "assetId": "bee1a6b6-8d88-4373-b081-dd97a175e107",
+      "width": 2172,
+      "height": 724,
+      "bytes": 1722848
+    }
+  ],
+  "references": [
+    {
+      "filename": "figma-hero.png",
+      "assetId": "566e1d38-ee25-4b6a-89dd-0882c7749aca",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 2350799
+    },
+    {
+      "filename": "figma-overview.png",
+      "assetId": "8aff9573-03db-4011-ae9e-5c796f9ab263",
+      "width": 1920,
+      "height": 604,
+      "bytes": 1010095
+    },
+    {
+      "filename": "figma-asis-tobe.png",
+      "assetId": "86700d1b-91be-46e9-a3da-0db7b7c0d2ad",
+      "width": 1920,
+      "height": 1664,
+      "bytes": 833607
+    },
+    {
+      "filename": "figma-concept.png",
+      "assetId": "12e623e6-9c7e-47e1-a9c0-ece6aee8c55b",
+      "width": 1920,
+      "height": 922,
+      "bytes": 570475
+    }
+  ],
+  "referenceLocation": "Reference screenshots are in task QA artifacts only; they are not shipped as runtime page images."
+}
