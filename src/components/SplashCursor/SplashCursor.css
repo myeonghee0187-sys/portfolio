@@ -10,8 +10,9 @@
    * 이 프로젝트의 레이어 순서:
    *     0  Hero Magic Rings (.hero__rings)
    *     2  Hero 콘텐츠      (.hero__inner — 타이포 / Watch / Digital Crown)
-   *    10  Splash Cursor    <- 콘텐츠 위를 지나가되
-   *   100  Intro 오버레이   (.intro) <- 이보다는 아래.
+   *     9  Intro 배경       (.intro__background — 별도 sibling)
+   *    10  Splash Cursor    <- 인트로부터 메인까지 같은 레이어/인스턴스
+   *   100  Intro 전경       (.intro — Watch / 안내 문구)
    * 11~99은 앞으로 생길 modal/overlay 몫으로 비워 둔다.
    */
   z-index: 10;

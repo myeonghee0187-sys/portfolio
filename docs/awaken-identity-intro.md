@@ -17,7 +17,7 @@ The homepage's opening video is replaced by an input-driven Watch wake sequence.
 
 ## Integration and scope
 
-`HomePage.tsx` retains onFinish, skipIntro and route restoration. Only after a fresh intro completion, the matched Hero frame paints before existing GPU/pin initialization starts two frames later. Direct section/project destinations and return visits retain immediate setup. Hero/About/FACES/Crown/project source designs are unchanged.
+`HomePage.tsx` retains onFinish, skipIntro and route restoration. Only after a fresh intro completion, the matched Hero frame paints before existing FACES GPU/pin initialization starts two frames later. The shared Splash Cursor starts independently during the intro. Direct section/project destinations and return visits retain immediate setup. Hero/About/FACES/Crown/project source designs are unchanged.
 
 Changed files across the PR:
 
@@ -45,3 +45,14 @@ Screenshots, motion recordings and JSON traces are task artifacts in `awaken-ref
 ## Replay
 
 Open a fresh `/` visit to start the intro. Reload/back intentionally retain the original skip rule. Use a new tab/window to replay the sequence.
+
+## Intro / Splash Cursor continuity
+
+Branch `codex/intro-splash-continuity` follows Production main `75de1f7`.
+
+- Remove `sceneReady` only from the existing cursor's mount condition. Its JSX position, all fluid props, shaders, input handlers, `CLICK_SPLAT={false}` and `pointer-events: none` remain unchanged. The same Canvas, context, simulation and animation loop survive the intro handoff.
+- Move the intro backdrop outside the foreground stacking context, with its own ref and the existing timeline/cleanup. Fixed layers are page 0–5, Carbon Black backdrop 9, existing cursor 10, Watch/prompt 100. No cursor z-index switch, second renderer or portal remount.
+- Fine-pointer hover has a small absolute approach area and 300ms light transitions. It changes ambient/reflection opacity only; Watch geometry and the real click target stay fixed. Initial programmatic focus no longer forces the hover light; explicit keyboard focus still does.
+- HELLO, the 2.2s wake/handoff, background-light expansion and Hero Magic Rings remain on the existing timeline. Touch and reduced-motion cursor gates remain intact.
+
+Additional minified-build browser checks in `awaken-cursor-continuity/`: 1920/1440/1024 and a classic scrollbar gutter retain the identical Canvas/context, zero removed cursor nodes, zero deleted cursor programs and zero context loss. WebGL pixel samples remain nonzero on both sides of the handoff while moving the pointer. Layer ordering, approach/enter/leave, unchanged Watch rectangle, single visible Watch, HELLO and final endpoint pass. Coarse-pointer mobile/tablet and reduced motion allocate no cursor context.

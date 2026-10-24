@@ -99,9 +99,10 @@ export default function HomePage({ skipIntro, destination, onIntroDone, onReady,
    * Splash Cursor는 커서가 있는 데스크톱 전용이고, 순수 장식이라 reduced motion에서는 끈다.
    * CSS로 숨기는 대신 컴포넌트 자체를 마운트하지 않는다 — 조건이 false면
    * WebGL 컨텍스트도, rAF 루프도, mousemove 리스너도 생기지 않는다.
-   * GPU setup begins after the intro's final Hero frame has painted.
+   * Intro와 Hero가 같은 인스턴스를 공유한다. sceneReady와 분리해
+   * intro 종료 시 fluid simulation이 새로 시작되거나 초기화되지 않게 한다.
    */
-  const showSplashCursor = sceneReady && isFinePointer && !prefersReducedMotion
+  const showSplashCursor = isFinePointer && !prefersReducedMotion
 
   /*
    * Hero -> About scroll 연출을 켤지.
