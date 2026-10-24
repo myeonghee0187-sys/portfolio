@@ -29,6 +29,11 @@ export default function WatchIntro({ onFinish }: WatchIntroProps) {
     const hello = intro.querySelector<HTMLElement>('.watch__intro-hello')!
     const face = intro.querySelector<HTMLElement>('.watch__face')!
     const ambient = intro.querySelector<HTMLElement>('.intro__ambient')!
+    const spaceLight = intro.querySelector<HTMLElement>('.intro__space-light')!
+    const wave = intro.querySelector<HTMLElement>('.intro__wave')!
+    const rim = intro.querySelector<HTMLElement>('.intro__rim')!
+    const rimLight = intro.querySelector<HTMLElement>('.intro__rim-light')!
+    const reflection = intro.querySelector<HTMLElement>('.watch__intro-reflection')!
     const root = document.documentElement
     const media = matchMedia('(prefers-reduced-motion: reduce)')
     let timeline: gsap.core.Timeline | null = null
@@ -84,27 +89,43 @@ export default function WatchIntro({ onFinish }: WatchIntroProps) {
       started = true
       setPhase('wake')
       const reduced = media.matches
+      const touch = matchMedia('(hover: none) and (pointer: coarse)').matches
       const wake = reduced ? 0.12 : 0.42
-      const helloAt = reduced ? 0.08 : 0.34
+      const helloAt = reduced ? 0.08 : 0.46
       const handoffAt = reduced ? 0.38 : 1.05
-      const handoffDuration = reduced ? 0.16 : 0.9
+      const handoffDuration = reduced ? 0.16 : 1.15
       const end = handoffAt + handoffDuration
 
+      // Immediate input feedback, before the next timeline tick. All lights are
+      // CSS layers on the existing assembly; no extra renderer or event loop.
+      gsap.set(light, { opacity: reduced ? 0.3 : 0.24, scale: reduced ? 1 : 0.38 })
       timeline = gsap.timeline({ onComplete: finish })
         .to(prompt, { opacity: 0, duration: reduced ? 0.08 : 0.2 }, 0)
-        .to(light, { opacity: 1, scale: 1, duration: wake, ease: 'power2.out' }, 0)
+        .to(reflection, { opacity: 0, duration: reduced ? 0.08 : 0.16 }, 0)
+        .to(light, { opacity: touch ? 1 : 0.88, scale: 1, duration: wake, ease: 'power2.out' }, 0)
         .call(() => setPhase('hello'), [], helloAt)
-        .to(hello, { opacity: 1, duration: reduced ? 0.08 : 0.22 }, helloAt)
+        .to(hello, { opacity: 1, filter: 'blur(0px)', duration: reduced ? 0.08 : 0.28 }, helloAt)
         .call(beginHandoff, [], handoffAt)
         .to(background, { opacity: 0, duration: handoffDuration, ease: 'power1.inOut' }, handoffAt)
         .to(display, { opacity: 0, duration: reduced ? 0.12 : 0.26 }, end - (reduced ? 0.12 : 0.26))
         .to(face, { opacity: 1, duration: reduced ? 0.12 : 0.26 }, end - (reduced ? 0.12 : 0.26))
-        .to(ambient, { opacity: 0, duration: reduced ? 0.12 : 0.26 }, end - (reduced ? 0.12 : 0.26))
+        .to(ambient, { opacity: 0, duration: reduced ? 0.12 : 0.4 }, end - (reduced ? 0.12 : 0.4))
 
       if (!reduced) {
-        timeline.to(travel, {
-          progress: 1, duration: handoffDuration, ease: 'power2.inOut', onUpdate: render,
-        }, handoffAt)
+        timeline
+          .to(rim, { opacity: 0.85, duration: 0.1 }, 0)
+          .to(rimLight, { rotation: 250, duration: 0.78, ease: 'power1.inOut' }, 0)
+          .to(rim, { opacity: 0, duration: 0.3 }, 0.48)
+          .to(wave, { opacity: touch ? 0.85 : 0.65, duration: 0.16 }, 0)
+          .to(wave, { scale: 1.5, duration: 1, ease: 'power2.out' }, 0)
+          .to(wave, { opacity: 0, duration: 0.65 }, 0.16)
+          .to(spaceLight, { opacity: touch ? 0.65 : 0.5, scale: 1, duration: 0.24 }, 0)
+          .to(spaceLight, { opacity: 0.22, duration: 0.55 }, 0.24)
+          .to(spaceLight, { opacity: 0.5, scale: 1.25, duration: 0.75, ease: 'sine.inOut' }, 0.95)
+          .to(ambient, { scale: 1.18, duration: 0.9, ease: 'sine.inOut' }, 0.9)
+          .to(travel, {
+            progress: 1, duration: handoffDuration, ease: 'power2.inOut', onUpdate: render,
+          }, handoffAt)
       }
       // Reduced motion keeps the Watch still during HELLO and uses a brief
       // dissolve to the Hero, with no travelling/scaling animation.
@@ -155,19 +176,23 @@ export default function WatchIntro({ onFinish }: WatchIntroProps) {
       window.removeEventListener('resize', resize)
       window.visualViewport?.removeEventListener('resize', resize)
       media.removeEventListener('change', reduceMotion)
-      gsap.set([motion, background, prompt, display, light, hello, face, ambient], { clearProps: 'all' })
+      gsap.set([motion, background, prompt, display, light, hello, face, ambient, spaceLight, wave, rim, rimLight, reflection], { clearProps: 'all' })
     }
   }, [])
 
   return (
     <div ref={rootRef} className="intro" data-phase={phase} role="dialog" aria-modal="true" aria-label="포트폴리오 시작">
-      <div className="intro__background" aria-hidden="true" />
+      <div className="intro__background" aria-hidden="true">
+        <div className="intro__space-light" />
+      </div>
       <div className="intro__composition">
         <div className="intro__watch-motion">
           <div className="intro__ambient" aria-hidden="true" />
+          <div className="intro__wave" aria-hidden="true" />
           <div className="intro__watch-art" aria-hidden="true" inert>
             <WatchAssembly variant="intro" />
           </div>
+          <div className="intro__rim" aria-hidden="true"><div className="intro__rim-light" /></div>
           <button type="button" className="intro__wake-button" aria-label="시계 켜기" aria-describedby={promptId}
             aria-disabled={phase !== 'idle'} onClick={() => startRef.current?.()} />
         </div>

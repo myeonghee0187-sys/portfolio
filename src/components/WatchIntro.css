@@ -16,6 +16,15 @@
   background: var(--color-carbon-black);
 }
 
+.intro__space-light {
+  position: absolute;
+  inset: -12%;
+  background: radial-gradient(ellipse at 50% 48%, rgb(24 109 229 / 0.2), rgb(41 92 151 / 0.065) 34%, transparent 67%);
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+}
+
 .intro__composition {
   position: absolute;
   top: calc(50% - 20px);
@@ -58,10 +67,31 @@
 
 .watch__intro-light {
   position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at center, rgb(24 109 229 / 0.26), rgb(24 109 229 / 0.07) 48%, transparent 78%);
+  inset: -12%;
+  background: radial-gradient(ellipse at center, rgb(41 120 229 / 0.5), rgb(24 109 229 / 0.13) 44%, transparent 72%);
   opacity: 0;
   transform: scale(0.72);
+}
+
+/* The display's real rounded clip keeps the reflection on the glass. */
+.watch__intro-reflection {
+  position: absolute;
+  inset: 0;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.watch__intro-reflection::before {
+  content: '';
+  position: absolute;
+  inset: -65%;
+  background: linear-gradient(112deg, transparent 36%, rgb(184 216 245 / 0.055) 46%, rgb(212 229 239 / 0.09) 49%, transparent 58%);
+  animation: intro-glass-drift 9s ease-in-out infinite alternate;
+}
+
+@keyframes intro-glass-drift {
+  from { transform: translateX(-18%); opacity: 0.28; }
+  to { transform: translateX(18%); opacity: 0.7; }
 }
 
 .watch__intro-hello {
@@ -73,14 +103,75 @@
   line-height: 1;
   letter-spacing: 0.04em;
   opacity: 0;
+  filter: blur(5px);
 }
 
 .intro__ambient {
   position: absolute;
-  inset: -8% -18%;
+  inset: -12% -24%;
   border-radius: 50%;
-  background: radial-gradient(ellipse, rgb(24 109 229 / 0.085), rgb(24 109 229 / 0.025) 48%, transparent 72%);
   pointer-events: none;
+}
+
+.intro__ambient::before,
+.intro__ambient::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  animation: intro-light-breathe 6.5s ease-in-out infinite alternate;
+}
+
+.intro__ambient::before {
+  background: radial-gradient(ellipse, rgb(24 109 229 / 0.17), rgb(24 109 229 / 0.055) 45%, transparent 70%);
+}
+
+.intro__ambient::after {
+  inset: -3% -18% -3% 26%;
+  background: radial-gradient(ellipse closest-side, rgb(42 126 232 / 0.3), rgb(42 126 232 / 0.07) 45%, transparent 100%);
+  animation-delay: -3s;
+}
+
+@keyframes intro-light-breathe {
+  from { transform: scale(0.97); opacity: 0.5; }
+  to { transform: scale(1.04); opacity: 0.9; }
+}
+
+.intro:not([data-phase='idle']) .intro__ambient::before,
+.intro:not([data-phase='idle']) .intro__ambient::after,
+.intro:not([data-phase='idle']) .watch__intro-reflection::before { animation-play-state: paused; }
+
+/* One soft wave only, driven by the same wake timeline. */
+.intro__wave {
+  position: absolute;
+  inset: -12% -26%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, transparent 53%, rgb(72 145 234 / 0.18) 60%, rgb(105 169 241 / 0.07) 63%, transparent 69%);
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+}
+
+/* Sweep the lighting angle, never rotate the rounded case geometry itself. */
+.intro__rim {
+  position: absolute;
+  inset: 0.5%;
+  padding: 1.5px;
+  border-radius: 25.5% / 20%;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intro__rim-light {
+  position: absolute;
+  inset: -40%;
+  background: conic-gradient(transparent 0deg 200deg, rgb(49 126 230 / 0.25) 250deg, rgb(212 229 239 / 0.95) 290deg, transparent 330deg);
+  transform: rotate(-110deg);
+  will-change: transform;
 }
 
 .intro__wake-button {
@@ -102,9 +193,13 @@
   outline-offset: 12px;
 }
 
-.intro[data-phase='idle'] .intro__ambient { transition: opacity 200ms ease; opacity: 0.7; }
-.intro[data-phase='idle'] .intro__watch-motion:has(.intro__wake-button:hover) .intro__ambient { opacity: 1; }
+.intro[data-phase='idle'] .intro__ambient { transition: opacity 180ms ease; opacity: 0.65; }
+.intro[data-phase='idle'] .intro__watch-motion:has(.intro__wake-button:active) .intro__ambient { opacity: 1; }
 .intro:not([data-phase='idle']) .intro__wake-button { cursor: default; outline: none; }
+
+@media (hover: hover) and (pointer: fine) {
+  .intro[data-phase='idle'] .intro__watch-motion:has(.intro__wake-button:hover, .intro__wake-button:focus-visible) .intro__ambient { opacity: 1; }
+}
 
 .intro__prompt {
   position: absolute;
@@ -139,5 +234,11 @@
 @media (prefers-reduced-motion: reduce) {
   .intro__watch-motion { will-change: auto; }
   .watch__intro-light { transform: none; }
+  .watch__intro-hello { filter: none; }
+  .watch__intro-reflection::before,
+  .intro__ambient::before,
+  .intro__ambient::after { animation: none; }
+  .intro__wave,
+  .intro__rim { display: none; }
   .intro[data-phase='idle'] .intro__ambient { transition: none; }
 }

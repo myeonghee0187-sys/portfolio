@@ -142,6 +142,7 @@ export default function WatchAssembly({
 
       {variant === 'intro' && (
         <div className="watch__intro-display" aria-hidden="true">
+          <div className="watch__intro-reflection" />
           <div className="watch__intro-light" />
           <span className="watch__intro-hello">HELLO</span>
         </div>
