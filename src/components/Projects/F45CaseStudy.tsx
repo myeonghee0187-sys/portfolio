@@ -3,6 +3,9 @@ import FloatingDock from './FloatingDock'
 import ProjectHeader, { type ProjectNavigateHandler } from './ProjectHeader'
 import NextFace, { type NextFaceProject } from './NextFace'
 import './F45CaseStudy.css'
+import { F45MainPageOne, F45MainPageTwo } from './F45MainPages'
+import F45ResponsiveExperience from './F45ResponsiveExperience'
+import F45Ending from './F45Ending'
 
 const ASSETS = '/projects/f45'
 const project = FACE_PROJECTS.find(face => face.id === 'f45')!
@@ -68,9 +71,9 @@ function ProblemStrategy() {
 
 function DesignConcept() {
   return (
-    <section className="f45-concept" data-figma-node="79:991" aria-labelledby="f45-concept-title">
+    <section className="f45-concept" data-figma-node="2134:404" aria-labelledby="f45-concept-title">
       <div className="f45-concept__background" aria-hidden="true"><img src={ASSETS + '/figma-concept-background.png'} width="2172" height="724" alt="" loading="lazy" /><span /></div>
-      <div className="f45-concept__content" data-figma-node="2134:404">
+      <div className="f45-concept__content">
         <header><p lang="en">DESIGN CONCEPT</p><h2 id="f45-concept-title">함께라서 더 즐거운 <span lang="en">45</span>분</h2></header>
         <div className="f45-concept__circles"><p className="f45-concept__community" lang="en">COMMUNITY</p><p className="f45-concept__playful" lang="en">PLAYFUL</p></div>
       </div>
@@ -82,7 +85,7 @@ export default function F45CaseStudy({ onNavigate, nextProject }: { onNavigate?:
   return (
     <div className="f45-case-study project-case-study">
       <ProjectHeader onNavigate={onNavigate} faceId="f45" />
-      <main><Hero /><Overview /><ProblemStrategy /><DesignConcept /></main>
+      <main><Hero /><Overview /><ProblemStrategy /><DesignConcept /><F45MainPageOne /><F45MainPageTwo /><F45ResponsiveExperience /><F45Ending /></main>
       {nextProject && <NextFace project={nextProject} onNavigate={onNavigate} />}
       <FloatingDock liveUrl={project.liveUrl} />
     </div>
