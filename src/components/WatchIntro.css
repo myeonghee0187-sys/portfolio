@@ -11,9 +11,14 @@
 }
 
 .intro__background {
-  position: absolute;
+  /* Sibling of the foreground: page (0–5) < backdrop (9) < cursor (10)
+     < intro Watch/prompt (100). The cursor never needs to change layers. */
+  position: fixed;
   inset: 0;
+  z-index: 9;
+  overflow: hidden;
   background: var(--color-carbon-black);
+  pointer-events: none;
 }
 
 .intro__space-light {
@@ -193,12 +198,24 @@
   outline-offset: 12px;
 }
 
-.intro[data-phase='idle'] .intro__ambient { transition: opacity 180ms ease; opacity: 0.65; }
+.intro[data-phase='idle'] .intro__ambient { transition: opacity 300ms ease; opacity: 0.65; }
 .intro[data-phase='idle'] .intro__watch-motion:has(.intro__wake-button:active) .intro__ambient { opacity: 1; }
 .intro:not([data-phase='idle']) .intro__wake-button { cursor: default; outline: none; }
 
 @media (hover: hover) and (pointer: fine) {
-  .intro[data-phase='idle'] .intro__watch-motion:has(.intro__wake-button:hover, .intro__wake-button:focus-visible) .intro__ambient { opacity: 1; }
+  /* Approach area changes only light; it never changes Watch measurements or
+     expands the actual button's click target. */
+  .intro[data-phase='idle'] .intro__watch-motion::before {
+    content: '';
+    position: absolute;
+    inset: -5% -12%;
+    border-radius: 30%;
+  }
+
+  .intro[data-phase='idle'] .watch__intro-reflection { transition: opacity 300ms ease; }
+  .intro[data-phase='idle'] .intro__watch-motion:hover .intro__ambient,
+  .intro[data-phase='idle'][data-keyboard='true'] .intro__watch-motion:has(.intro__wake-button:focus-visible) .intro__ambient { opacity: 1; }
+  .intro[data-phase='idle'] .intro__watch-motion:hover .watch__intro-reflection { opacity: 0.8; }
 }
 
 .intro__prompt {

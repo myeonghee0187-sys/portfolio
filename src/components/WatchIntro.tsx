@@ -9,6 +9,7 @@ type WatchIntroProps = { onFinish: (restoreFocus?: boolean) => void }
 /** Same case, crown, face and 600 × 760 coordinate system as the Hero Watch. */
 export default function WatchIntro({ onFinish }: WatchIntroProps) {
   const rootRef = useRef<HTMLDivElement>(null)
+  const backgroundRef = useRef<HTMLDivElement>(null)
   const startRef = useRef<(() => void) | null>(null)
   const onFinishRef = useRef(onFinish)
   const [phase, setPhase] = useState<Phase>('idle')
@@ -18,18 +19,18 @@ export default function WatchIntro({ onFinish }: WatchIntroProps) {
 
   useLayoutEffect(() => {
     const intro = rootRef.current
-    if (!intro) return
+    const background = backgroundRef.current
+    if (!intro || !background) return
     const composition = intro.querySelector<HTMLElement>('.intro__composition')!
     const motion = intro.querySelector<HTMLElement>('.intro__watch-motion')!
     const button = intro.querySelector<HTMLButtonElement>('.intro__wake-button')!
-    const background = intro.querySelector<HTMLElement>('.intro__background')!
     const prompt = intro.querySelector<HTMLElement>('.intro__prompt')!
     const display = intro.querySelector<HTMLElement>('.watch__intro-display')!
     const light = intro.querySelector<HTMLElement>('.watch__intro-light')!
     const hello = intro.querySelector<HTMLElement>('.watch__intro-hello')!
     const face = intro.querySelector<HTMLElement>('.watch__face')!
     const ambient = intro.querySelector<HTMLElement>('.intro__ambient')!
-    const spaceLight = intro.querySelector<HTMLElement>('.intro__space-light')!
+    const spaceLight = background.querySelector<HTMLElement>('.intro__space-light')!
     const wave = intro.querySelector<HTMLElement>('.intro__wave')!
     const rim = intro.querySelector<HTMLElement>('.intro__rim')!
     const rimLight = intro.querySelector<HTMLElement>('.intro__rim-light')!
@@ -181,24 +182,27 @@ export default function WatchIntro({ onFinish }: WatchIntroProps) {
   }, [])
 
   return (
-    <div ref={rootRef} className="intro" data-phase={phase} role="dialog" aria-modal="true" aria-label="포트폴리오 시작">
-      <div className="intro__background" aria-hidden="true">
+    <>
+      {/* A separate backdrop leaves the one shared cursor below the Watch. */}
+      <div ref={backgroundRef} className="intro__background" aria-hidden="true">
         <div className="intro__space-light" />
       </div>
-      <div className="intro__composition">
-        <div className="intro__watch-motion">
-          <div className="intro__ambient" aria-hidden="true" />
-          <div className="intro__wave" aria-hidden="true" />
-          <div className="intro__watch-art" aria-hidden="true" inert>
-            <WatchAssembly variant="intro" />
+      <div ref={rootRef} className="intro" data-phase={phase} role="dialog" aria-modal="true" aria-label="포트폴리오 시작">
+        <div className="intro__composition">
+          <div className="intro__watch-motion">
+            <div className="intro__ambient" aria-hidden="true" />
+            <div className="intro__wave" aria-hidden="true" />
+            <div className="intro__watch-art" aria-hidden="true" inert>
+              <WatchAssembly variant="intro" />
+            </div>
+            <div className="intro__rim" aria-hidden="true"><div className="intro__rim-light" /></div>
+            <button type="button" className="intro__wake-button" aria-label="시계 켜기" aria-describedby={promptId}
+              aria-disabled={phase !== 'idle'} onClick={() => startRef.current?.()} />
           </div>
-          <div className="intro__rim" aria-hidden="true"><div className="intro__rim-light" /></div>
-          <button type="button" className="intro__wake-button" aria-label="시계 켜기" aria-describedby={promptId}
-            aria-disabled={phase !== 'idle'} onClick={() => startRef.current?.()} />
+          <p className="intro__prompt" id={promptId}>시계를 클릭해주세요</p>
         </div>
-        <p className="intro__prompt" id={promptId}>시계를 클릭해주세요</p>
+        <span className="intro__status" role="status">{phase === 'hello' ? 'HELLO' : ''}</span>
       </div>
-      <span className="intro__status" role="status">{phase === 'hello' ? 'HELLO' : ''}</span>
-    </div>
+    </>
   )
 }
