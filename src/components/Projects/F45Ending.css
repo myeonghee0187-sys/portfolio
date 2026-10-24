@@ -1,0 +1,36 @@
+.f45-ending { position: relative; isolation: isolate; display: flex; align-items: center; height: calc(1080 * var(--f45-u)); min-height: 480px; overflow: hidden; background: var(--f45-paper); }
+.f45-ending__background { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.f45-ending__overlay { position: absolute; inset: 0; /* Match the two original Figma gradients, including straight-alpha Teal interpolation. */
+  background: linear-gradient(90deg, #f8f9fa, rgb(248 249 250 / 0)),
+    linear-gradient(90deg,
+      rgb(0 139 163 / 1.000) 0%,
+      rgb(12.4 144.5 167.35 / 0.950) 5%,
+      rgb(24.8 150 171.7 / 0.900) 10%,
+      rgb(37.2 155.5 176.05 / 0.850) 15%,
+      rgb(49.6 161 180.4 / 0.800) 20%,
+      rgb(62 166.5 184.75 / 0.750) 25%,
+      rgb(74.4 172 189.1 / 0.700) 30%,
+      rgb(86.8 177.5 193.45 / 0.650) 35%,
+      rgb(99.2 183 197.8 / 0.600) 40%,
+      rgb(111.6 188.5 202.15 / 0.550) 45%,
+      rgb(124 194 206.5 / 0.500) 50%,
+      rgb(136.4 199.5 210.85 / 0.450) 55%,
+      rgb(148.8 205 215.2 / 0.400) 60%,
+      rgb(161.2 210.5 219.55 / 0.350) 65%,
+      rgb(173.6 216 223.9 / 0.300) 70%,
+      rgb(186 221.5 228.25 / 0.250) 75%,
+      rgb(198.4 227 232.6 / 0.200) 80%,
+      rgb(210.8 232.5 236.95 / 0.150) 85%,
+      rgb(223.2 238 241.3 / 0.100) 90%,
+      rgb(235.6 243.5 245.65 / 0.050) 95%,
+      rgb(248 249 250 / 0.000) 100%
+    );
+}
+.f45-ending h2 { position: relative; margin-left: calc(40 * var(--f45-u)); transform: translateY(calc(8 * var(--f45-u))); font-size: calc(64 * var(--f45-u)); font-weight: 600; line-height: 1.28; letter-spacing: calc(-1 * var(--f45-u)); }
+@media (max-width: 1100px) { .f45-ending h2 { font-size: clamp(30px, 3.333333vw, 42px); } }
+@media (max-width: 700px) {
+  .f45-ending { min-height: 700px; padding: 76px 20px; }
+  .f45-ending__background { object-position: 80% center; }
+  .f45-ending h2 { max-width: 70%; margin: 0; transform: none; font-size: clamp(26px, 6.95vw, 40px); line-height: 1.4; letter-spacing: -.5px; }
+  .f45-ending h2 br { display: none; }
+}

@@ -2,7 +2,9 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useSta
 import gsap from 'gsap'
 import TchaikimCaseStudy from './components/Projects/TchaikimCaseStudy'
 import JaduyaCaseStudy from './components/Projects/JaduyaCaseStudy'
+import F45CaseStudy from './components/Projects/F45CaseStudy'
 import BrandExperienceVideo from './components/Projects/BrandExperienceVideo'
+import type { NextFaceProject } from './components/Projects/NextFace'
 import { FACE_PROJECTS } from './components/Faces/facesData'
 import { routeForHistory, routeFromUrl, type PortfolioRoute } from './navigation/projectRouting'
 import './navigation/PageTransition.css'
@@ -11,7 +13,15 @@ type TransitionStyle = 'dissolve' | 'reverse' | 'editorial'
 const newKey = () => Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8)
 // Direct case-study visits do not download the homepage's Three/OGL scene bundle.
 const HomePage = lazy(() => import('./HomePage'))
-const nextFace = FACE_PROJECTS[(FACE_PROJECTS.findIndex((project) => project.id === 'tchaikim') + 1) % FACE_PROJECTS.length]
+const nextFaceFor = (id: string): NextFaceProject => {
+  const next = FACE_PROJECTS[(FACE_PROJECTS.findIndex((project) => project.id === id) + 1) % FACE_PROJECTS.length]
+  return {
+    title: next.title,
+    href: next.detailPath ?? `/?face=${encodeURIComponent(next.id)}#faces`,
+    label: next.detailPath ? undefined : 'VIEW IN FACES',
+    transition: next.detailPath ? 'editorial' : 'reverse',
+  }
+}
 
 function snapshot(route: PortfolioRoute): PortfolioRoute {
   let destination = route.destination
@@ -95,7 +105,7 @@ export default function App() {
     if (token !== transitionToken.current) return
     pendingReady.current = null
     if (next.page !== 'home' && style !== 'editorial' && !reduced) {
-      const copy = contentRef.current?.querySelector('.tchai-hero__copy, .jaduya-hero__copy')
+      const copy = contentRef.current?.querySelector('.tchai-hero__copy, .jaduya-hero__copy, .f45-hero__copy')
       if (copy) entranceTween.current = gsap.fromTo(copy,
         { opacity: 0, y: 8 },
         { opacity: 1, y: 0, duration: .3, delay: .04, clearProps: 'opacity,transform', ease: 'power2.out' },
@@ -174,7 +184,7 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.projectPage = String(route.page !== 'home')
     document.documentElement.dataset.projectId = route.page
-    document.title = route.page === 'home' ? 'Song Myeonghee' : `${route.page === 'tchaikim' ? 'TCHAI KIM' : 'JADUYA'} — Song Myeonghee`
+    document.title = route.page === 'home' ? 'Song Myeonghee' : `${route.page === 'tchaikim' ? 'TCHAI KIM' : route.page === 'jaduya' ? 'JADUYA' : 'F45 KOREA'} — Song Myeonghee`
     const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')
     if (canonical) canonical.href = 'https://portfolio-two-virid-30.vercel.app/' + (route.page !== 'home' ? `projects/${route.page}` : '')
     if (route.page === 'home') return
@@ -218,10 +228,12 @@ export default function App() {
           <HomePage key={route.key} skipIntro={introDone.current} destination={route.destination}
             onIntroDone={handleIntroDone} onReady={handleReady} onOpenProject={openProject} />
         ) : route.page === 'jaduya' ? (
-          <JaduyaCaseStudy key={route.key} onNavigate={navigate} />
+          <JaduyaCaseStudy key={route.key} onNavigate={navigate} nextProject={nextFaceFor('jaduya')} />
+        ) : route.page === 'f45' ? (
+          <F45CaseStudy key={route.key} onNavigate={navigate} nextProject={nextFaceFor('f45')} />
         ) : (
           <TchaikimCaseStudy key={route.key} onNavigate={navigate}
-            nextProject={{ title: nextFace.title, href: nextFace.detailPath }}
+            nextProject={nextFaceFor('tchaikim')}
             brandExperience={<BrandExperienceVideo
               src="/projects/tchaikim/tchaikim_brand_scroll_1080p60_v2.mp4"
               poster="/projects/tchaikim/brand-poster.jpg" />} />

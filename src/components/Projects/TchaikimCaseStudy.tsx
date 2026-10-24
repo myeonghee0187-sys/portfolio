@@ -85,14 +85,14 @@ export default function TchaikimCaseStudy({
   nextProject = { title: 'JADUYA' },
 }: TchaikimCaseStudyProps) {
   return (
-    <div className="tchai-case-study">
+    <div className="tchai-case-study project-case-study">
       <ProjectHeader onNavigate={onNavigate} />
 
       <main>
-        <section className="tchai-hero" data-case-hero aria-labelledby="tchai-title">
+        <section className="tchai-hero project-hero" data-case-hero aria-labelledby="tchai-title">
           <img className="tchai-hero__background" src={assets.story6} alt="" aria-hidden="true" />
           <span className="tchai-hero__veil" aria-hidden="true" />
-          <ResponsiveDevices className="tchai-hero__devices" />
+          <div className="tchai-hero__visual"><ResponsiveDevices className="tchai-hero__devices" fit /></div>
           <div className="tchai-hero__copy">
             <p className="tchai-hero__kicker">전통의 재해석, 글로벌 경험의 재설계</p>
             <h1 className="tchai-hero__title" id="tchai-title" tabIndex={-1}>

@@ -2,6 +2,8 @@ export type ScreenPoint = readonly [number, number]
 export type ScreenQuad = readonly [ScreenPoint, ScreenPoint, ScreenPoint, ScreenPoint]
 
 export const DEVICE_FRAME = { width: 1672, height: 941 }
+/** Nontransparent bounds measured from the unchanged original image340.png. */
+export const DEVICE_CONTENT = { x: 672, y: 101, width: 966, height: 713 }
 
 /** Maps a native screenshot rectangle onto the four measured display corners. */
 export function screenProjection(quad: ScreenQuad, width: number, height: number, scale: number): number[] {

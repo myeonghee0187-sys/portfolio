@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react'
-import { DEVICE_FRAME, DEVICE_SCREENS, screenProjection } from './deviceScreenProjection'
+import { DEVICE_CONTENT, DEVICE_FRAME, DEVICE_SCREENS, screenProjection } from './deviceScreenProjection'
 import './ResponsiveDevices.css'
 
 const point = (x: number, y: number) => `${x / DEVICE_FRAME.width} ${y / DEVICE_FRAME.height}`
@@ -12,10 +12,10 @@ const phoneDisplay = `M${point(1265, 500)} L${point(1284, 500)} L${point(1285, 5
 const homeIndicator = `M${point(1295, 794)} L${point(1345, 794)} Q${point(1347, 794)} ${point(1347, 796)} Q${point(1347, 798)} ${point(1345, 798)} L${point(1295, 798)} Q${point(1293, 798)} ${point(1293, 796)} Q${point(1293, 794)} ${point(1295, 794)} Z`
 const masks = [desktopDisplay + foregroundOutline, tabletDisplay + phoneOutline, phoneDisplay + homeIndicator]
 
-type Props = { className: string; decorative?: boolean }
+type Props = { className: string; decorative?: boolean; fit?: boolean }
 
 /** One original frame composition, shared by Hero and Result; only its screens are replaced. */
-export default function ResponsiveDevices({ className, decorative = false }: Props) {
+export default function ResponsiveDevices({ className, decorative = false, fit = false }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const id = useId().replaceAll(':', '')
@@ -30,25 +30,32 @@ export default function ResponsiveDevices({ className, decorative = false }: Pro
   }, [])
 
   return (
-    <div ref={ref} className={`responsive-devices ${className}`} role={decorative ? undefined : 'img'}
+    <div className={`responsive-devices ${className}`} role={decorative ? undefined : 'img'}
+      style={fit ? { aspectRatio: `${DEVICE_CONTENT.width} / ${DEVICE_CONTENT.height}` } : undefined}
       aria-label={decorative ? undefined : 'Tchai Kim website shown on desktop, tablet, and mobile devices'}
       aria-hidden={decorative || undefined}>
-      <img className="responsive-devices__frame" src="/projects/tchaikim/image340.png" width={1672} height={941} alt="" />
-      <svg className="responsive-devices__masks" aria-hidden="true">
-        <defs>{masks.map((path, index) => (
-          <clipPath key={index} id={`${id}-${index}`} clipPathUnits="objectBoundingBox">
-            <path d={path} clipRule="evenodd" />
-          </clipPath>
-        ))}</defs>
-      </svg>
-      {DEVICE_SCREENS.map((screen, index) => (
-        <div key={screen.id} className="responsive-devices__layer" style={{ clipPath: `url(#${id}-${index})` }}>
-          <img className="responsive-devices__capture" src={`/projects/tchaikim/screen-${screen.id}.webp`} alt=""
-            loading={decorative ? 'lazy' : 'eager'} width={screen.width * 2} height={screen.height * 2}
-            style={{ width: screen.width, height: screen.height, visibility: width ? 'visible' : 'hidden',
-              transform: `matrix3d(${screenProjection(screen.quad, screen.width, screen.height, width / DEVICE_FRAME.width).join(',')})` }} />
-        </div>
-      ))}
+      <div ref={ref} className="responsive-devices__composition" style={fit ? {
+        position: 'absolute', width: `${DEVICE_FRAME.width / DEVICE_CONTENT.width * 100}%`,
+        left: `${-DEVICE_CONTENT.x / DEVICE_CONTENT.width * 100}%`,
+        top: `${-DEVICE_CONTENT.y / DEVICE_CONTENT.height * 100}%`,
+      } : undefined}>
+        <img className="responsive-devices__frame" src="/projects/tchaikim/image340.png" width={1672} height={941} alt="" />
+        <svg className="responsive-devices__masks" aria-hidden="true">
+          <defs>{masks.map((path, index) => (
+            <clipPath key={index} id={`${id}-${index}`} clipPathUnits="objectBoundingBox">
+              <path d={path} clipRule="evenodd" />
+            </clipPath>
+          ))}</defs>
+        </svg>
+        {DEVICE_SCREENS.map((screen, index) => (
+          <div key={screen.id} className="responsive-devices__layer" style={{ clipPath: `url(#${id}-${index})` }}>
+            <img className="responsive-devices__capture" src={`/projects/tchaikim/screen-${screen.id}.webp`} alt=""
+              loading={decorative ? 'lazy' : 'eager'} width={screen.width * 2} height={screen.height * 2}
+              style={{ width: screen.width, height: screen.height, visibility: width ? 'visible' : 'hidden',
+                transform: `matrix3d(${screenProjection(screen.quad, screen.width, screen.height, width / DEVICE_FRAME.width).join(',')})` }} />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

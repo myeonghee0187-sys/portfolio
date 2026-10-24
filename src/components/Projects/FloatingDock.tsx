@@ -2,7 +2,7 @@ import './FloatingDock.css'
 
 export type FloatingDockProps = {
   liveUrl: string
-  caseStudyUrl: string
+  caseStudyUrl?: string
 }
 
 function ExternalLinkIcon() {
@@ -20,11 +20,15 @@ export default function FloatingDock({ liveUrl, caseStudyUrl }: FloatingDockProp
         <ExternalLinkIcon />
         <span>LIVE SITE</span>
       </a>
-      <span className="floating-dock__divider" aria-hidden="true" />
-      <a href={caseStudyUrl} target="_blank" rel="noreferrer">
-        <ExternalLinkIcon />
-        <span>CASE STUDY</span>
-      </a>
+      {caseStudyUrl && (
+        <>
+          <span className="floating-dock__divider" aria-hidden="true" />
+          <a href={caseStudyUrl} target="_blank" rel="noreferrer">
+            <ExternalLinkIcon />
+            <span>CASE STUDY</span>
+          </a>
+        </>
+      )}
     </nav>
   )
 }

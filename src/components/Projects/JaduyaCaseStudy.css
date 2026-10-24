@@ -12,6 +12,14 @@
   --jaduya-green: #e2e8bc;
   --jaduya-yellow: #fbdd78;
   --jaduya-red: #b43936;
+  /* Figma sizes at 1920; readable floors keep reflow breakpoints from enlarging type. */
+  --jaduya-label-size: clamp(18px, calc(32 * var(--jaduya-u)), 32px);
+  --jaduya-title-size: clamp(24px, calc(48 * var(--jaduya-u)), 48px);
+  --jaduya-point-title-size: clamp(16px, calc(24 * var(--jaduya-u)), 24px);
+  --jaduya-body-size: clamp(14px, calc(20 * var(--jaduya-u)), 20px);
+  --jaduya-detail-size: clamp(11px, calc(16 * var(--jaduya-u)), 16px);
+  --jaduya-bubble-size: 24px;
+  --jaduya-ending-size: clamp(22px, calc(64 * var(--jaduya-u)), 64px);
   max-width: 1920px;
   margin-inline: auto;
   overflow: clip;
@@ -41,7 +49,7 @@
 /* Native 1920 × 1080 composition; each phone remains a separate source layer. */
 .jaduya-hero {
   position: relative;
-  height: max(680px, calc(1080 * var(--jaduya-u)));
+  height: var(--project-hero-height);
   isolation: isolate;
   overflow: hidden;
 }
@@ -54,8 +62,9 @@
   object-fit: cover;
 }
 .jaduya-hero__veil { background: rgb(252 250 247 / 0.6); }
+.jaduya-hero__visual { position: absolute; inset: 0; }
 .jaduya-hero__phones {
-  --phone-u: var(--jaduya-u);
+  --phone-u: min(var(--jaduya-u), var(--project-hero-height) / 1080);
   position: absolute;
   top: calc(-389 * var(--phone-u));
   right: calc(40.19 * var(--phone-u));
@@ -88,11 +97,12 @@
   position: absolute;
   top: 32.315%;
   left: max(24px, calc(40 * var(--jaduya-u)));
+  z-index: 2;
 }
 .jaduya-hero__copy p {
   margin-bottom: calc(32 * var(--jaduya-u));
   color: #2a5771;
-  font-size: clamp(20px, 1.667vw, 32px);
+  font-size: clamp(18px, calc(32 * var(--jaduya-u)), 32px);
   line-height: 1;
 }
 .jaduya-hero__copy h1 {
@@ -111,12 +121,48 @@
   gap: max(8px, calc(12 * var(--jaduya-u)));
   max-width: calc(100% - 48px);
   color: #5f6468;
-  font-size: clamp(12px, 0.8334vw, 16px);
+  font-size: var(--jaduya-detail-size);
   line-height: 1;
 }
-.jaduya-hero__meta > div { display: flex; gap: 12px; align-items: baseline; }
-.jaduya-hero__meta dt { flex-shrink: 0; }
+.jaduya-hero__meta > div { display: grid; grid-template-columns: 2.625em minmax(0, 1fr); gap: 12px; align-items: start; }
+.jaduya-hero__meta dd { min-width: 0; }
 .jaduya-hero__award { color: var(--jaduya-red); font-weight: 500; }
+
+/* One pair of original plums, aligned to shared grid rows across all three sections. */
+.jaduya-design {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  isolation: isolate;
+  overflow: clip;
+}
+.jaduya-design > .jaduya-brand-concept { grid-area: 1 / 1; }
+.jaduya-design > .jaduya-main--one { grid-area: 2 / 1; }
+.jaduya-design > .jaduya-main--two { grid-area: 3 / 1; }
+.jaduya-design > section { z-index: 1; min-width: 0; }
+.jaduya-design__background {
+  grid-area: 1 / 1 / 4 / 2;
+  display: grid;
+  grid-template-rows: subgrid;
+  min-height: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.jaduya-design__plum-anchor { position: relative; min-height: 0; }
+.jaduya-design__plum-anchor--ripe { grid-area: 1 / 1; }
+.jaduya-design__plum-anchor--green { grid-area: 2 / 1; }
+.jaduya-design__plum-anchor img {
+  position: absolute;
+  left: calc(50% + 0.5 * var(--jaduya-u));
+  width: calc(1799 * var(--jaduya-u));
+  height: auto;
+  max-width: none;
+  opacity: 0.06;
+  transform: translateX(-50%);
+}
+/* Desktop: red starts at -82; green at 1092 + 625 in the common DESIGN space. */
+.jaduya-design__plum-anchor--ripe img { bottom: calc(-625 * var(--jaduya-u)); }
+.jaduya-design__plum-anchor--green img { bottom: calc(-709 * var(--jaduya-u)); }
 
 .jaduya-overview {
   position: relative;
@@ -138,7 +184,7 @@
 }
 .jaduya-overview__eyebrow { position: relative; font: 400 clamp(14px, 1.0417vw, 20px)/1 'Jaduya Inter', 'Inter', sans-serif; }
 .jaduya-overview__copy { display: grid; gap: calc(60 * var(--jaduya-u)); }
-.jaduya-overview__copy h2 { color: #828e1c; font-size: clamp(28px, 2.5vw, 48px); line-height: 1; font-weight: 500; }
+.jaduya-overview__copy h2 { color: #828e1c; font-size: var(--jaduya-title-size); line-height: 1; font-weight: 500; }
 .jaduya-overview__copy > div { font-size: clamp(16px, 1.25vw, 24px); line-height: 1.4; }
 
 .jaduya-direction {
@@ -164,22 +210,22 @@
 .jaduya-direction__pair-wave { display: none; }
 .jaduya-direction__card { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(12 * var(--jaduya-u)); width: 100%; height: calc(220 * var(--jaduya-u)); padding: 16px 8px; border-radius: calc(16 * var(--jaduya-u)); background: var(--jaduya-paper); text-align: center; }
 .jaduya-direction__card > img { width: min(90%, calc(312 * var(--jaduya-u))); height: auto; }
-.jaduya-direction__card p { font-size: clamp(14px, 1.25vw, 24px); line-height: 1.4; }
+.jaduya-direction__card p { font-size: var(--jaduya-point-title-size); line-height: 1.4; }
 .jaduya-direction__card--as-is p { line-height: 1; }
 .jaduya-direction__card--to-be { margin-top: calc(359 * var(--jaduya-u)); }
 .jaduya-direction__mobile-label { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
 .jaduya-direction__connector { position: absolute; display: grid; place-items: center; top: calc(323 * var(--jaduya-u)); left: 50%; width: 0; height: calc(139 * var(--jaduya-u)); }
 .jaduya-direction__connector img { position: absolute; top: 50%; left: 50%; width: calc(144 * var(--jaduya-u)); height: auto; transform: translate(-50%, -50%) rotate(90deg); }
 
-.jaduya-conclusion { padding-bottom: max(100px, env(safe-area-inset-bottom, 0px)); }
+.jaduya-conclusion { padding-bottom: max(80px, calc(300 * var(--jaduya-u))); }
 .jaduya-conclusion__curves img { width: 100%; height: auto; }
 .jaduya-conclusion__curves img + img { transform: scaleY(-1); }
 .jaduya-conclusion__card { position: relative; width: 91.6667%; margin: 0 auto; padding: calc(100 * var(--jaduya-u)) 24px; border-radius: calc(40 * var(--jaduya-u)); background: var(--jaduya-yellow); text-align: center; }
-.jaduya-conclusion__card p { font-size: clamp(22px, 1.875vw, 36px); line-height: 1.4; font-weight: 600; }
+.jaduya-conclusion__card p { max-width: calc(1188 * var(--jaduya-u)); margin-inline: auto; font-size: clamp(18px, calc(36 * var(--jaduya-u)), 36px); line-height: 1.4; font-weight: 600; }
 .jaduya-conclusion__card strong { color: var(--jaduya-red); font-weight: inherit; }
 
 @media (min-width: 641px) and (max-width: 1023px) {
-  .jaduya-hero__phones { --phone-u: 0.4px; right: 24px; top: -70px; }
+  .jaduya-hero__phones { --phone-u: 0.4px; right: 24px; top: calc(50% - 815.2765 * var(--phone-u)); }
   .jaduya-hero__copy h1 { width: 240px; height: 88px; }
   .jaduya-hero__copy { top: 25%; }
   .jaduya-hero__fade { height: 180px; }
@@ -202,33 +248,47 @@
   .jaduya-direction__pair-wave img { position: absolute; top: 50%; left: 50%; width: 300px; height: auto; transform: translate(-50%, -50%) rotate(90deg); }
   .jaduya-direction__card { gap: 12px; width: min(100%, 442px); height: auto; min-height: 220px; padding: 24px 20px; border-radius: 16px; }
   .jaduya-direction__card > img { width: min(100%, 312px); }
-  .jaduya-direction__card p { font-size: 20px; line-height: 1.4; }
+  .jaduya-direction__card p { line-height: 1.4; }
   .jaduya-direction__mobile-label { position: static; width: auto; height: auto; clip-path: none; overflow: visible; font: 500 18px/1 'Inter', sans-serif; }
   .jaduya-direction__card--to-be { margin-top: 0; }
   .jaduya-direction__connector { position: relative; inset: auto; width: 8px; height: 64px; flex-shrink: 0; overflow: hidden; }
   .jaduya-direction__connector img { width: 60px; height: auto; }
   .jaduya-conclusion__card { width: calc(100% - 48px); padding: 56px 32px; border-radius: 24px; }
-  .jaduya-conclusion__card p { font-size: 26px; line-height: 1.6; }
+  .jaduya-conclusion__card p { max-width: 620px; line-height: 1.4; }
 }
 
 @media (max-width: 640px) {
-  .jaduya-hero { height: calc(600px + 75vw); }
+  .jaduya-hero {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 14px;
+    padding: calc(var(--project-header-space) + 16px) 24px var(--project-dock-space);
+  }
   .jaduya-hero__landscape { object-position: 32% center; }
-  .jaduya-hero__copy { top: 112px; left: 24px; }
-  .jaduya-hero__copy p { font-size: 20px; margin-bottom: 20px; }
-  .jaduya-hero__copy h1 { width: 240px; height: 88px; }
-  .jaduya-hero__phones { --phone-u: min(0.38px, (100vw - 32px) / 1147); top: 350px; left: calc(50% - 477.4 * var(--phone-u)); right: auto; }
-  .jaduya-hero__fade { height: 100px; }
-  .jaduya-hero__meta { left: 24px; right: 24px; top: 258px; bottom: auto; max-width: none; gap: 12px; font-size: 12px; line-height: 1.4; }
+  .jaduya-hero__copy { position: relative; inset: auto; grid-row: 1; }
+  .jaduya-hero__copy p { font-size: 18px; margin-bottom: 14px; }
+  .jaduya-hero__copy h1 { width: clamp(180px, 45vw, 220px); height: auto; }
+  .jaduya-hero__visual { position: relative; inset: auto; grid-row: 3; container-type: size; min-height: 0; }
+  .jaduya-hero__phones {
+    --phone-u: min(100cqw / 1147, 100cqh / 1458.553);
+    top: calc((100cqh - 1458.553 * var(--phone-u)) / 2 - 172 * var(--phone-u));
+    left: calc(50% - 477.4 * var(--phone-u)); right: auto;
+  }
+  .jaduya-hero__fade { height: 48px; pointer-events: none; }
+  .jaduya-hero__meta { position: relative; inset: auto; grid-row: 2; max-width: none; gap: 8px; font-size: 11px; line-height: 1.4; }
   .jaduya-hero__meta > div { gap: 10px; }
   .jaduya-hero__meta dd { min-width: 0; overflow-wrap: anywhere; }
   .jaduya-overview { gap: 72px; padding-bottom: 64px; }
-  .jaduya-overview__copy h2 { max-width: 360px; font-size: 28px; line-height: 1.4; text-wrap: balance; }
-  .jaduya-overview__copy > div { font-size: 17px; }
+  .jaduya-overview__copy h2 { max-width: 360px; line-height: 1.4; text-wrap: balance; }
   .jaduya-direction__pairs { padding-inline: 16px; gap: 24px; }
   .jaduya-direction__pair { padding: 24px 16px; }
   .jaduya-direction__card { min-height: 220px; padding: 24px 16px; }
-  .jaduya-direction__card p { font-size: 18px; }
   .jaduya-conclusion__card { width: calc(100% - 32px); padding: 40px 24px; }
-  .jaduya-conclusion__card p { font-size: 22px; }
+}
+
+@media (max-width: 1099px) {
+  /* Reflow changes row heights; each original graphic still spans the actual join. */
+  .jaduya-design__plum-anchor img { width: clamp(900px, 130vw, 1400px); }
+  .jaduya-design__plum-anchor--ripe img { bottom: clamp(-490px, -45.5vw, -315px); }
+  .jaduya-design__plum-anchor--green img { bottom: clamp(-560px, -52vw, -360px); }
 }

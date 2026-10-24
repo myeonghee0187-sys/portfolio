@@ -1,6 +1,9 @@
 import { FACE_PROJECTS } from '../Faces/facesData'
 import FloatingDock from './FloatingDock'
 import ProjectHeader, { type ProjectNavigateHandler } from './ProjectHeader'
+import NextFace, { type NextFaceProject } from './NextFace'
+import { JaduyaBrandConcept, JaduyaEnding } from './JaduyaBrandSections'
+import { JaduyaMainPageOne, JaduyaMainPageTwo, JaduyaHomeCare } from './JaduyaExperienceSections'
 import './JaduyaCaseStudy.css'
 
 const ASSET_ROOT = '/projects/jaduya'
@@ -24,10 +27,10 @@ const pairs = [
 
 function JaduyaHero() {
   return (
-    <section className="jaduya-hero" data-case-hero aria-labelledby="jaduya-title">
+    <section className="jaduya-hero project-hero" data-case-hero aria-labelledby="jaduya-title">
       <img className="jaduya-hero__landscape" src={`${ASSET_ROOT}/hero-landscape.png`} alt="" aria-hidden="true" />
       <span className="jaduya-hero__veil" aria-hidden="true" />
-      <div className="jaduya-hero__phones" aria-label="자두야 앱 화면 다섯 개">
+      <div className="jaduya-hero__visual"><div className="jaduya-hero__phones" aria-label="자두야 앱 화면 다섯 개">
         {['1518', '1431', '1519', '1520', '1521'].map((id, index) => (
           <div className={`jaduya-hero__phone jaduya-hero__phone--${index + 1}`} key={id}>
             <img src={`${ASSET_ROOT}/phone-${id}.png`} alt={[
@@ -36,7 +39,7 @@ function JaduyaHero() {
             ][index]} fetchPriority={index === 4 ? 'high' : 'auto'} />
           </div>
         ))}
-      </div>
+      </div></div>
       <div className="jaduya-hero__fade" aria-hidden="true" />
       <div className="jaduya-hero__copy">
         <p>혼자여두 괜찮아,</p>
@@ -48,7 +51,7 @@ function JaduyaHero() {
         <div className="jaduya-hero__award"><dt>수상</dt><dd>UXUI 디자인 &amp; 웹기획 프로젝트 최우수상</dd></div>
         <div><dt>기간</dt><dd className="jaduya-numeric">2026.8 - 2026.9</dd></div>
         <div><dt>역할</dt><dd className="jaduya-role">UI ARCHITECT / PRESENTATION CONTENT</dd></div>
-        <div><dt>팀 내 기여도</dt><dd className="jaduya-numeric">16%</dd></div>
+        <div><dt>기여도</dt><dd>팀 내 <span className="jaduya-numeric">16%</span></dd></div>
       </dl>
     </section>
   )
@@ -120,16 +123,32 @@ function JaduyaConclusion() {
   )
 }
 
-export default function JaduyaCaseStudy({ onNavigate }: { onNavigate?: ProjectNavigateHandler }) {
+export default function JaduyaCaseStudy({ onNavigate, nextProject }: { onNavigate?: ProjectNavigateHandler; nextProject?: NextFaceProject }) {
   return (
-    <div className="jaduya-case-study">
+    <div className="jaduya-case-study project-case-study">
       <ProjectHeader onNavigate={onNavigate} faceId="jaduya" tone="light" />
       <main>
         <JaduyaHero />
         <JaduyaOverview />
         <JaduyaDirection />
         <JaduyaConclusion />
+        <div className="jaduya-design">
+          <div className="jaduya-design__background" aria-hidden="true">
+            <div className="jaduya-design__plum-anchor jaduya-design__plum-anchor--ripe">
+              <img src={`${ASSET_ROOT}/brand/ripe-plum-outline.png`} width="545" height="545" alt="" loading="lazy" />
+            </div>
+            <div className="jaduya-design__plum-anchor jaduya-design__plum-anchor--green">
+              <img src={`${ASSET_ROOT}/experience/main-one-green-plum-outline.png`} width="545" height="545" alt="" loading="lazy" />
+            </div>
+          </div>
+          <JaduyaBrandConcept />
+          <JaduyaMainPageOne />
+          <JaduyaMainPageTwo />
+        </div>
+        <JaduyaHomeCare />
+        <JaduyaEnding />
       </main>
+      {nextProject && <NextFace project={nextProject} onNavigate={onNavigate} />}
       <FloatingDock liveUrl={project.liveUrl} caseStudyUrl={project.caseStudyUrl!} />
     </div>
   )

@@ -70,6 +70,7 @@ export const FACE_PROJECTS: FaceProject[] = [
   },
   {
     id: 'f45',
+    detailPath: '/projects/f45',
     liveUrl: 'https://myeonghee0187-sys.github.io/f45_korea/',
     index: '03',
     title: 'F45 KOREA',

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FocusEvent, type MouseEvent } from 'react'
 import './ProjectHeader.css'
 import './ProjectFonts.css'
+import './ProjectViewport.css'
 
 export type ProjectTransitionVariant = 'dissolve' | 'reverse' | 'editorial'
 

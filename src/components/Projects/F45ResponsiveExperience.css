@@ -1,0 +1,39 @@
+.f45-responsive { position: relative; isolation: isolate; overflow: hidden; padding: calc(200 * var(--f45-u)) 24px calc(100 * var(--f45-u)); background: #dadbf7; }
+.f45-responsive__content { position: relative; width: calc(1100 * var(--f45-u)); max-width: 100%; margin-inline: auto; }
+.f45-responsive header { text-align: center; }
+.f45-responsive header > p { font-size: calc(32 * var(--f45-u)); font-weight: 300; line-height: 1; }
+.f45-responsive h2 { margin-top: calc(12 * var(--f45-u)); color: #0a0a0a; font-size: calc(48 * var(--f45-u)); font-weight: 500; line-height: 1; }
+.f45-responsive h2 > span { font-weight: 500; }
+.f45-responsive__devices { position: relative; aspect-ratio: 1100 / 660; margin-top: calc(12 * var(--f45-u)); }
+.f45-responsive__frame { position: relative; z-index: 1; width: 100%; height: auto; pointer-events: none; }
+/* Exact Figma display: x99/y59/663×373 in the unchanged 1100×660 frame. */
+.f45-responsive__screen { position: absolute; left: 9%; top: 8.939394%; width: 60.272727%; height: 56.515152%; overflow: hidden; background: var(--f45-carbon); }
+.f45-responsive__poster,.f45-responsive__screen > video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
+.f45-responsive__screen[data-failed='true'] > video { visibility: hidden; }
+.f45-responsive__control { position: absolute; z-index: 2; top: 50%; left: 50%; display: grid; place-items: center; width: clamp(40px, 3vw, 56px); height: clamp(40px, 3vw, 56px); padding: 0; border: 1px solid rgb(243 244 244 / .5); border-radius: 50%; background: rgb(8 9 10 / .65); color: var(--f45-white); opacity: 0; transform: translate(-50%,-50%); cursor: pointer; touch-action: manipulation; transition: opacity 180ms ease; }
+.f45-responsive__control > svg { width: 22px; height: 22px; }
+.f45-responsive__screen[data-playing='false'] .f45-responsive__control,.f45-responsive__control:focus-visible { opacity: 1; }
+.f45-responsive__control:focus-visible { outline: 3px solid var(--f45-teal); outline-offset: 4px; }
+.f45-responsive__wave { position: absolute; left: calc(50% - 1181 * var(--f45-u)); bottom: 0; width: calc(2352 * var(--f45-u)); height: calc(284 * var(--f45-u)); pointer-events: none; }
+.f45-responsive__circle { position: absolute; top: calc(-1031 * var(--f45-u)); left: calc(50% + 103 * var(--f45-u)); width: calc(1252 * var(--f45-u)); height: calc(1248 * var(--f45-u)); pointer-events: none; }
+.f45-responsive__status { position: absolute; bottom: 0; left: 0; max-width: 100%; padding: 8px 12px; background: rgb(248 249 250 / .94); font-size: 14px; line-height: 1.4; }
+@media (hover: hover) and (pointer: fine) { .f45-responsive__devices:hover .f45-responsive__control { opacity: 1; } }
+@media (hover: none) { .f45-responsive__control { opacity: 1; width: 44px; height: 44px; } }
+@media (max-width: 1100px) {
+  .f45-responsive { padding-block: 100px 70px; }
+  .f45-responsive__content { width: min(100%, 850px); }
+  .f45-responsive header > p { font-size: 22px; }
+  .f45-responsive h2 { margin-top: 16px; font-size: 32px; line-height: 1.3; }
+  .f45-responsive__devices { margin-top: 30px; }
+  .f45-responsive__wave { left: -12%; width: 125%; height: auto; }
+}
+@media (max-width: 700px) {
+  .f45-responsive { padding: 76px 12px 54px; }
+  .f45-responsive header { padding-inline: 12px; }
+  .f45-responsive header > p { font-size: 20px; }
+  .f45-responsive h2 { font-size: clamp(26px, 7vw, 32px); }
+  .f45-responsive__devices { margin-top: 34px; }
+  .f45-responsive__circle { display: block; width: 85%; height: auto; top: -30%; left: 60%; }
+  .f45-responsive__status { position: relative; margin-top: 12px !important; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { .f45-responsive__control { transition: none; } }

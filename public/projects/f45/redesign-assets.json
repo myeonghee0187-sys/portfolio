@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-20",
+  "revision": "8ee558edc64fc03a0b88e6518b1acaf9a77b989e",
+  "originals": [
+    {
+      "file": "intro_o.jpg",
+      "source": "assets/images/intro_o.jpg",
+      "sha256": "ac8313c6eeb88d07fe3715da5e4851cd79e57dea88a3d9f2cbcff1eaf9db0b94",
+      "unchanged": true
+    },
+    {
+      "file": "intro_r.jpg",
+      "source": "assets/images/intro_r.jpg",
+      "sha256": "7c4da0e8236c4a31b6f9991431bfda0ad1c1569fbe6efe55b8ae2d4ac196bfe4",
+      "unchanged": true
+    },
+    {
+      "file": "intro_e.jpg",
+      "source": "assets/images/intro_e.jpg",
+      "sha256": "1c5659215d11de19e7062622b43b522a076aa3a6e37149cf9cb754677c2c6c18",
+      "unchanged": true
+    },
+    {
+      "file": "hero_frame_03_wide.jpg",
+      "source": "assets/images/hero_frame_03_wide.jpg",
+      "sha256": "7eb48e0ceffa05ab42d3112aa5b157dbed098c72f49b5617ec2a91310c062ae9",
+      "unchanged": true
+    }
+  ],
+  "captures": [
+    {
+      "file": "why-mobile.webp",
+      "source": "https://myeonghee0187-sys.github.io/f45_korea/#story",
+      "viewport": [
+        390,
+        844
+      ],
+      "dimensions": [
+        390,
+        2589
+      ],
+      "quality": 92,
+      "resized": false,
+      "sha256": "ccb58eefb7cd27a2e1a027c3ecd8cf31e990daf7e488d412df3985470381c117"
+    }
+  ]
+}

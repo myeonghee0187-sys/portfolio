@@ -1,0 +1,316 @@
+.jaduya-brand-concept,
+.jaduya-ending {
+  position: relative;
+  isolation: isolate;
+  color: #08090a;
+}
+.jaduya-ending { overflow: hidden; background: var(--jaduya-paper); }
+
+/* Figma node 2093:643 — native 1920 × 1092 composition. */
+.jaduya-brand-concept {
+  height: calc(1092 * var(--jaduya-u));
+}
+
+.jaduya-brand-concept__heading {
+  position: absolute;
+  top: calc(200 * var(--jaduya-u));
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(12 * var(--jaduya-u));
+  width: max-content;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.jaduya-brand-concept__heading p {
+  font-family: 'Inter', sans-serif;
+  font-size: var(--jaduya-label-size);
+  font-weight: 300;
+  line-height: 1;
+}
+
+.jaduya-brand-concept__heading h2 {
+  font-size: var(--jaduya-title-size);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.jaduya-brand-concept__mascot {
+  position: absolute;
+  top: calc(392 * var(--jaduya-u));
+  left: 50%;
+  width: calc(600 * var(--jaduya-u));
+  height: calc(600 * var(--jaduya-u));
+  object-fit: cover;
+  transform: translateX(-50%);
+}
+
+.jaduya-brand-concept__card {
+  position: absolute;
+  display: flex;
+  width: max-content;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, calc(24 * var(--jaduya-u)), 24px) clamp(8px, calc(4vw - 28px), 32px);
+  background: #f0d7d7;
+  font-size: var(--jaduya-bubble-size);
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.jaduya-brand-concept__card--origin {
+  top: calc(380 * var(--jaduya-u));
+  left: calc(50% + 210 * var(--jaduya-u));
+  border-radius: calc(40 * var(--jaduya-u)) calc(40 * var(--jaduya-u)) calc(40 * var(--jaduya-u)) 0;
+}
+
+.jaduya-brand-concept__card--path {
+  top: calc(610 * var(--jaduya-u));
+  right: calc(50% + 210 * var(--jaduya-u));
+  border-radius: calc(40 * var(--jaduya-u)) calc(40 * var(--jaduya-u)) 0 calc(40 * var(--jaduya-u));
+}
+
+.jaduya-brand-concept__card--support {
+  top: calc(790 * var(--jaduya-u));
+  left: calc(50% + 210 * var(--jaduya-u));
+  border-radius: 0 calc(40 * var(--jaduya-u)) calc(40 * var(--jaduya-u)) calc(40 * var(--jaduya-u));
+}
+
+/* Figma node 2100:150 — native 1920 × 1080 composition. */
+.jaduya-ending {
+  height: calc(1080 * var(--jaduya-u));
+}
+
+.jaduya-ending__road-stage {
+  position: absolute;
+  top: calc(-208.08 * var(--jaduya-u));
+  left: calc(-279 * var(--jaduya-u));
+  display: flex;
+  width: calc(2345.755 * var(--jaduya-u));
+  height: calc(1516.044 * var(--jaduya-u));
+  align-items: center;
+  justify-content: center;
+}
+
+.jaduya-ending__road-rotation {
+  flex: none;
+  transform: rotate(173.83deg) scaleY(-1);
+}
+
+.jaduya-ending__road-frame {
+  position: relative;
+  width: calc(2220.558 * var(--jaduya-u));
+  height: calc(1284.904 * var(--jaduya-u));
+}
+
+.jaduya-ending__road-frame img,
+.jaduya-ending__mascot-frame img {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+}
+
+.jaduya-ending__mascot-stage {
+  position: absolute;
+  top: calc(199.1 * var(--jaduya-u));
+  left: calc(-52.91 * var(--jaduya-u));
+  display: flex;
+  width: calc(841.823 * var(--jaduya-u));
+  height: calc(680.794 * var(--jaduya-u));
+  align-items: center;
+  justify-content: center;
+}
+
+.jaduya-ending__mascot-rotation {
+  flex: none;
+  transform: rotate(8.41deg);
+}
+
+.jaduya-ending__mascot-frame {
+  position: relative;
+  width: calc(766 * var(--jaduya-u));
+  height: calc(575 * var(--jaduya-u));
+}
+
+.jaduya-ending__copy {
+  position: absolute;
+  z-index: 1;
+  top: calc(405 * var(--jaduya-u));
+  left: calc(1354 * var(--jaduya-u));
+  width: max-content;
+  transform: translateX(-50%);
+  color: #110403;
+  font-size: var(--jaduya-ending-size);
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.jaduya-ending__copy span {
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .jaduya-brand-concept {
+    display: flex;
+    height: auto;
+    min-height: 0;
+    flex-direction: column;
+    align-items: center;
+    padding: 88px 24px 80px;
+  }
+
+  .jaduya-brand-concept__heading {
+    position: relative;
+    inset: auto;
+    gap: 12px;
+    width: 100%;
+    transform: none;
+    white-space: normal;
+  }
+
+  .jaduya-brand-concept__heading h2 {
+    line-height: 1.3;
+    text-wrap: balance;
+  }
+
+  .jaduya-brand-concept__mascot {
+    position: relative;
+    inset: auto;
+    width: min(78vw, 460px);
+    height: auto;
+    margin: 48px auto 32px;
+    transform: none;
+  }
+
+  .jaduya-brand-concept__card {
+    position: relative;
+    inset: auto;
+    max-width: 100%;
+    padding: 16px 24px;
+    border-radius: 24px;
+    white-space: normal;
+  }
+
+  .jaduya-brand-concept__card + .jaduya-brand-concept__card {
+    margin-top: 16px;
+  }
+
+  .jaduya-brand-concept__card--origin {
+    align-self: flex-end;
+    border-bottom-left-radius: 0;
+  }
+
+  .jaduya-brand-concept__card--path {
+    align-self: flex-start;
+    border-bottom-right-radius: 0;
+  }
+
+  .jaduya-brand-concept__card--support {
+    align-self: flex-end;
+    border-top-left-radius: 0;
+  }
+
+  .jaduya-ending {
+    height: auto;
+    min-height: clamp(760px, 110vw, 900px);
+    padding: 72px 24px 0;
+  }
+
+  .jaduya-ending__copy {
+    position: relative;
+    inset: auto;
+    z-index: 2;
+    width: min(100%, 680px);
+    margin-inline: auto;
+    transform: none;
+    line-height: 1.4;
+    white-space: normal;
+    text-wrap: balance;
+  }
+
+  .jaduya-ending__road-stage {
+    top: auto;
+    bottom: -45px;
+    left: 50%;
+    display: block;
+    width: max(820px, 160vw);
+    height: auto;
+    aspect-ratio: 1448 / 1086;
+    transform: translateX(-55%);
+  }
+
+  .jaduya-ending__road-rotation,
+  .jaduya-ending__road-frame {
+    width: 100%;
+    height: 100%;
+    transform: none;
+  }
+
+  .jaduya-ending__road-frame img {
+    object-fit: contain;
+  }
+
+  .jaduya-ending__mascot-stage {
+    top: auto;
+    bottom: 52px;
+    left: 50%;
+    z-index: 1;
+    display: block;
+    width: min(92vw, 610px);
+    height: auto;
+    aspect-ratio: 1448 / 1086;
+    transform: translateX(-50%);
+  }
+
+  .jaduya-ending__mascot-rotation,
+  .jaduya-ending__mascot-frame {
+    width: 100%;
+    height: 100%;
+    transform: none;
+  }
+
+  .jaduya-ending__mascot-frame img {
+    object-fit: contain;
+  }
+}
+
+@media (max-width: 480px) {
+  .jaduya-brand-concept {
+    padding: 72px 16px 64px;
+  }
+
+  .jaduya-brand-concept__mascot {
+    width: min(92vw, 390px);
+    margin-top: 36px;
+  }
+
+  .jaduya-brand-concept__card {
+    padding: 10px 16px;
+    line-height: 1.4;
+  }
+
+  .jaduya-ending {
+    min-height: 720px;
+    padding: 64px 16px 0;
+  }
+
+  .jaduya-ending__road-stage {
+    bottom: -18px;
+    width: 820px;
+  }
+
+  .jaduya-ending__mascot-stage {
+    bottom: 72px;
+    width: min(112vw, 500px);
+  }
+}

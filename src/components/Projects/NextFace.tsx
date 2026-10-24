@@ -1,11 +1,12 @@
 import type { MouseEvent } from 'react'
-import type { ProjectNavigateHandler } from './ProjectHeader'
+import type { ProjectNavigateHandler, ProjectTransitionVariant } from './ProjectHeader'
 import './NextFace.css'
 
 export type NextFaceProject = {
   title: string
   href?: string
   label?: string
+  transition?: ProjectTransitionVariant
 }
 
 type NextFaceProps = {
@@ -31,7 +32,7 @@ export default function NextFace({ project, onNavigate }: NextFaceProps) {
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     if (!onNavigate || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     event.preventDefault()
-    onNavigate(project.href!, 'editorial')
+    onNavigate(project.href!, project.transition ?? 'editorial')
   }
 
   if (!project.href) {

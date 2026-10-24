@@ -1,0 +1,274 @@
+{
+  "fileKey": "9kXZ17uZOK7WinbmInLvUH",
+  "assets": [
+    {
+      "filename": "figma-hero-background.png",
+      "nodeId": "2126:353",
+      "assetId": "759095bd-0a30-40e5-aca1-5902887bb0dd",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 1539325
+    },
+    {
+      "filename": "figma-hero-devices.png",
+      "nodeId": "2127:26",
+      "assetId": "22cb08fb-8608-4378-9ccc-f7fab28ef46d",
+      "width": 3200,
+      "height": 2400,
+      "bytes": 3456372
+    },
+    {
+      "filename": "figma-overview-background.png",
+      "nodeId": "2127:18",
+      "assetId": "442a5842-1f7e-4b38-8529-2d62e006bfb4",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 1295997
+    },
+    {
+      "filename": "figma-asis-01.png",
+      "nodeId": "2128:190",
+      "assetId": "3ccfcf46-5a93-4cb9-a5fd-9d197b0ce2b8",
+      "width": 2172,
+      "height": 724,
+      "bytes": 1193265
+    },
+    {
+      "filename": "figma-asis-02.png",
+      "nodeId": "2128:194",
+      "assetId": "3cbdf991-4945-49e5-857f-901b0392fca7",
+      "width": 2172,
+      "height": 724,
+      "bytes": 1478968
+    },
+    {
+      "filename": "figma-asis-03.png",
+      "nodeId": "2128:198",
+      "assetId": "f3da8d4c-ccb1-4eb4-8b46-9f88d1c6372e",
+      "width": 2172,
+      "height": 724,
+      "bytes": 1020191
+    },
+    {
+      "filename": "figma-tobe-01.png",
+      "nodeId": "2128:205",
+      "assetId": "dac688c7-8b60-44de-9dd1-c3ebb6fea436",
+      "width": 2172,
+      "height": 724,
+      "bytes": 1665598
+    },
+    {
+      "filename": "figma-tobe-02.png",
+      "nodeId": "2128:209",
+      "assetId": "a4ed546f-6df6-490a-8a83-23dbdd9929e7",
+      "width": 2172,
+      "height": 724,
+      "bytes": 1552956
+    },
+    {
+      "filename": "figma-tobe-03.png",
+      "nodeId": "2128:213",
+      "assetId": "09781423-5538-423a-ae7d-62a28e365d90",
+      "width": 2172,
+      "height": 724,
+      "bytes": 1180628
+    },
+    {
+      "filename": "figma-connector.png",
+      "nodeId": "2128:217",
+      "assetId": "757b2a38-ef7f-48a5-b03f-60a3050e20b9",
+      "width": 270,
+      "height": 16,
+      "bytes": 1595
+    },
+    {
+      "filename": "figma-concept-background.png",
+      "nodeId": "2134:405",
+      "assetId": "bee1a6b6-8d88-4373-b081-dd97a175e107",
+      "width": 2172,
+      "height": 724,
+      "bytes": 1722848
+    },
+    {
+      "filename": "figma-main-01-page.png",
+      "nodeId": "2144:528",
+      "assetId": "fcb7099f-c994-4e1a-9d30-6988beba750f",
+      "width": 1550,
+      "height": 4096,
+      "bytes": 3126710
+    },
+    {
+      "filename": "figma-main-01-phase.png",
+      "nodeId": "2140:509",
+      "assetId": "57f153f7-c667-4471-8ec2-4a6aecf30649",
+      "width": 2356,
+      "height": 750,
+      "bytes": 900564
+    },
+    {
+      "filename": "figma-main-01-circle-right.svg",
+      "nodeId": "2147:628",
+      "assetId": "9e3b8e14-efb9-4353-9661-7bf47da53933",
+      "width": 787.0,
+      "height": 787.0,
+      "bytes": 269
+    },
+    {
+      "filename": "figma-main-01-circle-bottom.svg",
+      "nodeId": "2147:638",
+      "assetId": "dd06e331-7497-45c5-aec7-9ecc816051a2",
+      "width": 1328.0,
+      "height": 1177.0,
+      "bytes": 282
+    },
+    {
+      "filename": "figma-main-01-connector-brand.svg",
+      "nodeId": "2144:534",
+      "assetId": "80d2f832-deed-4449-92d3-b1b07edd9913",
+      "width": 245.167,
+      "height": 5.33333,
+      "bytes": 6924
+    },
+    {
+      "filename": "figma-main-01-connector-phase.svg",
+      "nodeId": "2144:538",
+      "assetId": "4367a1d2-5ccb-4100-942f-75d4d53c8975",
+      "width": 245.167,
+      "height": 5.33333,
+      "bytes": 7055
+    },
+    {
+      "filename": "figma-main-01-connector-location.svg",
+      "nodeId": "2144:541",
+      "assetId": "22e97fe1-7615-4c2a-aa61-34e6df8655ce",
+      "width": 245.167,
+      "height": 5.33333,
+      "bytes": 6924
+    },
+    {
+      "filename": "figma-main-02-page.png",
+      "nodeId": "2146:598",
+      "assetId": "5800a0dc-09e6-419a-9f93-243a3c1ce7e9",
+      "width": 1208,
+      "height": 4096,
+      "bytes": 579091
+    },
+    {
+      "filename": "figma-main-02-circle-top.svg",
+      "nodeId": "2147:633",
+      "assetId": "9b7f2b55-3f15-4119-9b07-dd67bf3c07e0",
+      "width": 1333.0,
+      "height": 1177.0,
+      "bytes": 286
+    },
+    {
+      "filename": "figma-main-02-circle-bottom.svg",
+      "nodeId": "2147:634",
+      "assetId": "a046ea9a-df4d-438a-9184-792222c5a0d0",
+      "width": 1252.0,
+      "height": 1248.0,
+      "bytes": 278
+    },
+    {
+      "filename": "figma-main-02-connector-guide.svg",
+      "nodeId": "2144:530",
+      "assetId": "b9e4fc7c-4a7c-47ac-9d1f-3375f121aa17",
+      "width": 245.167,
+      "height": 5.33333,
+      "bytes": 7055
+    },
+    {
+      "filename": "figma-main-02-connector-app.svg",
+      "nodeId": "2144:548",
+      "assetId": "5054cdb8-7c75-4f2f-b875-61c8b36679bd",
+      "width": 245.167,
+      "height": 5.33333,
+      "bytes": 6924
+    },
+    {
+      "filename": "figma-responsive-devices.png",
+      "nodeId": "2150:650",
+      "assetId": "fcb01ea1-3c8e-4291-9c34-46a2b686bb21",
+      "width": 4000,
+      "height": 2400,
+      "bytes": 1566151
+    },
+    {
+      "filename": "figma-responsive-circle.svg",
+      "nodeId": "2150:657",
+      "assetId": "403fe25b-d029-462d-b6ed-1626e5068fa2",
+      "width": 1252.0,
+      "height": 1248.0,
+      "bytes": 278
+    },
+    {
+      "filename": "figma-responsive-wave.svg",
+      "nodeId": "2150:660",
+      "assetId": "1c3202c3-c478-40d3-91ea-bf35c8ceed3f",
+      "width": 2352.0,
+      "height": 284.0,
+      "bytes": 470
+    },
+    {
+      "filename": "figma-ending-background.png",
+      "nodeId": "2134:483",
+      "assetId": "7ba96c44-a532-48f2-8680-befe5894b85d",
+      "width": 1536,
+      "height": 864,
+      "bytes": 2041734
+    }
+  ],
+  "references": [
+    {
+      "filename": "figma-hero.png",
+      "assetId": "566e1d38-ee25-4b6a-89dd-0882c7749aca",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 2350799
+    },
+    {
+      "filename": "figma-overview.png",
+      "assetId": "8aff9573-03db-4011-ae9e-5c796f9ab263",
+      "width": 1920,
+      "height": 604,
+      "bytes": 1010095
+    },
+    {
+      "filename": "figma-asis-tobe.png",
+      "assetId": "86700d1b-91be-46e9-a3da-0db7b7c0d2ad",
+      "width": 1920,
+      "height": 1664,
+      "bytes": 833607
+    },
+    {
+      "filename": "figma-concept.png",
+      "assetId": "12e623e6-9c7e-47e1-a9c0-ece6aee8c55b",
+      "width": 1920,
+      "height": 922,
+      "bytes": 570475
+    }
+  ],
+  "referenceLocation": "Reference screenshots are in task QA artifacts only; they are not shipped as runtime page images.",
+  "media": [
+    {
+      "filename": "f45_korea_scroll_1080p60_v2.mp4",
+      "nodeId": "2150:652",
+      "source": "Original user-provided file in Downloads; unmodified copy",
+      "width": 1920,
+      "height": 1080,
+      "fps": 60,
+      "durationSeconds": 34.5,
+      "bytes": 7048885,
+      "sha256": "385bd10066a998e19e27c466258ba005b119c645adcb35c7b4a1c4cea0f46622"
+    },
+    {
+      "filename": "figma-responsive-poster.jpg",
+      "nodeId": "2150:652",
+      "source": "First frame from the exact original MP4; no resize",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 102255
+    }
+  ],
+  "scope": "Final eight-section design, 79:970; original four sections preserved."
+}
