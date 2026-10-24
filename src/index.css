@@ -57,7 +57,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Intro 재생 중 body scroll lock (IntroVideo가 <html>에 붙였다 뗀다) */
+/* Intro waiting / wake scroll lock (WatchIntro owns and cleans up these classes). */
 html.intro-scroll-lock,
 html.intro-scroll-lock body {
   overflow: hidden;

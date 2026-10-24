@@ -12,8 +12,9 @@ const WORKS_COUNT = 3
  * stage - WatchStage(fixed 레이어)에 놓여 Hero -> About -> FACES를 이어가는 상태.
  *         기본 좌표는 hero와 같고, 나머지는 전부 GSAP이 transform으로 얹는다.
  * contact - Contact 마지막 장면의 Watch. 같은 case asset에 display만 NEXT / FACE다.
+ * intro - Same Hero assembly, with a black wake display above its existing face.
  */
-export type WatchVariant = 'hero' | 'about' | 'stage' | 'contact'
+export type WatchVariant = 'hero' | 'about' | 'stage' | 'contact' | 'intro'
 
 type WatchAssemblyProps = {
   variant: WatchVariant
@@ -138,6 +139,14 @@ export default function WatchAssembly({
           )}
         </p>
       </div>
+
+      {variant === 'intro' && (
+        <div className="watch__intro-display" aria-hidden="true">
+          <div className="watch__intro-reflection" />
+          <div className="watch__intro-light" />
+          <span className="watch__intro-hello">HELLO</span>
+        </div>
+      )}
 
       {/*
         About -> FACES 노출이 가장 밝을 때 display 유리 위를 한 번 지나가는 반사(useScrollScene).

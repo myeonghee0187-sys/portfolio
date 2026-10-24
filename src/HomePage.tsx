@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import type { HomeDestination } from './navigation/projectRouting'
-import IntroVideo from './components/IntroVideo'
+import WatchIntro from './components/WatchIntro'
 import Header from './components/Header'
 import Hero from './components/Hero'
 import About from './components/About'
@@ -27,6 +27,7 @@ type HomePageProps = {
 
 export default function HomePage({ skipIntro, destination, onIntroDone, onReady, onOpenProject }: HomePageProps) {
   const [isIntroDone, setIsIntroDone] = useState(skipIntro)
+  const [sceneReady, setSceneReady] = useState(skipIntro)
   const isFinePointer = useMediaQuery('(hover: hover) and (pointer: fine)')
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const isWideEnough = useMediaQuery('(min-width: 901px)')
@@ -50,10 +51,28 @@ export default function HomePage({ skipIntro, destination, onIntroDone, onReady,
     })
   }, [])
 
-  const handleIntroFinish = useCallback(() => {
+  const handleIntroFinish = useCallback((restoreFocus = false) => {
     setIsIntroDone(true)
     onIntroDone()
+    if (restoreFocus) requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>('.hero__headline')?.focus({ preventScroll: true })
+    })
   }, [onIntroDone])
+
+  // Paint the matched Hero Watch before starting the existing WebGL/pin setup.
+  // Otherwise synchronous GPU setup delays the final intro frame. Return visits
+  // keep their immediate scene setup and restoration path through skipIntro.
+  useEffect(() => {
+    if (!isIntroDone || skipIntro) return
+    let secondFrame = 0
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => setSceneReady(true))
+    })
+    return () => {
+      cancelAnimationFrame(firstFrame)
+      cancelAnimationFrame(secondFrame)
+    }
+  }, [isIntroDone, skipIntro])
 
   /** FACES 이후 고정되는 정면 Digital Crown의 click handler. */
   const handleOpenAllFaces = useCallback(() => openAllFaces(), [])
@@ -80,9 +99,9 @@ export default function HomePage({ skipIntro, destination, onIntroDone, onReady,
    * Splash Cursor는 커서가 있는 데스크톱 전용이고, 순수 장식이라 reduced motion에서는 끈다.
    * CSS로 숨기는 대신 컴포넌트 자체를 마운트하지 않는다 — 조건이 false면
    * WebGL 컨텍스트도, rAF 루프도, mousemove 리스너도 생기지 않는다.
-   * Intro가 끝났는지는 기존 isIntroDone을 그대로 쓴다(상태를 새로 만들지 않는다).
+   * GPU setup begins after the intro's final Hero frame has painted.
    */
-  const showSplashCursor = isIntroDone && isFinePointer && !prefersReducedMotion
+  const showSplashCursor = sceneReady && isFinePointer && !prefersReducedMotion
 
   /*
    * Hero -> About scroll 연출을 켤지.
@@ -98,10 +117,10 @@ export default function HomePage({ skipIntro, destination, onIntroDone, onReady,
    * 세로 스크롤바가 없어서 뷰포트가 15px 더 넓게 잡힌다. 그 상태로 pin을 계산하면
    * ScrollTrigger가 만든 pin-spacer 폭이 실제보다 넓게 굳어 가로 overflow가 생긴다.
    */
-  useScrollScene(scrollSceneEnabled && isIntroDone)
+  useScrollScene(scrollSceneEnabled && sceneReady)
 
   useEffect(() => {
-    if (!isIntroDone) return
+    if (!sceneReady) return
     let cancelled = false
     const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
     const restore = async () => {
@@ -136,18 +155,17 @@ export default function HomePage({ skipIntro, destination, onIntroDone, onReady,
     }
     void restore()
     return () => { cancelled = true }
-  }, [isIntroDone, destination, onReady])
+  }, [sceneReady, destination, onReady])
 
   useEffect(() => () => closeAllFaces(), [])
 
   return (
     <>
       {/*
-        Header/Hero는 Intro 아래에 항상 마운트되어 있다.
-        Intro가 불투명한 fixed overlay라 재생 중에는 가려져 보이지 않고,
-        fade-out이 진행되면서 그대로 드러난다.
+        Hero stays laid out beneath the intro. Its measured Watch anchor is the
+        handoff destination; only that Watch is hidden until the intro finishes.
       */}
-      {!isIntroDone && <IntroVideo onFinish={handleIntroFinish} />}
+      {!isIntroDone && <WatchIntro onFinish={handleIntroFinish} />}
 
       {/*
         페이지 전체에서 단 하나만 존재하는 global cursor effect.
@@ -179,7 +197,8 @@ export default function HomePage({ skipIntro, destination, onIntroDone, onReady,
         className="site"
         data-all-faces-open={allFacesOpen}
         data-all-faces-count={FACE_PROJECTS.length}
-        inert={allFacesMounted ? true : undefined}
+        data-intro-active={!isIntroDone}
+        inert={!isIntroDone || allFacesMounted ? true : undefined}
       >
         <Header />
         <main>
@@ -188,11 +207,11 @@ export default function HomePage({ skipIntro, destination, onIntroDone, onReady,
           {/* 가로 트랙 연출도 About과 같은 조건에서만 켠다. 아니면 native 가로 scroll 목록이다. */}
           <div className={scrollSceneEnabled ? 'panels panels--interactive' : 'panels'}>
             <div className="panels__viewport">
-              <Faces ref={facesRef} interactive={scrollSceneEnabled} ready={isIntroDone} onOpenProject={onOpenProject} />
-              <Journey interactive={scrollSceneEnabled} ready={isIntroDone} />
+              <Faces ref={facesRef} interactive={scrollSceneEnabled} ready={sceneReady} onOpenProject={onOpenProject} />
+              <Journey interactive={scrollSceneEnabled} ready={sceneReady} />
             </div>
           </div>
-          <Contact interactive={scrollSceneEnabled} ready={isIntroDone} />
+          <Contact interactive={scrollSceneEnabled} ready={sceneReady} />
         </main>
 
         {/*
