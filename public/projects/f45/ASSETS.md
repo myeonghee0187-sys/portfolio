@@ -2,7 +2,9 @@
 
 ## Current Figma implementation
 
-The current page follows portfolio Figma file `9kXZ17uZOK7WinbmInLvUH`, root `79:970`, through the user-selected final `2134:404 concept` frame. `figma-assets.json` maps all 11 unmodified local PNG assets to their original node IDs and exported asset IDs. These are the actual Figma background photographs, three-device composition, six problem/solution illustrations, dotted connector and concept background. Each is used in its original design slot. Whole-section Figma reference screenshots are QA artifacts only and are not runtime page assets.
+The current page follows all eight finalized sections of portfolio Figma file `9kXZ17uZOK7WinbmInLvUH`, root `79:970`, ending at `2134:482`. `figma-assets.json` maps 27 unmodified local Figma assets to their original node IDs and exported asset IDs. The original eleven assets remain unchanged. The new assets are the two notebook/longscroll compositions, separate seven-program PHASE image, original connector/circle/wave SVGs, transparent monitor/tablet/iPhone composition and bright battle-rope Ending photograph. Each is used in its original design slot. Whole-section Figma reference screenshots are QA artifacts only and are not runtime page assets.
+
+`f45_korea_scroll_1080p60_v2.mp4` is the exact user-provided original found in Downloads, copied without transcoding: H.264, 1920×1080, 60fps, 34.5 seconds, 7,048,885 bytes. Its SHA-256 is recorded in the manifest. `figma-responsive-poster.jpg` is its first frame, extracted without resizing. The monitor PNG already contains a transparent PC display; its tablet/phone pixels and bezels remain unmodified in front of the video. No substitute video or edited device image is used.
 
 The page reuses existing Wanted Sans and Inter, including the existing local Inter Regular file under `/projects/jaduya/` without modifying that project. The earlier website captures and device helper assets below remain preserved as historical source material; the current Figma layout does not load them.
 
