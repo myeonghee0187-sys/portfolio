@@ -1,0 +1,143 @@
+@import './Projects/ProjectFonts.css';
+
+.intro {
+  --intro-watch-width: min(420px, 64vw, calc((100dvh - 168px) * 600 / 760));
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+.intro__background {
+  position: absolute;
+  inset: 0;
+  background: var(--color-carbon-black);
+}
+
+.intro__composition {
+  position: absolute;
+  top: calc(50% - 20px);
+  left: 50%;
+  width: var(--intro-watch-width);
+  aspect-ratio: 600 / 760;
+  transform: translate(-50%, -50%);
+}
+
+.intro__watch-motion {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+}
+
+.intro__watch-art { position: absolute; inset: 0; pointer-events: none; }
+
+.intro .watch--intro {
+  --wu: calc(var(--intro-watch-width) / 600);
+  position: absolute;
+  inset: 0;
+}
+
+.intro .watch__face { opacity: 0; }
+
+.watch__intro-display {
+  position: absolute;
+  top: calc(64 * var(--wu));
+  left: calc(58 * var(--wu));
+  width: calc(484 * var(--wu));
+  height: calc(646 * var(--wu));
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: calc(96 * var(--wu));
+  background: #000;
+  pointer-events: none;
+}
+
+.watch__intro-light {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgb(24 109 229 / 0.26), rgb(24 109 229 / 0.07) 48%, transparent 78%);
+  opacity: 0;
+  transform: scale(0.72);
+}
+
+.watch__intro-hello {
+  position: relative;
+  color: #f3f4f4;
+  font-family: 'Geist Variable', 'Inter', sans-serif;
+  font-size: calc(68 * var(--wu));
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  opacity: 0;
+}
+
+.intro__ambient {
+  position: absolute;
+  inset: -8% -18%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgb(24 109 229 / 0.085), rgb(24 109 229 / 0.025) 48%, transparent 72%);
+  pointer-events: none;
+}
+
+.intro__wake-button {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  border-radius: 20%;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.intro[data-keyboard='true'] .intro__wake-button:focus-visible {
+  outline: 2px solid rgb(125 183 232 / 0.8);
+  outline-offset: 12px;
+}
+
+.intro[data-phase='idle'] .intro__ambient { transition: opacity 200ms ease; opacity: 0.7; }
+.intro[data-phase='idle'] .intro__watch-motion:has(.intro__wake-button:hover) .intro__ambient { opacity: 1; }
+.intro:not([data-phase='idle']) .intro__wake-button { cursor: default; outline: none; }
+
+.intro__prompt {
+  position: absolute;
+  top: calc(100% + 30px);
+  left: 50%;
+  width: max-content;
+  margin: 0;
+  transform: translateX(-50%);
+  color: rgb(212 229 239 / 0.72);
+  font-family: 'Wanted Sans', 'Apple SD Gothic Neo', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+}
+
+.intro__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The original Hero Watch takes over atomically at the measured endpoint. */
+.site[data-intro-active='true'] .watch--stage,
+.site[data-intro-active='true'] .watch--hero { visibility: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  .intro__watch-motion { will-change: auto; }
+  .watch__intro-light { transform: none; }
+  .intro[data-phase='idle'] .intro__ambient { transition: none; }
+}
