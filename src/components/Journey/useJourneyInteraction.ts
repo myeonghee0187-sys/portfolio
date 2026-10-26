@@ -2,7 +2,7 @@ import { useLayoutEffect, type RefObject } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { JOURNEY_CLOCK, JOURNEY_NODES } from './journeyData'
-import { createJourneyFlow, pathEntryDistance } from './journeyFlow'
+import { createJourneyFlow, journeyNodeIn, pathEntryDistance } from './journeyFlow'
 import { journeySCurve, pathDistanceAtY } from './journeyPath'
 import { HANDOFF_VIEWPORTS, JOURNEY_VIEWPORTS, PANEL_TRIGGER_ID, panelTiming } from '../../hooks/panelTiming'
 import { journeyAmbientAt } from '../../hooks/journeyLighting'
@@ -12,7 +12,7 @@ gsap.registerPlugin(ScrollTrigger)
 /** Keep the existing scroll extent. Flow easing is applied to line + clock together. */
 const LINE_FROM = 0.02
 const LINE_TO = 0.88
-/** card가 켜지고 / 물러나는 데 걸리는 진행률. */
+/** card가 물러나는 데 걸리는 진행률. node-in은 journeyFlow의 기존 0.04 ramp를 쓴다. */
 const NODE_RAMP = 0.04
 /** 다음 card까지 가는 길 중 이만큼 지났을 때 지금 card가 물러나기 시작한다. 빛과는 무관하다. */
 const NODE_LEAVE = 0.5
@@ -173,7 +173,7 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
       }
 
       nodes.forEach((node, i) => {
-        const nodeIn = i === 0 ? 1 : clamp01((flowP - (m[i] - NODE_RAMP)) / NODE_RAMP)
+        const nodeIn = i === 0 ? 1 : journeyNodeIn(flowP, m[i - 1], m[i])
         const leave = i + 1 < m.length ? m[i] + (m[i + 1] - m[i]) * NODE_LEAVE : Infinity
         const nodeOut = clamp01((flowP - leave) / NODE_RAMP)
         const key = `${nodeIn.toFixed(3)} ${nodeOut.toFixed(3)}`
@@ -338,8 +338,8 @@ export default function useJourneyInteraction({ enabled, sectionRef, stageRef, w
        * 풀리는 순간의 1 frame jump가 생길 자리가 없다. pin은 Journey가 끝난 뒤 Contact에서만 풀린다.
        */
       /*
-       * FACES의 Crown 시간(13 : 30)은 FACES 동안만이다. Journey가 올라오기 시작하면 걷히고(Journey는 line 위의
-       * Analog Clock 하나가 13:40 -> 17:00의 흐름을 이어받는다), 되감아 FACES로 돌아가면 다시 보인다. 두 시계가 동시에 다른 시간을 말하지 않는다.
+       * FACES의 Crown은 방문자 현재 시간을 표시하지만 Journey가 올라오기 시작하면 걷힌다. Journey의 line 위
+       * Analog Clock은 독립된 13:40 -> 17:00 story time을 유지하고, 되감아 FACES로 돌아가면 Crown이 다시 보인다.
        */
       const crownEl = document.querySelector<HTMLElement>('.watch--stage .watch__crown')
       const syncCrownTime = (progress: number) => crownEl?.classList.toggle('watch__crown--time-hidden', progress > 0.3)

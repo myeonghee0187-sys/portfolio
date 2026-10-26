@@ -9,7 +9,15 @@ const source = await readFile(new URL('../src/components/Journey/journeyFlow.ts'
 const { outputText } = ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 })
-const { mapJourneyFlow, journeyMinutesAt, pathExitDistance, pathEntryDistance } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`)
+const {
+  JOURNEY_NODE_IN_RAMP,
+  JOURNEY_NODE_IN_START,
+  journeyNodeIn,
+  mapJourneyFlow,
+  journeyMinutesAt,
+  pathExitDistance,
+  pathEntryDistance,
+} = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`)
 
 // Deliberately uneven distances model anchors measured from the actual SVG geometry.
 const milestones = [
@@ -21,6 +29,32 @@ const milestones = [
 ]
 const near = (actual, expected, tolerance = 1e-9) =>
   assert.ok(Math.abs(actual - expected) < tolerance, `${actual} ≈ ${expected}`)
+
+test('the next card brightens early in its own segment and is clear before arrival', () => {
+  const previous = 0.1, arrival = 0.3
+  const start = previous + (arrival - previous) * JOURNEY_NODE_IN_START
+  near(start, 0.14)
+  near(JOURNEY_NODE_IN_RAMP, 0.04)
+  assert.equal(journeyNodeIn(start, previous, arrival), 0)
+  near(journeyNodeIn(start + JOURNEY_NODE_IN_RAMP / 2, previous, arrival), 0.5)
+  assert.equal(journeyNodeIn(start + JOURNEY_NODE_IN_RAMP, previous, arrival), 1)
+  assert.ok(start + JOURNEY_NODE_IN_RAMP < arrival)
+})
+
+test('card activation is isolated to the upcoming segment and retraces identically in reverse', () => {
+  const marks = [0.05, 0.2, 0.35, 0.5]
+  const statesAt = progress => marks.slice(1).map((mark, index) => journeyNodeIn(progress, marks[index], mark))
+  assert.deepEqual(statesAt(0.08), [0, 0, 0])
+  near(statesAt(0.1)[0], 0.5)
+  assert.deepEqual(statesAt(0.1).slice(1), [0, 0])
+  near(statesAt(0.12)[0], 1)
+  assert.deepEqual(statesAt(0.12).slice(1), [0, 0])
+
+  const progress = Array.from({ length: 501 }, (_, index) => index / 1000)
+  const forward = progress.map(statesAt)
+  const reverse = progress.toReversed().map(statesAt).toReversed()
+  assert.deepEqual(reverse, forward)
+})
 
 test('start clears the entire clock radius after leaving the intro card', () => {
   const path = { getTotalLength: () => 1000, getPointAtLength: s => ({ x: 0, y: 110 + s }) }

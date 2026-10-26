@@ -4,7 +4,7 @@ import useCrownWheel from '../../hooks/useCrownWheel'
 import useMediaQuery from '../../hooks/useMediaQuery'
 import { openAllFaces } from '../AllFaces/allFacesStore'
 import './DigitalCrown.css'
-import { STORY_TIME } from '../../story/storyTime'
+import useWatchTime from '../../hooks/useWatchTime'
 
 /** 누를 때마다 dial이 한 번 더 도는 각도(°). 하드웨어 Crown을 한 칸 돌린 정도다. */
 const PRESS_SPIN = 22
@@ -137,6 +137,7 @@ type DigitalCrownProps = {
 }
 
 export default function DigitalCrown({ onOpenAllFaces, staticOpen = false }: DigitalCrownProps) {
+  const watchTime = useWatchTime()
   const trackRef = useRef<HTMLDivElement>(null)
   const spinRef = useRef<HTMLSpanElement>(null)
   const spinTurns = useRef(0)
@@ -219,11 +220,11 @@ export default function DigitalCrown({ onOpenAllFaces, staticOpen = false }: Dig
               </span>
               <span className="watch__crown-front-highlight" />
               {/*
-                FACES 시간(13 : 30, story/storyTime.ts). dial을 돌리는 layer(spin / global / drag rotation) 밖에 있어서
+                방문자의 현재 시간. dial을 돌리는 layer(spin / global / drag rotation) 밖에 있어서
                 scroll / drag / hover / press 회전을 따라 돌지 않는다. 정면으로 다 돌아선 뒤에만 보인다(watch__crown--front-settled).
               */}
               <span className="watch__crown-time" aria-hidden="true">
-                {STORY_TIME.faces}
+                {watchTime}
               </span>
               {/* 누를 수 있다는 표시. 바깥 테두리에 늘 옅은 Frost / Ice 빛이 있고 hover / focus / cue에서 밝아진다. */}
               <span className="watch__crown-front-rim" />

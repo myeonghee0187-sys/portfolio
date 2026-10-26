@@ -23,7 +23,7 @@ export default function FloatingDock({ liveUrl, caseStudyUrl }: FloatingDockProp
       {caseStudyUrl && (
         <>
           <span className="floating-dock__divider" aria-hidden="true" />
-          <a href={caseStudyUrl} target="_blank" rel="noreferrer">
+          <a href={caseStudyUrl} target="_blank" rel="noopener noreferrer">
             <ExternalLinkIcon />
             <span>CASE STUDY</span>
           </a>

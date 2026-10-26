@@ -51,7 +51,7 @@ function JaduyaHero() {
         <div className="jaduya-hero__award"><dt>수상</dt><dd>UXUI 디자인 &amp; 웹기획 프로젝트 최우수상</dd></div>
         <div><dt>기간</dt><dd className="jaduya-numeric">2026.8 - 2026.9</dd></div>
         <div><dt>역할</dt><dd className="jaduya-role">UI ARCHITECT / PRESENTATION CONTENT</dd></div>
-        <div><dt>기여도</dt><dd>팀 내 <span className="jaduya-numeric">16%</span></dd></div>
+        <div><dt>기여도</dt><dd>팀 내 <span className="jaduya-numeric">19.64%</span></dd></div>
       </dl>
     </section>
   )
