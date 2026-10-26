@@ -185,7 +185,7 @@
   text-align: center;
 }
 
-/* 장면별 시간이 같은 자리에 겹친다(stage는 Hero / About 두 값, 나머지는 한 값). 두 번째 값은 morph 도중에 나타난다. */
+/* 실시간 값이 같은 자리에 겹친다(stage는 morph target 보존용 두 node, 나머지는 한 node). */
 .watch__time-value {
   grid-area: 1 / 1;
 }

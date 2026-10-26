@@ -33,4 +33,6 @@ test('projects with a case study retain the divider and second link', () => {
   assert.equal(caseStudyGroup.props.children[0].props.className, 'floating-dock__divider')
   assert.equal(caseStudyGroup.props.children[1].type, 'a')
   assert.equal(caseStudyGroup.props.children[1].props.href, 'https://case.example/')
+  assert.equal(caseStudyGroup.props.children[1].props.target, '_blank')
+  assert.equal(caseStudyGroup.props.children[1].props.rel, 'noopener noreferrer')
 })

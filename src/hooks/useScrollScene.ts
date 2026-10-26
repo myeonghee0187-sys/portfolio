@@ -251,8 +251,8 @@ export default function useScrollScene(enabled: boolean) {
       watchTl.set(name, { fontWeight: 500 }, 0.62)
 
       /*
-       * 시간: Hero 09 : 20 -> About 11 : 10(story/storyTime.ts). 크기가 줄어드는 도중에 짧게 겹쳐 바뀐다.
-       * scroll에 묶인 값이라 되감으면 09 : 20으로 돌아온다.
+       * 시간 node는 같은 실시간 값을 표시한다. 기존 morph DOM을 보존하기 위해 크기가 줄어드는 도중
+       * 두 node의 opacity만 짧게 교차하고, 되감아도 같은 현재 시간이 유지된다.
        */
       const [heroTime, aboutTime] = gsap.utils.toArray<HTMLElement>(time.querySelectorAll('.watch__time-value'))
       if (heroTime && aboutTime) {
@@ -623,7 +623,7 @@ export default function useScrollScene(enabled: boolean) {
               rotate: 14 * (1 - front),
               autoAlpha: segment(turn, 0.46, 0.68),
             })
-            // 정면으로 다 돌아선 뒤에만 Crown 시간(13 : 30)이 보인다. 돌아서는 도중의 기울기를 따라가지 않는다.
+            // 정면으로 다 돌아선 뒤에만 Crown의 현재 시간이 보인다. 돌아서는 도중의 기울기를 따라가지 않는다.
             crown.classList.toggle('watch__crown--front-settled', front > 0.995)
           }
           // FACES 이후의 Crown remains the global project-navigation entry,

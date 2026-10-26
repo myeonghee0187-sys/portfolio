@@ -39,6 +39,19 @@ export function pathEntryDistance(path: PathSampler, box: PathBox, radius: numbe
 
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
 
+/**
+ * Start revealing the next card in the early part of its connecting segment.
+ * The existing 0.04 ramp is kept intact; only its start moves forward from the
+ * final 0.04 before arrival to 20% after the previous card's measured mark.
+ */
+export const JOURNEY_NODE_IN_RAMP = 0.04
+export const JOURNEY_NODE_IN_START = 0.2
+
+export function journeyNodeIn(progress: number, previousMark: number, mark: number) {
+  const start = previousMark + (mark - previousMark) * JOURNEY_NODE_IN_START
+  return clamp01((progress - start) / JOURNEY_NODE_IN_RAMP)
+}
+
 /** A reversible C1 mapping. Milestone speed is 40% of mid-segment speed
  * (0.5 / 1.25), without a hold, snap or time-based pause. */
 export function mapJourneyFlow(progress: number, milestones: readonly FlowMilestone[], reducedMotion = false) {

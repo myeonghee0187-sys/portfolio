@@ -1,4 +1,5 @@
-import { STORY_TIME, WATCH_ROLE } from '../../story/storyTime'
+import { WATCH_ROLE } from '../../story/storyTime'
+import useWatchTime from '../../hooks/useWatchTime'
 import watchFaceSrc from '../../../assets/img/watch_face.png'
 import DigitalCrown from './DigitalCrown'
 import './WatchAssembly.css'
@@ -49,15 +50,14 @@ export default function WatchAssembly({
   withCrown = true,
   crownOpensAllFaces = false,
 }: WatchAssemblyProps) {
+  const watchTime = useWatchTime()
+
   /*
-   * Watch 시간은 실시간 시계가 아니라 장면마다 정해 둔 storytelling 값이다(story/storyTime.ts).
-   * stage Watch는 Hero -> About을 하나의 element로 이어 가므로 두 값을 겹쳐 두고,
-   * useScrollScene이 morph 도중(크기가 가장 작을 때) 09 : 20 -> 11 : 10으로 바꾼다.
+   * stage Watch는 Hero -> About을 하나의 element로 이어 가므로 같은 실시간 값을 두 겹으로 둔다.
+   * 두 node는 useScrollScene의 기존 crossfade target으로 유지하며, key도 고정해 분 갱신이
+   * GSAP target을 교체하지 않게 한다.
    */
-  const times =
-    variant === 'stage'
-      ? [STORY_TIME.hero, STORY_TIME.about]
-      : [variant === 'contact' ? STORY_TIME.contact : variant === 'about' ? STORY_TIME.about : STORY_TIME.hero]
+  const times = variant === 'stage' ? [watchTime, watchTime] : [watchTime]
 
   return (
     <div className={`watch watch--${variant}`}>
@@ -105,7 +105,7 @@ export default function WatchAssembly({
             */}
             <p className="watch__time">
               {times.map((time, i) => (
-                <span key={time} className="watch__time-value" data-step={i}>
+                <span key={i} className="watch__time-value" data-step={i}>
                   {time}
                 </span>
               ))}

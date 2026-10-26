@@ -83,11 +83,11 @@ test('all three projects expose routes and their approved external links', () =>
   const [tchai, jaduya, f45] = projects
   assert.equal(tchai.detailPath, '/projects/tchaikim')
   assert.equal(tchai.liveUrl, 'https://myeonghee0187-sys.github.io/tchaikim_all/pages/main/index.html')
-  assert.equal(tchaikimCaseStudyUrl, 'https://www.figma.com/deck/8K1OMzkKzmEmkV2Kejd43q/기획서-슬라이드?node-id=6242-19&viewport=-109%2C-41%2C0.52&t=gkQV04wKLDvypaXf-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1')
+  assert.equal(tchaikimCaseStudyUrl, 'https://www.figma.com/deck/8K1OMzkKzmEmkV2Kejd43q')
   assert.equal(tchai.caseStudyUrl, tchaikimCaseStudyUrl)
   assert.equal(jaduya.detailPath, '/projects/jaduya')
   assert.equal(jaduya.liveUrl, 'https://jaduya.vercel.app/')
-  assert.equal(new URL(jaduya.caseStudyUrl).pathname.split('/')[2], '7l7yOTebIpNQ4Go31Mduar')
+  assert.equal(jaduya.caseStudyUrl, 'https://www.figma.com/deck/7l7yOTebIpNQ4Go31Mduar/%EA%B8%B0%ED%9A%8D%EC%84%9C-%EC%8A%AC%EB%9D%BC%EC%9D%B4%EB%93%9C?node-id=6003-333&viewport=-8530%2C-1309%2C0.49&t=uVEfZgBIRs71sGJ2-1&scaling=min-zoom&content-scaling=fixed&page-id=0%3A1')
   assert.equal(f45.detailPath, '/projects/f45')
   assert.equal(f45.liveUrl, 'https://myeonghee0187-sys.github.io/f45_korea/')
   assert.equal(f45.caseStudyUrl, undefined)
